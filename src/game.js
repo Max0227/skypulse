@@ -550,15 +550,15 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false);
 
-    this.introText = this.add.text(w / 2, h * 0.62, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
-      fontSize: '36px',
+    this.introText = this.add.text(w / 2, h * 0.68, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
+      fontSize: '28px',           // уменьшили
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
       stroke: '#7c3aed',
-      strokeThickness: 3,
+      strokeThickness: 3,         // можно чуть уменьшить обводку
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
-    }).setOrigin(0.5).setDepth(10);
+   }).setOrigin(0.5).setDepth(10);
 
     this.createGameOverBox();
   }
