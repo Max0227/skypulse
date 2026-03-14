@@ -566,14 +566,14 @@ class PlayScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(15).setVisible(false);
 
     this.introText = this.add.text(w / 2, h * 0.40, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
-      fontSize: '20px',           // уменьшили
+      fontSize: '24px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
       stroke: '#7c3aed',
-      strokeThickness: 3,         // можно чуть уменьшить обводку
+      strokeThickness: 3,
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
-   }).setOrigin(0.5).setDepth(10);
+    }).setOrigin(0.5).setDepth(10);
 
     this.createGameOverBox();
   }
