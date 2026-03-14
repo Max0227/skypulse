@@ -649,7 +649,7 @@ class PlayScene extends Phaser.Scene {
         this.scale.width/2, 
         this.scale.height/2 + 20, 
         'Нажми на кнопку паузы, чтобы продолжить', 
-        { fontSize: '24px', color: '#ccc', align: 'center' }
+        { fontSize: '15px', color: '#ccc', align: 'center' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
       
       this.pauseTexts = [pauseText, tipText];
