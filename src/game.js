@@ -98,6 +98,78 @@ class BootScene extends Phaser.Scene {
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
+    // ========== ПЛАНЕТЫ (декоративные) ==========
+    const createPlanet = (color, hasRing, hasAtmo, idx) => {
+      g.clear();
+      g.fillStyle(color);
+      g.fillCircle(32, 32, 28);
+      g.fillStyle(0x000000, 0.2);
+      g.fillCircle(20, 20, 6);
+      g.fillCircle(44, 44, 8);
+      g.fillStyle(0xffffff, 0.1);
+      g.fillCircle(30, 45, 5);
+      if (hasRing) {
+        g.lineStyle(4, 0xccaa88, 0.6);
+        g.strokeEllipse(32, 32, 70, 20);
+      }
+      if (hasAtmo) {
+        g.fillStyle(0x88aaff, 0.2);
+        g.fillCircle(32, 32, 34);
+      }
+      g.generateTexture(`planet_${idx}`, 64, 64);
+    };
+    createPlanet(0x4a90e2, true, true, 1);
+    createPlanet(0xe67e22, false, true, 2);
+    createPlanet(0x2ecc71, true, false, 3);
+    createPlanet(0x9b59b6, false, true, 4);
+    createPlanet(0xf1c40f, true, false, 5);
+    createPlanet(0xe74c3c, false, true, 6);
+    createPlanet(0x1abc9c, true, true, 7);
+
+    // ========== КОСМИЧЕСКИЕ КОРАБЛИ (фоновые) ==========
+    // Инопланетный корабль (тарелка)
+    g.clear();
+    g.fillStyle(0x88aaff);
+    g.fillEllipse(40, 30, 70, 20);
+    g.fillStyle(0xaaddff);
+    g.fillEllipse(40, 20, 40, 12);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(20, 30, 5);
+    g.fillCircle(60, 30, 5);
+    g.generateTexture('bg_ship_1', 90, 50);
+
+    // Корабль Мангалот
+    g.clear();
+    g.fillStyle(0xcc3333);
+    g.fillRoundedRect(20, 20, 70, 30, 8);
+    g.fillStyle(0xff6666);
+    g.fillTriangle(90, 25, 90, 45, 110, 35);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(35, 35, 5);
+    g.fillCircle(55, 35, 5);
+    g.generateTexture('bg_ship_2', 120, 60);
+
+    // Астероиды
+    g.clear();
+    g.fillStyle(0x6b4e2e);
+    g.fillEllipse(40, 40, 70, 50);
+    g.fillStyle(0x5d3a1a);
+    g.fillEllipse(20, 20, 30, 20);
+    g.fillStyle(0xa0522d);
+    g.fillEllipse(50, 50, 25, 15);
+    g.fillStyle(0x8b5a2b);
+    g.fillCircle(30, 60, 15);
+    g.generateTexture('bg_asteroid_1', 100, 80);
+
+    g.clear();
+    g.fillStyle(0x88aaff);
+    g.fillEllipse(35, 35, 60, 45);
+    g.fillStyle(0xaaddff);
+    g.fillEllipse(20, 20, 20, 15);
+    g.fillStyle(0x66ccff);
+    g.fillCircle(45, 45, 12);
+    g.generateTexture('bg_asteroid_2', 90, 70);
+
     // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
@@ -182,7 +254,8 @@ class PlayScene extends Phaser.Scene {
     this.scoreZones = [];
     this.stars = [];
     this.planets = [];             // декоративные планеты
-    this.backgroundObjects = [];
+    this.ships = [];               // фоновые корабли
+    this.asteroids = [];            // фоновые астероиды
 
     // Таймеры
     this.mainTimers = [];
@@ -190,7 +263,8 @@ class PlayScene extends Phaser.Scene {
     // Создание мира
     this.createBackground();
     this.createPlanets();
-    this.createBackgroundObjects();
+    this.createShips();
+    this.createAsteroids();
     this.createPlayer();
     this.createUI();
 
@@ -214,7 +288,8 @@ class PlayScene extends Phaser.Scene {
 
     this.updateStars();
     this.updatePlanets();
-    this.updateBackgroundObjects();
+    this.updateShips();
+    this.updateAsteroids();
 
     if (!this.started || this.dead) return;
 
@@ -283,9 +358,48 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  createBackgroundObjects() {
-    // Заглушка, можно добавить позже
-    this.backgroundObjects = [];
+  createShips() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const shipTextures = ['bg_ship_1', 'bg_ship_2'];
+    for (let i = 0; i < 5; i++) {
+      const tex = shipTextures[Math.floor(Math.random() * shipTextures.length)];
+      const ship = this.add.image(
+        Phaser.Math.Between(w, w * 8),
+        Phaser.Math.Between(50, h - 50),
+        tex
+      );
+      ship.setScale(Phaser.Math.FloatBetween(0.5, 1.2));
+      ship.setAlpha(0.8);
+      ship.setDepth(-10);
+      ship.setBlendMode(Phaser.BlendModes.ADD);
+      this.ships.push({
+        sprite: ship,
+        speed: Phaser.Math.Between(5, 15),
+      });
+    }
+  }
+
+  createAsteroids() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const asteroidTextures = ['bg_asteroid_1', 'bg_asteroid_2'];
+    for (let i = 0; i < 8; i++) {
+      const tex = asteroidTextures[Math.floor(Math.random() * asteroidTextures.length)];
+      const asteroid = this.add.image(
+        Phaser.Math.Between(w, w * 8),
+        Phaser.Math.Between(50, h - 50),
+        tex
+      );
+      asteroid.setScale(Phaser.Math.FloatBetween(0.5, 1.2));
+      asteroid.setAlpha(0.8);
+      asteroid.setDepth(-10);
+      asteroid.setBlendMode(Phaser.BlendModes.ADD);
+      this.asteroids.push({
+        sprite: asteroid,
+        speed: Phaser.Math.Between(5, 15),
+      });
+    }
   }
 
   createPlayer() {
@@ -980,7 +1094,29 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  updateBackgroundObjects() {}
+  updateShips() {
+    const w = this.scale.width;
+    const factor = this.started && !this.dead ? 0.3 : 0.1;
+    for (let s of this.ships) {
+      s.sprite.x -= s.speed * factor * (1 / 60);
+      if (s.sprite.x < -200) {
+        s.sprite.x = w + Phaser.Math.Between(300, 1000);
+        s.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
+      }
+    }
+  }
+
+  updateAsteroids() {
+    const w = this.scale.width;
+    const factor = this.started && !this.dead ? 0.3 : 0.1;
+    for (let a of this.asteroids) {
+      a.sprite.x -= a.speed * factor * (1 / 60);
+      if (a.sprite.x < -200) {
+        a.sprite.x = w + Phaser.Math.Between(300, 1000);
+        a.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
+      }
+    }
+  }
 
   // ========== АДАПТАЦИЯ ==========
   onResize() {
