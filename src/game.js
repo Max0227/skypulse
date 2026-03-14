@@ -550,8 +550,8 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false);
 
-    this.introText = this.add.text(w / 2, h * 0.68, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
-      fontSize: '28px',           // уменьшили
+    this.introText = this.add.text(w / 2, h * 0.40, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
+      fontSize: '20px',           // уменьшили
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
