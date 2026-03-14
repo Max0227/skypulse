@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 // =========================================================================
-// BootScene – создание всех текстур и загрузка звуков
+// BootScene – создание всех текстур
 // =========================================================================
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,13 +9,11 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Звуки (файлы должны лежать в public/sounds/)
+    // Загружаем звуки (если есть)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
     this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
-    this.load.audio('upgrade_sound', 'sounds/upgrade.mp3');
-    this.load.audio('planet_sound', 'sounds/planet.mp3');
   }
 
   create() {
@@ -100,21 +98,6 @@ class BootScene extends Phaser.Scene {
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
-    // ========== ПЛАНЕТА (станция) ==========
-    g.clear();
-    g.fillStyle(0xaa44aa);
-    g.fillCircle(64, 64, 48);
-    g.fillStyle(0xcc66cc);
-    g.fillCircle(50, 50, 10);
-    g.fillCircle(80, 70, 15);
-    g.fillStyle(0xffffff, 0.2);
-    g.fillCircle(64, 64, 50);
-    g.lineStyle(6, 0x88aaff, 0.8);
-    g.strokeEllipse(64, 64, 120, 40);
-    g.lineStyle(2, 0xffffff);
-    g.strokeEllipse(64, 64, 110, 35);
-    g.generateTexture('planet', 128, 128);
-
     // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
@@ -129,8 +112,7 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(3, 3, 3);
     g.generateTexture('spark', 6, 6);
 
-    // ========== КНОПКИ И ИНТЕРФЕЙС ==========
-    // Кнопка паузы
+    // ========== КНОПКА ПАУЗЫ ==========
     g.clear();
     g.fillStyle(0x2c3e50, 0.8);
     g.fillRoundedRect(0, 0, 60, 60, 10);
@@ -138,41 +120,6 @@ class BootScene extends Phaser.Scene {
     g.fillRect(15, 15, 10, 30);
     g.fillRect(35, 15, 10, 30);
     g.generateTexture('pause_button', 60, 60);
-
-    // Сердечко (здоровье)
-    g.clear();
-    g.fillStyle(0xff5555);
-    g.fillCircle(16, 12, 6);
-    g.fillCircle(26, 12, 6);
-    g.fillStyle(0xff0000);
-    g.fillTriangle(10, 15, 32, 15, 21, 30);
-    g.generateTexture('heart', 42, 32);
-
-    // Иконка монетки
-    g.clear();
-    g.fillStyle(0xffaa00);
-    g.fillCircle(16, 16, 14);
-    g.fillStyle(0xffdd44);
-    g.fillCircle(16, 16, 10);
-    g.generateTexture('coin_icon', 32, 32);
-
-    // Иконка вагона
-    g.clear();
-    g.fillStyle(0x44aaff);
-    g.fillRoundedRect(4, 8, 24, 16, 4);
-    g.fillStyle(0x000000);
-    g.fillCircle(10, 22, 3);
-    g.fillCircle(22, 22, 3);
-    g.generateTexture('wagon_icon', 32, 32);
-
-    // Кнопка магазина (без fillText, просто крестик)
-    g.clear();
-    g.fillStyle(0x3399ff);
-    g.fillRoundedRect(0, 0, 50, 50, 10);
-    g.fillStyle(0xffffff);
-    g.fillRect(20, 15, 10, 20);
-    g.fillRect(15, 20, 20, 10);
-    g.generateTexture('shop_button', 50, 50);
 
     g.destroy();
   }
@@ -190,108 +137,64 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // ========== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ==========
+    // Счётчики
     this.score = 0;
     this.crystals = 0;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
-    this.level = 0;
+
+    // Прогрессия вагонов
+    this.wagons = [];
+    this.collectedCoins = 0;
+    this.coinsForWagon = 10;      // каждые 10 монет – новый вагон
+    this.maxWagons = 10;           // максимум вагонов
+    this.wagonGap = 30;            // расстояние между вагонами
+    this.wagonSpring = 0.1;        // упругость
+
+    // Состояние
     this.started = false;
     this.dead = false;
+    this.level = 0;
     this.isPaused = false;
+    this.pauseOverlay = null;
+    this.pauseTexts = [];
 
-    // ========== ЗДОРОВЬЕ ==========
-    this.headHP = 3;
-    this.maxHeadHP = 3;
-    this.wagonBaseHP = 1;
-
-    // ========== ВАГОНЫ ==========
-    this.wagons = [];
-    this.wagonGap = 30;
-    this.wagonSpring = 0.1;
-    this.maxWagons = 10;
-
-    // ========== ПАРАМЕТРЫ СЛОЖНОСТИ ==========
+    // Параметры сложности
     this.baseSpeed = 250;
     this.currentSpeed = this.baseSpeed;
     this.gapSize = 220;
     this.spawnDelay = 1300;
-    this.gravity = 1300;
-    this.jumpPower = 300;
 
-    // ========== ТЕКСТУРЫ ВОРОТ ==========
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
-    // ========== ПРОГРЕССИЯ ==========
-    this.coinsForWagon = 10;
-    this.collectedCoins = 0;
-    this.shipUpgrades = [];
-    this.upgradeLevels = {
-      jumpPower: 0,
-      gravity: 0,
-      shieldDuration: 0,
-      magnetRange: 0,
-      wagonHP: 0,
-      maxWagons: 0,
-      wagonGap: 0,
-      headHP: 0,
-      revival: 0
-    };
-    this.upgradeCosts = {
-      jumpPower: 10,
-      gravity: 15,
-      shieldDuration: 20,
-      magnetRange: 20,
-      wagonHP: 25,
-      maxWagons: 30,
-      wagonGap: 30,
-      headHP: 40,
-      revival: 50
-    };
-
-    // ========== БОНУСЫ ==========
+    // Бонусы
     this.bonusActive = false;
     this.bonusType = null;
     this.bonusTime = 0;
     this.bonusMultiplier = 1;
     this.bonusTimer = null;
     this.shieldActive = false;
-    this.magnetRange = 200;
+    this.magnetRange = 200;        // радиус магнита
 
-    // ========== ПЛАНЕТА ==========
-    this.planet = null;
-    this.planetTriggered = false;
-
-    // ========== ТАЙМЕРЫ ==========
-    this.mainTimers = [];
-
-    // ========== ГРУППЫ ОБЪЕКТОВ ==========
+    // Группы объектов
     this.pipes = [];
     this.coins = [];
     this.scoreZones = [];
     this.stars = [];
-    this.planets = [];
+    this.planets = [];             // декоративные планеты
     this.backgroundObjects = [];
-    this.upgradeItems = [];
 
-    // ========== ИНТЕРФЕЙС ==========
-    this.playerUpgrades = [];
-    this.shopVisible = false;
-    this.shopElements = [];
-    this.pauseOverlay = null;
-    this.pauseTexts = [];
+    // Таймеры
+    this.mainTimers = [];
 
-    // ========== ЗАГРУЗКА ПРОГРЕССА ==========
-    this.loadProgress();
-
-    // ========== СОЗДАНИЕ МИРА ==========
+    // Создание мира
     this.createBackground();
     this.createPlanets();
     this.createBackgroundObjects();
     this.createPlayer();
     this.createUI();
 
-    // ========== УПРАВЛЕНИЕ ==========
+    // Управление
     this.input.on('pointerdown', () => {
       if (this.dead) {
         this.scene.restart();
@@ -304,12 +207,6 @@ class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, w, h);
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
-
-    this.events.on('update', () => {
-      if (this.player && this.playerUpgrades) {
-        this.playerUpgrades.forEach(u => u.setPosition(this.player.x, this.player.y));
-      }
-    });
   }
 
   update() {
@@ -324,13 +221,15 @@ class PlayScene extends Phaser.Scene {
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
 
-    if (!this.shieldActive && (this.player.y < -20 || this.player.y > this.scale.height + 20)) {
+    // Смерть при выходе за границы
+    if (!this.shieldActive && (this.player.y < 0 || this.player.y > this.scale.height)) {
       this.handleDeath();
     }
 
+    // Магнит
     if (this.bonusActive && this.bonusType === 'magnet') {
-      [...this.coins, ...this.upgradeItems].forEach(item => {
-        if (item && item.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y) < this.magnetRange) {
+      [...this.coins].forEach(item => {
+        if (item.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y) < this.magnetRange) {
           const angle = Phaser.Math.Angle.Between(item.x, item.y, this.player.x, this.player.y);
           item.x += Math.cos(angle) * 8;
           item.y += Math.sin(angle) * 8;
@@ -339,11 +238,6 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.updateWagons();
-
-    if (this.planet && !this.planetTriggered && Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), this.planet.getBounds())) {
-      this.triggerPlanet();
-    }
-
     this.cleanupObjects();
   }
 
@@ -390,7 +284,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   createBackgroundObjects() {
-    this.backgroundObjects = []; // заглушка, можно добавить позже
+    // Заглушка, можно добавить позже
+    this.backgroundObjects = [];
   }
 
   createPlayer() {
@@ -408,8 +303,6 @@ class PlayScene extends Phaser.Scene {
     this.itemSound = this.sound.add('item_sound');
     this.tapSound = this.sound.add('tap_sound', { volume: 0.2 });
     this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
-    this.upgradeSound = this.sound.add('upgrade_sound');
-    this.planetSound = this.sound.add('planet_sound');
 
     this.trailEmitter = this.add.particles(0, 0, 'flare', {
       speed: 40,
@@ -475,19 +368,7 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
 
-    // Здоровье (сердечки)
-    this.healthIcons = [];
-    for (let i = 0; i < this.maxHeadHP; i++) {
-      let heart = this.add.image(20 + i * 30, h - 40, 'heart')
-        .setScale(0.5)
-        .setDepth(10)
-        .setScrollFactor(0);
-      this.healthIcons.push(heart);
-    }
-    this.updateHealthDisplay();
-
-    // Количество вагонов
-    this.wagonCountText = this.add.text(w - 150, h - 40, `🚃 ${this.wagons.length}`, {
+    this.wagonCountText = this.add.text(w - 150, h - 40, `🚃 0`, {
       fontSize: '22px',
       color: '#88ccff',
       fontStyle: 'bold',
@@ -495,23 +376,8 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setDepth(10).setScrollFactor(0);
 
-    // Кнопка паузы
-    this.pauseButton = this.add.image(w - 40, h - 40, 'pause_button')
-      .setInteractive()
-      .setDepth(20)
-      .setScrollFactor(0);
-    this.pauseButton.on('pointerdown', () => this.togglePause());
-
-    // Кнопка магазина (скрыта по умолчанию)
-    this.shopButton = this.add.image(w - 120, h - 40, 'shop_button')
-      .setInteractive()
-      .setDepth(20)
-      .setScrollFactor(0)
-      .setVisible(false);
-    this.shopButton.on('pointerdown', () => this.showShop());
-
-    this.introText = this.add.text(w / 2, h * 0.35, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
-      fontSize: '20px',
+    this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
+      fontSize: '17px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
@@ -519,6 +385,13 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 3,
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+
+    // Кнопка паузы
+    this.pauseButton = this.add.image(w - 40, h - 40, 'pause_button')
+      .setInteractive()
+      .setDepth(20)
+      .setScrollFactor(0);
+    this.pauseButton.on('pointerdown', () => this.togglePause());
 
     this.createGameOverBox();
   }
@@ -553,21 +426,24 @@ class PlayScene extends Phaser.Scene {
     this.introText.setVisible(false);
     if (this.bgMusic) this.bgMusic.play();
 
-    // Первый спавн ворот
     this.spawnGate();
+    this.scheduleNextSpawn();
 
-    // Создаём циклический таймер для спавна ворот
-    this.gateTimer = this.time.addEvent({
-      delay: this.spawnDelay,
-      callback: this.spawnGate,
-      callbackScope: this,
-      loop: true,
+    // Таймер для монет (не нужен, монеты спавнятся с воротами)
+  }
+
+  scheduleNextSpawn() {
+    if (this.dead) return;
+    this.time.delayedCall(this.spawnDelay, () => {
+      if (!this.dead) {
+        this.spawnGate();
+        this.scheduleNextSpawn();
+      }
     });
-    this.mainTimers.push(this.gateTimer);
   }
 
   flap() {
-    this.player.body.setVelocityY(-this.jumpPower);
+    this.player.body.setVelocityY(-300);
     this.player.setScale(0.95);
     this.tweens.add({
       targets: this.player,
@@ -580,7 +456,7 @@ class PlayScene extends Phaser.Scene {
     try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch {}
   }
 
-  // ========== ПАУЗА И МАГАЗИН ==========
+  // ========== ПАУЗА ==========
   togglePause() {
     this.isPaused = !this.isPaused;
 
@@ -609,8 +485,6 @@ class PlayScene extends Phaser.Scene {
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
-      this.shopButton.setVisible(true);
-
     } else {
       this.physics.resume();
       if (this.pauseOverlay) {
@@ -621,109 +495,45 @@ class PlayScene extends Phaser.Scene {
         this.pauseTexts.forEach(t => t.destroy());
         this.pauseTexts = [];
       }
-      this.shopButton.setVisible(false);
-      this.hideShop();
     }
   }
 
-  showShop() {
-    if (this.shopVisible) return;
-    this.shopVisible = true;
+  // ========== ПРОГРЕССИЯ ==========
+  updateLevel() {
+    const newLevel = Math.floor(this.meters / 300);
+    if (newLevel > this.level) {
+      this.level = newLevel;
+      this.baseSpeed = 250 + this.level * 20;
+      this.gapSize = Math.max(160, 220 - this.level * 8);
+      this.spawnDelay = Math.max(900, 1300 - this.level * 50);
+      if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
+      this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
+      this.levelText.setVisible(true);
+      this.levelText.setAlpha(1);
+      this.tweens.add({
+        targets: this.levelText,
+        alpha: 0,
+        duration: 2000,
+        ease: 'Power2',
+      });
+
+      this.addRandomPlanet();
+    }
+  }
+
+  addRandomPlanet() {
     const w = this.scale.width;
     const h = this.scale.height;
-    let y = h * 0.2;
-
-    this.shopElements.push(
-      this.add.text(w/2, y, 'МАГАЗИН УЛУЧШЕНИЙ', {
-        fontSize: '28px', color: '#ffaa00', fontStyle: 'bold'
-      }).setOrigin(0.5).setDepth(30).setScrollFactor(0)
-    );
-    y += 40;
-
-    for (let [key, level] of Object.entries(this.upgradeLevels)) {
-      let cost = this.upgradeCosts[key];
-      let currentVal = '';
-      switch (key) {
-        case 'jumpPower': currentVal = `${this.jumpPower} → ${this.jumpPower+20}`; break;
-        case 'gravity': currentVal = `${this.gravity} → ${this.gravity-50}`; break;
-        case 'shieldDuration': currentVal = `${5+level*2} сек`; break;
-        case 'magnetRange': currentVal = `${this.magnetRange} → ${this.magnetRange+30}`; break;
-        case 'wagonHP': currentVal = `${this.wagonBaseHP} → ${this.wagonBaseHP+1}`; break;
-        case 'maxWagons': currentVal = `${this.maxWagons} → ${this.maxWagons+2}`; break;
-        case 'wagonGap': currentVal = `${this.wagonGap} → ${this.wagonGap-2}`; break;
-        case 'headHP': currentVal = `${this.maxHeadHP} → ${this.maxHeadHP+1}`; break;
-        case 'revival': currentVal = '1 воскрешение'; break;
-      }
-      let text = `${key}: ур.${level} | ${currentVal} | цена: ${cost}`;
-      let t = this.add.text(w/2 - 50, y, text, {
-        fontSize: '18px', color: '#fff'
-      }).setDepth(30).setScrollFactor(0);
-      this.shopElements.push(t);
-
-      let btn = this.add.text(w/2 + 100, y, '[Купить]', {
-        fontSize: '18px', color: '#0f0'
-      }).setInteractive().setDepth(30).setScrollFactor(0);
-      btn.on('pointerdown', () => this.buyUpgrade(key));
-      this.shopElements.push(btn);
-      y += 30;
-    }
-
-    let closeBtn = this.add.text(w/2, h-50, 'Закрыть', {
-      fontSize: '24px', color: '#f00', backgroundColor: '#333', padding: {x:10,y:5}
-    }).setInteractive().setDepth(30).setScrollFactor(0);
-    closeBtn.on('pointerdown', () => this.hideShop());
-    this.shopElements.push(closeBtn);
-  }
-
-  hideShop() {
-    if (!this.shopVisible) return;
-    this.shopElements.forEach(el => el.destroy());
-    this.shopElements = [];
-    this.shopVisible = false;
-  }
-
-  buyUpgrade(key) {
-    if (this.crystals < this.upgradeCosts[key]) return;
-    this.crystals -= this.upgradeCosts[key];
-    this.crystalText.setText(`💎 ${this.crystals}`);
-    this.upgradeLevels[key]++;
-
-    switch (key) {
-      case 'jumpPower': this.jumpPower += 20; break;
-      case 'gravity': this.gravity -= 50; this.physics.world.gravity.y = this.gravity; break;
-      case 'magnetRange': this.magnetRange += 30; break;
-      case 'wagonHP': this.wagonBaseHP++; break;
-      case 'maxWagons': this.maxWagons += 2; break;
-      case 'wagonGap': this.wagonGap -= 2; break;
-      case 'headHP':
-        this.maxHeadHP++;
-        this.headHP++;
-        this.updateHealthDisplay();
-        break;
-      // shieldDuration и revival используются в соответствующих местах
-    }
-
-    this.saveProgress();
-    if (this.upgradeSound) this.upgradeSound.play();
-    this.hideShop();
-    this.showShop(); // обновить список
-  }
-
-  updateHealthDisplay() {
-    // Удаляем старые сердечки
-    if (this.healthIcons) {
-      this.healthIcons.forEach(h => h.destroy());
-    }
-    this.healthIcons = [];
-    for (let i = 0; i < this.maxHeadHP; i++) {
-      let heart = this.add.image(20 + i * 30, this.scale.height - 40, 'heart')
-        .setScale(0.5)
-        .setDepth(10)
-        .setScrollFactor(0);
-      if (i >= this.headHP) heart.setAlpha(0.3);
-      this.healthIcons.push(heart);
-    }
+    const idx = Phaser.Math.Between(1, 7);
+    const planet = this.add.image(w + 200, Phaser.Math.Between(50, h - 50), `planet_${idx}`);
+    planet.setScale(Phaser.Math.FloatBetween(1.5, 3.0));
+    planet.setAlpha(0.6);
+    planet.setDepth(-15);
+    this.planets.push({
+      sprite: planet,
+      speed: Phaser.Math.Between(5, 18),
+    });
   }
 
   // ========== ВАГОНЫ ==========
@@ -756,11 +566,12 @@ class PlayScene extends Phaser.Scene {
     wagon.body.setMass(0.5);
     wagon.body.setDrag(0.9);
     wagon.setDepth(5 + this.wagons.length);
-    wagon.setData('hp', this.wagonBaseHP);
+    wagon.setData('hp', 1); // базовое здоровье
 
     this.physics.add.collider(wagon, this.pipes, this.wagonHit, null, this);
     this.wagons.push(wagon);
 
+    // Эффект появления (прилетает справа)
     wagon.x = this.scale.width + 50;
     wagon.y = this.player.y;
     this.tweens.add({
@@ -808,101 +619,6 @@ class PlayScene extends Phaser.Scene {
       zoom: targetZoom,
       duration: 500,
       ease: 'Sine.easeInOut'
-    });
-  }
-
-  // ========== ПЛАНЕТА ==========
-  spawnPlanet() {
-    if (this.level % 10 === 0 && this.level > 0 && !this.planet) {
-      const x = this.scale.width + 200;
-      const y = Phaser.Math.Between(100, this.scale.height - 100);
-      this.planet = this.physics.add.image(x, y, 'planet')
-        .setImmovable(true)
-        .setScale(1.2)
-        .setVelocityX(-20)
-        .setDepth(20);
-      this.planet.body.setAllowGravity(false);
-      this.planet.alpha = 0.8;
-      this.tweens.add({
-        targets: this.planet,
-        alpha: 1,
-        duration: 500,
-        yoyo: true,
-        repeat: -1
-      });
-    }
-  }
-
-  triggerPlanet() {
-    if (this.planetTriggered) return;
-    this.planetTriggered = true;
-    if (this.planetSound) this.planetSound.play();
-    this.cameras.main.flash(500, 255, 255, 255, false);
-
-    let reward = this.wagons.length * 10;
-    reward += this.wagons.reduce((acc, w) => acc + w.getData('hp'), 0) * 5;
-    this.crystals += reward;
-    this.crystalText.setText(`💎 ${this.crystals}`);
-
-    let emitter = this.add.particles(this.planet.x, this.planet.y, 'spark', {
-      speed: 200,
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 1, end: 0 },
-      lifespan: 1000,
-      quantity: 30,
-      blendMode: Phaser.BlendModes.ADD
-    });
-    emitter.explode(30);
-
-    this.wagons.forEach(w => w.destroy());
-    this.wagons = [];
-    this.wagonCountText.setText(`🚃 0`);
-    this.updateCameraZoom();
-
-    this.planet.destroy();
-    this.planet = null;
-    this.planetTriggered = false;
-    this.showShop();
-  }
-
-  // ========== ПРОГРЕССИЯ ==========
-  updateLevel() {
-    const newLevel = Math.floor(this.meters / 300);
-    if (newLevel > this.level) {
-      this.level = newLevel;
-      this.baseSpeed = 250 + this.level * 20;
-      this.gapSize = Math.max(160, 220 - this.level * 8);
-      this.spawnDelay = Math.max(900, 1300 - this.level * 50);
-      if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
-
-      this.spawnPlanet();
-
-      this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
-      this.levelText.setVisible(true);
-      this.levelText.setAlpha(1);
-      this.tweens.add({
-        targets: this.levelText,
-        alpha: 0,
-        duration: 2000,
-        ease: 'Power2',
-      });
-
-      this.addRandomPlanet();
-      this.saveProgress();
-    }
-  }
-
-  addRandomPlanet() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const idx = Phaser.Math.Between(1, 7);
-    const planet = this.add.image(w + 200, Phaser.Math.Between(50, h - 50), `planet_${idx}`);
-    planet.setScale(Phaser.Math.FloatBetween(1.5, 3.0));
-    planet.setAlpha(0.6);
-    planet.setDepth(-15);
-    this.planets.push({
-      sprite: planet,
-      speed: Phaser.Math.Between(5, 18),
     });
   }
 
@@ -1005,29 +721,29 @@ class PlayScene extends Phaser.Scene {
     if (this.bonusActive) this.deactivateBonus();
     this.bonusActive = true;
     this.bonusType = type;
-    this.bonusTime = 5 + (this.upgradeLevels.shieldDuration * 2);
+    this.bonusTime = 5;
 
     switch (type) {
       case 'speed':
         this.currentSpeed = this.baseSpeed * 1.5;
         this.bonusMultiplier = 2;
-        if (this.bonusText) this.bonusText.setColor('#ffaa00').setText(`🚀 x2 ${this.bonusTime}с`);
+        this.bonusText.setColor('#ffaa00').setText(`🚀 x2 ${this.bonusTime}с`);
         break;
       case 'shield':
         this.shieldActive = true;
         this.player.body.checkCollision.none = true;
         this.player.setTint(0x88ccff);
-        if (this.bonusText) this.bonusText.setColor('#88ccff').setText(`🛡️ ${this.bonusTime}с`);
+        this.bonusText.setColor('#88ccff').setText(`🛡️ ${this.bonusTime}с`);
         break;
       case 'magnet':
-        if (this.bonusText) this.bonusText.setColor('#2ecc71').setText(`🧲 ${this.bonusTime}с`);
+        this.bonusText.setColor('#2ecc71').setText(`🧲 ${this.bonusTime}с`);
         break;
       case 'slow':
         this.currentSpeed = this.baseSpeed * 0.6;
-        if (this.bonusText) this.bonusText.setColor('#9b59b6').setText(`⏳ ${this.bonusTime}с`);
+        this.bonusText.setColor('#9b59b6').setText(`⏳ ${this.bonusTime}с`);
         break;
     }
-    if (this.bonusText) this.bonusText.setVisible(true);
+    this.bonusText.setVisible(true);
 
     if (this.bonusTimer) this.bonusTimer.remove();
     this.bonusTimer = this.time.addEvent({
@@ -1036,7 +752,7 @@ class PlayScene extends Phaser.Scene {
         this.bonusTime -= 1;
         if (this.bonusTime <= 0) {
           this.deactivateBonus();
-        } else if (this.bonusText) {
+        } else {
           let emoji = '🚀';
           if (type === 'shield') emoji = '🛡️';
           else if (type === 'magnet') emoji = '🧲';
@@ -1056,7 +772,7 @@ class PlayScene extends Phaser.Scene {
     this.bonusMultiplier = 1;
     this.player.clearTint();
     this.player.body.checkCollision.none = false;
-    if (this.bonusText) this.bonusText.setVisible(false);
+    this.bonusText.setVisible(false);
     if (this.bonusTimer) {
       this.bonusTimer.remove();
       this.bonusTimer = null;
@@ -1141,13 +857,7 @@ class PlayScene extends Phaser.Scene {
       });
       emitter.explode(15);
       return;
-    }
-    this.headHP--;
-    this.updateHealthDisplay();
-    this.cameras.main.shake(50, 0.005);
-    this.player.setTint(0xff6666);
-    this.time.delayedCall(100, () => this.player.clearTint());
-    if (this.headHP <= 0) {
+    } else {
       this.handleDeath();
     }
   }
@@ -1177,25 +887,14 @@ class PlayScene extends Phaser.Scene {
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light'); } catch {}
   }
 
-  // ========== СМЕРТЬ ==========
   handleDeath() {
-    // Воскрешение
-    if (this.upgradeLevels.revival > 0 && !this.dead) {
-      this.upgradeLevels.revival--;
-      this.headHP = this.maxHeadHP;
-      this.updateHealthDisplay();
-      this.cameras.main.flash(300, 100, 255, 100, false);
-      return;
-    }
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
     if (this.bgMusic) this.bgMusic.stop();
 
-    // Останавливаем все таймеры
     this.mainTimers.forEach(timer => timer && timer.remove());
     if (this.bonusTimer) this.bonusTimer.remove();
-    if (this.gateTimer) this.gateTimer.remove();
 
     this.physics.pause();
     this.cameras.main.shake(300, 0.005);
@@ -1214,18 +913,6 @@ class PlayScene extends Phaser.Scene {
     emitter.explode(40);
 
     this.showGameOver();
-
-    // Отправка данных в Telegram
-    if (window.Telegram?.WebApp) {
-      const data = JSON.stringify({
-        score: this.score,
-        level: this.level + 1,
-        wagons: this.wagons.length,
-        meters: Math.floor(this.meters)
-      });
-      window.Telegram.WebApp.sendData(data);
-    }
-
     try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('error'); } catch {}
   }
 
@@ -1251,49 +938,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== СОХРАНЕНИЕ / ЗАГРУЗКА ==========
-  saveProgress() {
-    const progress = {
-      level: this.level,
-      meters: this.meters,
-      crystals: this.crystals,
-      collectedCoins: this.collectedCoins,
-      wagonsCount: this.wagons.length,
-      upgradeLevels: this.upgradeLevels,
-      headHP: this.headHP,
-      maxHeadHP: this.maxHeadHP,
-      jumpPower: this.jumpPower,
-      gravity: this.gravity,
-      magnetRange: this.magnetRange,
-      wagonBaseHP: this.wagonBaseHP,
-      maxWagons: this.maxWagons,
-      wagonGap: this.wagonGap
-    };
-    localStorage.setItem('skypulse_save', JSON.stringify(progress));
-  }
-
-  loadProgress() {
-    const saved = localStorage.getItem('skypulse_save');
-    if (saved) {
-      const data = JSON.parse(saved);
-      this.level = data.level;
-      this.meters = data.meters;
-      this.crystals = data.crystals;
-      this.collectedCoins = data.collectedCoins;
-      this.upgradeLevels = data.upgradeLevels;
-      this.headHP = data.headHP;
-      this.maxHeadHP = data.maxHeadHP;
-      this.jumpPower = data.jumpPower;
-      this.gravity = data.gravity;
-      this.magnetRange = data.magnetRange;
-      this.wagonBaseHP = data.wagonBaseHP;
-      this.maxWagons = data.maxWagons;
-      this.wagonGap = data.wagonGap;
-      this.physics.world.gravity.y = this.gravity;
-    }
-  }
-
-  // ========== ОЧИСТКА ОБЪЕКТОВ ==========
+  // ========== ОЧИСТКА ==========
   cleanupObjects() {
     this.pipes = this.pipes.filter(p => {
       if (p.x < -150) { p.destroy(); return false; }
@@ -1349,12 +994,10 @@ class PlayScene extends Phaser.Scene {
     this.levelText.setPosition(w / 2, h / 2 - 100);
 
     if (this.pauseButton) this.pauseButton.setPosition(w - 40, h - 40);
-    if (this.shopButton) this.shopButton.setPosition(w - 120, h - 40);
     if (this.wagonCountText) this.wagonCountText.setPosition(w - 150, h - 40);
-    this.updateHealthDisplay();
 
     if (!this.started) {
-      this.introText.setPosition(w / 2, h * 0.35);
+      this.introText.setPosition(w / 2, h * 0.40);
     }
 
     this.gameOverBox.setPosition(w / 2, h / 2);
