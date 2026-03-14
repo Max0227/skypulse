@@ -268,7 +268,7 @@ class PlayScene extends Phaser.Scene {
 
     // ========== ТЕКСТУРЫ КОЛОНН ==========
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
-
+    this.gateTexturesList = this.gateTextures;  // добавить эту строку
     // ========== ИНТЕРФЕЙС ==========
     this.playerUpgrades = [];
     this.shopVisible = false;
