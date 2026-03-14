@@ -9,10 +9,11 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Звуки (только эффекты, без фоновой музыки)
+    // Звуки (файлы должны лежать в public/sounds/)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
     this.load.audio('upgrade_sound', 'sounds/upgrade.mp3');
     this.load.audio('planet_sound', 'sounds/planet.mp3');
   }
@@ -47,7 +48,7 @@ class BootScene extends Phaser.Scene {
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
 
-    // ========== ВАГОНЧИКИ ==========
+    // ========== ВАГОНЧИКИ (разноцветные) ==========
     const colors = [0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844, 0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66];
     for (let i = 0; i < colors.length; i++) {
       g.clear();
@@ -114,51 +115,6 @@ class BootScene extends Phaser.Scene {
     g.strokeEllipse(64, 64, 110, 35);
     g.generateTexture('planet', 128, 128);
 
-    // ========== ФОНОВЫЕ ОБЪЕКТЫ ==========
-    // Астероид
-    g.clear();
-    g.fillStyle(0x6b4e2e);
-    g.fillEllipse(40, 40, 70, 50);
-    g.fillStyle(0x5d3a1a);
-    g.fillEllipse(20, 20, 30, 20);
-    g.fillStyle(0xa0522d);
-    g.fillEllipse(50, 50, 25, 15);
-    g.fillStyle(0x8b5a2b);
-    g.fillCircle(30, 60, 15);
-    g.generateTexture('bg_asteroid_1', 100, 80);
-
-    // Кристаллический астероид
-    g.clear();
-    g.fillStyle(0x88aaff);
-    g.fillEllipse(35, 35, 60, 45);
-    g.fillStyle(0xaaddff);
-    g.fillEllipse(20, 20, 20, 15);
-    g.fillStyle(0x66ccff);
-    g.fillCircle(45, 45, 12);
-    g.generateTexture('bg_asteroid_2', 90, 70);
-
-    // Инопланетный корабль
-    g.clear();
-    g.fillStyle(0x88aaff);
-    g.fillEllipse(40, 30, 70, 20);
-    g.fillStyle(0xaaddff);
-    g.fillEllipse(40, 20, 40, 12);
-    g.fillStyle(0xffaa00);
-    g.fillCircle(20, 30, 5);
-    g.fillCircle(60, 30, 5);
-    g.generateTexture('bg_ship_1', 90, 50);
-
-    // Корабль Мангалот
-    g.clear();
-    g.fillStyle(0xcc3333);
-    g.fillRoundedRect(20, 20, 70, 30, 8);
-    g.fillStyle(0xff6666);
-    g.fillTriangle(90, 25, 90, 45, 110, 35);
-    g.fillStyle(0xffaa00);
-    g.fillCircle(35, 35, 5);
-    g.fillCircle(55, 35, 5);
-    g.generateTexture('bg_ship_2', 120, 60);
-
     // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
@@ -183,7 +139,7 @@ class BootScene extends Phaser.Scene {
     g.fillRect(35, 15, 10, 30);
     g.generateTexture('pause_button', 60, 60);
 
-    // Сердечко
+    // Сердечко (здоровье)
     g.clear();
     g.fillStyle(0xff5555);
     g.fillCircle(16, 12, 6);
@@ -209,7 +165,7 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(22, 22, 3);
     g.generateTexture('wagon_icon', 32, 32);
 
-    // Кнопка магазина
+    // Кнопка магазина (без fillText, просто крестик)
     g.clear();
     g.fillStyle(0x3399ff);
     g.fillRoundedRect(0, 0, 50, 50, 10);
@@ -324,7 +280,6 @@ class PlayScene extends Phaser.Scene {
     this.shopElements = [];
     this.pauseOverlay = null;
     this.pauseTexts = [];
-    this.choiceMenu = null;
 
     // ========== ЗАГРУЗКА ПРОГРЕССА ==========
     this.loadProgress();
@@ -338,16 +293,13 @@ class PlayScene extends Phaser.Scene {
 
     // ========== УПРАВЛЕНИЕ ==========
     this.input.on('pointerdown', () => {
-  if (this.dead) {
-    this.scene.restart();
-    return;
-  }
-  if (!this.started) {
-    this.startRun();  // сразу запускаем игру при первом тапе
-  } else {
-    this.flap();
-  }
-});
+      if (this.dead) {
+        this.scene.restart();
+        return;
+      }
+      if (!this.started) this.startRun();
+      this.flap();
+    });
 
     this.physics.world.setBounds(0, 0, w, h);
     this.events.on('resize', this.onResize, this);
@@ -438,25 +390,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   createBackgroundObjects() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const textures = ['bg_asteroid_1', 'bg_asteroid_2', 'bg_ship_1', 'bg_ship_2'];
-    for (let i = 0; i < 10; i++) {
-      const tex = textures[Math.floor(Math.random() * textures.length)];
-      const obj = this.add.image(
-        Phaser.Math.Between(w, w * 8),
-        Phaser.Math.Between(50, h - 50),
-        tex
-      );
-      obj.setScale(Phaser.Math.FloatBetween(0.5, 1.2));
-      obj.setAlpha(0.8);
-      obj.setDepth(-10);
-      obj.setBlendMode(Phaser.BlendModes.ADD);
-      this.backgroundObjects.push({
-        sprite: obj,
-        speed: Phaser.Math.Between(5, 15),
-      });
-    }
+    this.backgroundObjects = []; // заглушка, можно добавить позже
   }
 
   createPlayer() {
@@ -469,10 +403,11 @@ class PlayScene extends Phaser.Scene {
     this.player.setBlendMode(Phaser.BlendModes.ADD);
     this.player.body.setMass(10000);
 
-    // Звуки (без фоновой музыки)
+    // Звуки
     this.coinSound = this.sound.add('coin_sound');
     this.itemSound = this.sound.add('item_sound');
     this.tapSound = this.sound.add('tap_sound', { volume: 0.2 });
+    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
     this.upgradeSound = this.sound.add('upgrade_sound');
     this.planetSound = this.sound.add('planet_sound');
 
@@ -609,76 +544,6 @@ class PlayScene extends Phaser.Scene {
     this.gameOverBox.setVisible(false);
   }
 
-  // ========== МЕНЮ ВЫБОРА ПРИ СТАРТЕ ==========
-  showChoiceMenu() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-
-    // Затемняющий фон
-    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7)
-      .setDepth(50)
-      .setScrollFactor(0)
-      .setInteractive(); // чтобы не пропускать клики дальше
-
-    // Заголовок
-    const title = this.add.text(w/2, h/2 - 100, 'ДОБРО ПОЖАЛОВАТЬ!', {
-      fontSize: '36px',
-      color: '#ffaa00',
-      fontStyle: 'bold',
-      stroke: '#000',
-      strokeThickness: 6,
-      shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
-    }).setOrigin(0.5).setDepth(51).setScrollFactor(0);
-
-    // Кнопка "Продолжить" (если есть сохранение)
-    let continueBtn;
-    if (localStorage.getItem('skypulse_save')) {
-      continueBtn = this.add.text(w/2, h/2 - 20, 'ПРОДОЛЖИТЬ', {
-        fontSize: '28px',
-        color: '#22d3ee',
-        backgroundColor: '#0f172a',
-        padding: { x: 20, y: 10 },
-        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
-      })
-        .setOrigin(0.5)
-        .setDepth(51)
-        .setScrollFactor(0)
-        .setInteractive();
-      continueBtn.on('pointerdown', () => {
-        this.loadProgress();
-        this.startRun();
-        overlay.destroy();
-        title.destroy();
-        continueBtn.destroy();
-        newGameBtn.destroy();
-      });
-    }
-
-    // Кнопка "Новая игра"
-    const newGameBtn = this.add.text(w/2, continueBtn ? h/2 + 60 : h/2 - 20, 'НОВАЯ ИГРА', {
-      fontSize: '28px',
-      color: '#ffaa00',
-      backgroundColor: '#0f172a',
-      padding: { x: 20, y: 10 },
-      shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
-    })
-      .setOrigin(0.5)
-      .setDepth(51)
-      .setScrollFactor(0)
-      .setInteractive();
-    newGameBtn.on('pointerdown', () => {
-      this.newGame();
-      overlay.destroy();
-      title.destroy();
-      if (continueBtn) continueBtn.destroy();
-      newGameBtn.destroy();
-      this.choiceMenu = null;
-    });
-
-    this.choiceMenu = [overlay, title, newGameBtn];
-    if (continueBtn) this.choiceMenu.push(continueBtn);
-  }
-
   // =======================================================================
   // ИГРОВАЯ ЛОГИКА
   // =======================================================================
@@ -686,9 +551,12 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
+    if (this.bgMusic) this.bgMusic.play();
 
+    // Первый спавн ворот
     this.spawnGate();
 
+    // Создаём циклический таймер для спавна ворот
     this.gateTimer = this.time.addEvent({
       delay: this.spawnDelay,
       callback: this.spawnGate,
@@ -743,20 +611,6 @@ class PlayScene extends Phaser.Scene {
       this.pauseTexts = [pauseText, tipText];
       this.shopButton.setVisible(true);
 
-      // Добавляем кнопку "Новая игра" в меню паузы
-      const newGameBtn = this.add.text(this.scale.width/2, this.scale.height/2 + 80, 'НОВАЯ ИГРА', {
-        fontSize: '24px',
-        color: '#ffaa00',
-        backgroundColor: '#0f172a',
-        padding: { x: 15, y: 5 },
-        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true }
-      }).setOrigin(0.5).setDepth(26).setScrollFactor(0).setInteractive();
-      newGameBtn.on('pointerdown', () => {
-        this.newGame();
-        this.togglePause(); // снимаем паузу
-      });
-      this.pauseTexts.push(newGameBtn);
-
     } else {
       this.physics.resume();
       if (this.pauseOverlay) {
@@ -772,80 +626,52 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  newGame() {
-    localStorage.removeItem('skypulse_save');
-    this.scene.restart();
-  }
-
   showShop() {
     if (this.shopVisible) return;
     this.shopVisible = true;
 
     const w = this.scale.width;
     const h = this.scale.height;
+    let y = h * 0.2;
 
-    // Полупрозрачный фон магазина
-    const shopOverlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.6)
-      .setDepth(40)
-      .setScrollFactor(0);
-    this.shopElements.push(shopOverlay);
+    this.shopElements.push(
+      this.add.text(w/2, y, 'МАГАЗИН УЛУЧШЕНИЙ', {
+        fontSize: '28px', color: '#ffaa00', fontStyle: 'bold'
+      }).setOrigin(0.5).setDepth(30).setScrollFactor(0)
+    );
+    y += 40;
 
-    const panel = this.add.rectangle(w/2, h/2, 500, 500, 0x1a2b3c, 0.9)
-      .setStrokeStyle(3, 0x22d3ee, 0.8)
-      .setDepth(41)
-      .setScrollFactor(0);
-    this.shopElements.push(panel);
-
-    const title = this.add.text(w/2, h/2 - 200, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '28px',
-      color: '#ffaa00',
-      fontStyle: 'bold',
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
-    this.shopElements.push(title);
-
-    const upgradesList = [
-      { key: 'jumpPower', name: 'Сила прыжка', current: this.jumpPower, next: this.jumpPower + 20 },
-      { key: 'gravity', name: 'Гравитация', current: this.gravity, next: this.gravity - 50 },
-      { key: 'shieldDuration', name: 'Длительность щита', current: 5 + this.upgradeLevels.shieldDuration * 2, next: 5 + (this.upgradeLevels.shieldDuration + 1) * 2 },
-      { key: 'magnetRange', name: 'Радиус магнита', current: this.magnetRange, next: this.magnetRange + 30 },
-      { key: 'wagonHP', name: 'Прочность вагонов', current: this.wagonBaseHP, next: this.wagonBaseHP + 1 },
-      { key: 'maxWagons', name: 'Макс. вагонов', current: this.maxWagons, next: this.maxWagons + 2 },
-      { key: 'wagonGap', name: 'Дистанция между вагонами', current: this.wagonGap, next: this.wagonGap - 2 },
-      { key: 'headHP', name: 'Макс. здоровье', current: this.maxHeadHP, next: this.maxHeadHP + 1 },
-      { key: 'revival', name: 'Воскрешение', current: this.upgradeLevels.revival, next: this.upgradeLevels.revival + 1 },
-    ];
-
-    let y = h/2 - 150;
-    upgradesList.forEach(up => {
-      const cost = this.upgradeCosts[up.key];
-      const text = `${up.name}: ${up.current} → ${up.next}  |  цена: ${cost}`;
-      const t = this.add.text(w/2 - 50, y, text, {
-        fontSize: '16px',
-        color: '#fff',
-        backgroundColor: '#0f172a',
-        padding: { x: 5, y: 3 },
-      }).setDepth(42).setScrollFactor(0);
+    for (let [key, level] of Object.entries(this.upgradeLevels)) {
+      let cost = this.upgradeCosts[key];
+      let currentVal = '';
+      switch (key) {
+        case 'jumpPower': currentVal = `${this.jumpPower} → ${this.jumpPower+20}`; break;
+        case 'gravity': currentVal = `${this.gravity} → ${this.gravity-50}`; break;
+        case 'shieldDuration': currentVal = `${5+level*2} сек`; break;
+        case 'magnetRange': currentVal = `${this.magnetRange} → ${this.magnetRange+30}`; break;
+        case 'wagonHP': currentVal = `${this.wagonBaseHP} → ${this.wagonBaseHP+1}`; break;
+        case 'maxWagons': currentVal = `${this.maxWagons} → ${this.maxWagons+2}`; break;
+        case 'wagonGap': currentVal = `${this.wagonGap} → ${this.wagonGap-2}`; break;
+        case 'headHP': currentVal = `${this.maxHeadHP} → ${this.maxHeadHP+1}`; break;
+        case 'revival': currentVal = '1 воскрешение'; break;
+      }
+      let text = `${key}: ур.${level} | ${currentVal} | цена: ${cost}`;
+      let t = this.add.text(w/2 - 50, y, text, {
+        fontSize: '18px', color: '#fff'
+      }).setDepth(30).setScrollFactor(0);
       this.shopElements.push(t);
 
-      const btn = this.add.text(w/2 + 100, y, '[КУПИТЬ]', {
-        fontSize: '16px',
-        color: '#0f0',
-        backgroundColor: '#1f2a3c',
-        padding: { x: 5, y: 3 },
-      }).setInteractive().setDepth(42).setScrollFactor(0);
-      btn.on('pointerdown', () => this.buyUpgrade(up.key));
+      let btn = this.add.text(w/2 + 100, y, '[Купить]', {
+        fontSize: '18px', color: '#0f0'
+      }).setInteractive().setDepth(30).setScrollFactor(0);
+      btn.on('pointerdown', () => this.buyUpgrade(key));
       this.shopElements.push(btn);
       y += 30;
-    });
+    }
 
-    const closeBtn = this.add.text(w/2, h/2 + 150, 'ЗАКРЫТЬ', {
-      fontSize: '24px',
-      color: '#f00',
-      backgroundColor: '#0f172a',
-      padding: { x: 20, y: 5 },
-    }).setInteractive().setDepth(42).setScrollFactor(0);
+    let closeBtn = this.add.text(w/2, h-50, 'Закрыть', {
+      fontSize: '24px', color: '#f00', backgroundColor: '#333', padding: {x:10,y:5}
+    }).setInteractive().setDepth(30).setScrollFactor(0);
     closeBtn.on('pointerdown', () => this.hideShop());
     this.shopElements.push(closeBtn);
   }
@@ -872,9 +698,10 @@ class PlayScene extends Phaser.Scene {
       case 'wagonGap': this.wagonGap -= 2; break;
       case 'headHP':
         this.maxHeadHP++;
-        this.headHP = this.maxHeadHP;
+        this.headHP++;
         this.updateHealthDisplay();
         break;
+      // shieldDuration и revival используются в соответствующих местах
     }
 
     this.saveProgress();
@@ -884,7 +711,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateHealthDisplay() {
-    this.healthIcons.forEach(h => h.destroy());
+    // Удаляем старые сердечки
+    if (this.healthIcons) {
+      this.healthIcons.forEach(h => h.destroy());
+    }
     this.healthIcons = [];
     for (let i = 0; i < this.maxHeadHP; i++) {
       let heart = this.add.image(20 + i * 30, this.scale.height - 40, 'heart')
@@ -1044,11 +874,6 @@ class PlayScene extends Phaser.Scene {
       this.gapSize = Math.max(160, 220 - this.level * 8);
       this.spawnDelay = Math.max(900, 1300 - this.level * 50);
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
-
-      if (this.gateTimer) {
-        this.gateTimer.delay = this.spawnDelay;
-        this.gateTimer.reset(this.spawnDelay);
-      }
 
       this.spawnPlanet();
 
@@ -1354,6 +1179,7 @@ class PlayScene extends Phaser.Scene {
 
   // ========== СМЕРТЬ ==========
   handleDeath() {
+    // Воскрешение
     if (this.upgradeLevels.revival > 0 && !this.dead) {
       this.upgradeLevels.revival--;
       this.headHP = this.maxHeadHP;
@@ -1364,7 +1190,9 @@ class PlayScene extends Phaser.Scene {
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
+    if (this.bgMusic) this.bgMusic.stop();
 
+    // Останавливаем все таймеры
     this.mainTimers.forEach(timer => timer && timer.remove());
     if (this.bonusTimer) this.bonusTimer.remove();
     if (this.gateTimer) this.gateTimer.remove();
@@ -1387,6 +1215,7 @@ class PlayScene extends Phaser.Scene {
 
     this.showGameOver();
 
+    // Отправка данных в Telegram
     if (window.Telegram?.WebApp) {
       const data = JSON.stringify({
         score: this.score,
@@ -1506,17 +1335,7 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  updateBackgroundObjects() {
-    const w = this.scale.width;
-    const factor = this.started && !this.dead ? 0.3 : 0.1;
-    for (let obj of this.backgroundObjects) {
-      obj.sprite.x -= obj.speed * factor * (1 / 60);
-      if (obj.sprite.x < -200) {
-        obj.sprite.x = w + Phaser.Math.Between(300, 1000);
-        obj.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
-      }
-    }
-  }
+  updateBackgroundObjects() {}
 
   // ========== АДАПТАЦИЯ ==========
   onResize() {
