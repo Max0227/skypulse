@@ -240,21 +240,6 @@ class BootScene extends Phaser.Scene {
     createPlanet(0xe74c3c, false, true, 6);
     createPlanet(0x1abc9c, true, true, 7);
 
-    // ========== ТУМАННОСТИ ==========
-    g.clear();
-    g.fillStyle(0xaa88ff, 0.1);
-    g.fillCircle(50, 50, 50);
-    g.fillStyle(0xff88aa, 0.1);
-    g.fillCircle(150, 150, 80);
-    g.generateTexture('nebula1', 200, 200);
-
-    g.clear();
-    g.fillStyle(0x88aaff, 0.1);
-    g.fillCircle(70, 70, 60);
-    g.fillStyle(0xaaff88, 0.1);
-    g.fillCircle(20, 120, 40);
-    g.generateTexture('nebula2', 200, 200);
-
     // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
@@ -565,13 +550,13 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false);
 
-    this.introText = this.add.text(w / 2, h * 0.72, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
+    this.introText = this.add.text(w / 2, h * 0.62, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
       fontSize: '36px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
       stroke: '#7c3aed',
-      strokeThickness: 4,
+      strokeThickness: 3,
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(10);
 
