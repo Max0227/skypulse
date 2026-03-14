@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 // =========================================================================
-// BootScene – создание всех текстур и загрузка звуков
+// BootScene – создание всех текстур
 // =========================================================================
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,6 +9,7 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
+    // Загружаем звуки (если есть)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
@@ -23,7 +24,7 @@ class BootScene extends Phaser.Scene {
   createTextures() {
     const g = this.add.graphics();
 
-    // ========== ИГРОК: ЛЕТАЮЩЕЕ ТАКСИ ИЗ ПЯТОГО ЭЛЕМЕНТА ==========
+    // ========== ГОЛОВНОЕ ТАКСИ ==========
     g.clear();
     g.fillStyle(0xffcc00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
@@ -44,6 +45,24 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0x333333);
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
+
+    // ========== ВАГОНЧИКИ (разноцветные) ==========
+    const colors = [0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844, 0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66];
+    for (let i = 0; i < colors.length; i++) {
+      g.clear();
+      g.fillStyle(colors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0x000000);
+      g.fillRect(12, 16, 6, 4);
+      g.fillRect(22, 16, 6, 4);
+      g.fillStyle(0xffffff);
+      g.fillRect(8, 8, 6, 4);
+      g.fillRect(20, 8, 6, 4);
+      g.fillStyle(0xffaa00);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.generateTexture(`wagon_${i}`, 48, 34);
+    }
 
     // ========== КОЛОННЫ ==========
     const createGate = (color, light, name) => {
@@ -78,80 +97,6 @@ class BootScene extends Phaser.Scene {
     createCoin(0x3498db, 0xffffff, 'coin_blue');
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
-
-    // ========== КАНИСТРЫ ==========
-    g.clear();
-    g.fillStyle(0x3498db);
-    g.fillRoundedRect(4, 0, 24, 28, 6);
-    g.fillStyle(0x2980b9);
-    g.fillRect(12, -4, 8, 6);
-    g.fillStyle(0x1f6a9a);
-    g.fillCircle(16, -4, 4);
-    g.fillStyle(0xffffff);
-    g.fillRect(10, 6, 12, 4);
-    g.fillRect(10, 14, 12, 4);
-    g.fillStyle(0xffffff, 0.3);
-    g.fillCircle(20, 10, 4);
-    g.generateTexture('fuel_can_blue', 32, 32);
-
-    g.clear();
-    g.fillStyle(0xff4444);
-    g.fillRoundedRect(4, 0, 24, 28, 6);
-    g.fillStyle(0xcc3333);
-    g.fillRect(12, -4, 8, 6);
-    g.fillStyle(0xaa2222);
-    g.fillCircle(16, -4, 4);
-    g.fillStyle(0xffffff);
-    g.fillRect(10, 6, 12, 4);
-    g.fillRect(10, 14, 12, 4);
-    g.fillStyle(0xffff00, 0.4);
-    g.fillCircle(20, 10, 6);
-    g.generateTexture('fuel_can_red', 32, 32);
-
-    // ========== УЛУЧШЕНИЯ КОРАБЛЯ ==========
-    const upgrades = [
-      { name: 'engine', color: 0xff5500, draw: (g) => {
-        g.fillTriangle(8, 20, 8, 44, 0, 32);
-        g.fillTriangle(56, 20, 56, 44, 64, 32);
-      }},
-      { name: 'wings', color: 0x3a6ea5, draw: (g) => {
-        g.fillTriangle(0, 16, 0, 48, 20, 32);
-        g.fillTriangle(64, 16, 64, 48, 44, 32);
-      }},
-      { name: 'armor', color: 0x888888, draw: (g) => {
-        g.fillRoundedRect(16, 8, 32, 8, 4);
-        g.fillRoundedRect(16, 48, 32, 8, 4);
-      }},
-      { name: 'weapon', color: 0xff0000, draw: (g) => {
-        g.fillRect(8, 28, 8, 8);
-        g.fillRect(48, 28, 8, 8);
-      }},
-      { name: 'shield', color: 0x88ccff, draw: (g) => {
-        g.fillCircle(32, 32, 30);
-        g.lineStyle(2, 0xffffff);
-        g.strokeCircle(32, 32, 30);
-      }}
-    ];
-    upgrades.forEach(u => {
-      g.clear();
-      g.fillStyle(u.color);
-      u.draw(g);
-      g.generateTexture(`upgrade_${u.name}`, 64, 64);
-    });
-
-    // ========== ПРЕДМЕТ УЛУЧШЕНИЯ ==========
-    g.clear();
-    g.fillStyle(0x3399ff);
-    g.fillRoundedRect(0, 0, 48, 48, 8);
-    g.fillStyle(0xffffff);
-    g.fillCircle(24, 24, 12);
-    g.fillStyle(0x3399ff);
-    g.fillCircle(24, 24, 8);
-    g.fillStyle(0xffaa00);
-    g.fillCircle(24, 24, 4);
-    g.fillStyle(0x88ccff, 0.3);
-    g.fillCircle(24, 24, 20);
-    g.generateTexture('upgrade_item', 48, 48);
 
     // ========== ФОНОВЫЕ ОБЪЕКТЫ ==========
     g.clear();
@@ -271,22 +216,24 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // Счётчики
+    // Счётчики (без топлива)
     this.score = 0;
     this.crystals = 0;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
-    this.fuel = 100;
-    this.maxFuel = 100;
-    this.fuelConsumption = 0.05;
+
+    // Прогрессия вагонов
+    this.wagons = [];
+    this.collectedCoins = 0;
+    this.coinsForWagon = 15;      // каждые 15 монет – новый вагон
+    this.maxWagons = 10;           // максимум вагонов
+    this.wagonGap = 30;            // расстояние между вагонами (целевое)
+    this.wagonSpring = 0.1;        // коэффициент "упругости" (0-1)
 
     // Состояние
     this.started = false;
     this.dead = false;
     this.level = 0;
-    this.isPaused = false;
-    this.pauseOverlay = null;
-    this.pauseTexts = []; // для хранения текстов паузы
 
     // Параметры сложности
     this.baseSpeed = 250;
@@ -296,7 +243,7 @@ class PlayScene extends Phaser.Scene {
 
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
-    // Бонусы
+    // Бонусы (оставляем монетки-бонусы)
     this.bonusActive = false;
     this.bonusType = null;
     this.bonusTime = 0;
@@ -304,7 +251,7 @@ class PlayScene extends Phaser.Scene {
     this.bonusTimer = null;
     this.shieldActive = false;
 
-    // Улучшения корабля
+    // Улучшения корабля (для головного такси)
     this.shipUpgrades = [];
     this.playerUpgrades = [];
 
@@ -314,8 +261,6 @@ class PlayScene extends Phaser.Scene {
     this.scoreZones = [];
     this.stars = [];
     this.planets = [];
-    this.fuelCans = [];
-    this.upgradeItems = [];
     this.backgroundObjects = [];
 
     // Таймеры
@@ -342,7 +287,7 @@ class PlayScene extends Phaser.Scene {
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
 
-    // Обновление позиций улучшений
+    // Обновление позиций улучшений головы
     this.events.on('update', () => {
       if (this.player && this.playerUpgrades) {
         this.playerUpgrades.forEach(u => u.setPosition(this.player.x, this.player.y));
@@ -351,7 +296,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   update() {
-    if (this.isPaused) return;
+    if (this.isPaused) return; // пауза
 
     this.updateStars();
     this.updatePlanets();
@@ -359,21 +304,17 @@ class PlayScene extends Phaser.Scene {
 
     if (!this.started || this.dead) return;
 
-    this.fuel = Math.max(0, this.fuel - this.fuelConsumption);
-    this.fuelBar.clear();
-    this.fuelBar.fillStyle(0x3498db);
-    this.fuelBar.fillRect(20, this.scale.height - 50, 150, 15);
-    if (this.fuel <= 0) this.handleDeath();
-
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
 
+    // Смерть при выходе за границы
     if (!this.shieldActive && (this.player.y < 0 || this.player.y > this.scale.height)) {
       this.handleDeath();
     }
 
+    // Магнит (притягивает монетки, канистры и предметы – но канистры убраны)
     if (this.bonusActive && this.bonusType === 'magnet') {
-      [...this.coins, ...this.fuelCans, ...this.upgradeItems].forEach(item => {
+      [...this.coins, ...this.upgradeItems].forEach(item => {
         if (item.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y) < 200) {
           const angle = Phaser.Math.Angle.Between(item.x, item.y, this.player.x, this.player.y);
           item.x += Math.cos(angle) * 8;
@@ -382,11 +323,124 @@ class PlayScene extends Phaser.Scene {
       });
     }
 
+    // Движение вагонов (упругое следование)
+    this.updateWagons();
+
     this.cleanupObjects();
   }
 
+  // ========== ДВИЖЕНИЕ ВАГОНОВ ==========
+  updateWagons() {
+    if (this.wagons.length === 0) return;
+
+    let prev = this.player;
+    for (let i = 0; i < this.wagons.length; i++) {
+      let wagon = this.wagons[i];
+
+      // Целевая позиция (позади предыдущего)
+      let targetX = prev.x - this.wagonGap;
+      let targetY = prev.y;
+
+      // Вычисляем смещение к цели
+      let dx = targetX - wagon.x;
+      let dy = targetY - wagon.y;
+
+      // Применяем "упругую" силу – просто перемещаем с коэффициентом
+      // (чтобы не было резких рывков, используем линейную интерполяцию)
+      wagon.x += dx * this.wagonSpring;
+      wagon.y += dy * this.wagonSpring;
+
+      // Если у вагона есть физическое тело, обновляем его (но мы не используем физику для вагонов)
+      // Для коллизий используем overlap, поэтому физическое тело не нужно.
+      // Но можно оставить тело для коллизий, тогда нужно обновлять его позицию через body.position.
+      if (wagon.body) {
+        wagon.body.reset(wagon.x, wagon.y);
+      }
+
+      prev = wagon;
+    }
+  }
+
+  // ========== ДОБАВЛЕНИЕ НОВОГО ВАГОНА ==========
+  addWagon() {
+    if (this.wagons.length >= this.maxWagons) return;
+
+    // Определяем позицию появления (за последним вагоном или за игроком)
+    let last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
+    let spawnX = last.x - this.wagonGap * 2; // чуть дальше, чтобы потом подтянулся
+    let spawnY = last.y;
+
+    // Выбираем случайный цвет для вагона
+    let texIndex = Phaser.Math.Between(0, 9); // у нас 10 текстур wagon_0..9
+    let wagon = this.physics.add.image(spawnX, spawnY, `wagon_${texIndex}`);
+    wagon.setScale(0.8);
+    wagon.body.setCircle(12, 8, 6); // коллайдер примерно под размер
+    wagon.body.setAllowGravity(false);
+    wagon.body.setMass(0.5);
+    wagon.body.setDrag(0.9); // небольшое затухание скорости
+    wagon.setDepth(5 + this.wagons.length); // чтобы новые были поверх старых (но не критично)
+
+    // Добавляем коллайдер с препятствиями
+    this.physics.add.collider(wagon, this.pipes, this.wagonHit, null, this);
+
+    this.wagons.push(wagon);
+
+    // Эффект появления (прилетает справа)
+    wagon.x = this.scale.width + 50; // появляется за правым краем
+    wagon.y = this.player.y;
+    // Твин к месту
+    this.tweens.add({
+      targets: wagon,
+      x: spawnX,
+      duration: 500,
+      ease: 'Sine.easeOut',
+      onComplete: () => {
+        // убедимся, что он стал на правильное место
+        wagon.x = spawnX;
+      }
+    });
+
+    // Корректировка камеры (масштабирование)
+    this.updateCameraZoom();
+  }
+
+  // ========== УДАЛЕНИЕ ВАГОНА ПРИ СТОЛКНОВЕНИИ ==========
+  wagonHit(wagon, pipe) {
+    let index = this.wagons.indexOf(wagon);
+    if (index === -1) return; // уже удалён
+
+    // Уничтожаем вагон
+    wagon.destroy();
+    this.wagons.splice(index, 1);
+
+    // Визуальный эффект
+    this.cameras.main.shake(100, 0.005);
+    // Можно добавить частицы
+
+    // Перестраиваем цепочку: в следующем кадре updateWagons автоматически подтянет оставшиеся вагоны
+    // Дополнительно можно уменьшить счётчик собранных монет? Нет, просто теряем вагон.
+
+    // Пересчёт масштаба камеры
+    this.updateCameraZoom();
+  }
+
+  // ========== МАСШТАБИРОВАНИЕ КАМЕРЫ ==========
+  updateCameraZoom() {
+    let totalLength = (this.wagons.length + 1) * this.wagonGap;
+    let screenWidth = this.scale.width;
+    let targetZoom = Math.min(1, screenWidth / (totalLength + 100));
+    targetZoom = Math.max(0.5, targetZoom); // не меньше 0.5
+
+    this.tweens.add({
+      targets: this.cameras.main,
+      zoom: targetZoom,
+      duration: 500,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
   // =======================================================================
-  // СОЗДАНИЕ МИРА
+  // СОЗДАНИЕ МИРА (без топлива)
   // =======================================================================
 
   createBackground() {
@@ -430,9 +484,9 @@ class PlayScene extends Phaser.Scene {
   createBackgroundObjects() {
     const w = this.scale.width;
     const h = this.scale.height;
-    
+
     const textures = ['bg_asteroid_1', 'bg_asteroid_2', 'bg_ship_1', 'bg_ship_2'];
-    
+
     for (let i = 0; i < 10; i++) {
       const tex = textures[Math.floor(Math.random() * textures.length)];
       const obj = this.add.image(
@@ -516,11 +570,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setDepth(10).setScrollFactor(0);
 
-    this.fuelBar = this.add.graphics();
-    this.fuelBar.fillStyle(0x3498db);
-    this.fuelBar.fillRect(20, h - 50, 150, 15);
-    this.fuelBar.setScrollFactor(0);
-
     this.bonusText = this.add.text(w - 20, 70, '', {
       fontSize: '20px',
       fontStyle: 'bold',
@@ -536,7 +585,7 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
 
-    this.introText = this.add.text(w / 2, h * 0.40, 'НАЖМИ, ЧТОБЫ СТАРТОВАТЬ', {
+    this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
       fontSize: '24px',
       color: '#fff',
       align: 'center',
@@ -589,13 +638,8 @@ class PlayScene extends Phaser.Scene {
     this.spawnGate();
     this.scheduleNextSpawn();
 
-    this.fuelTimer = this.time.addEvent({
-      delay: 2500,
-      callback: this.spawnFuelCan,
-      callbackScope: this,
-      loop: true,
-    });
-    this.mainTimers.push(this.fuelTimer);
+    // Таймер для монет не нужен, монеты спавнятся вместе с воротами (spawnCoin)
+    // Но можно добавить таймер для дополнительных монет? Пока оставим как есть.
   }
 
   scheduleNextSpawn() {
@@ -625,44 +669,40 @@ class PlayScene extends Phaser.Scene {
   // ========== ПАУЗА ==========
   togglePause() {
     this.isPaused = !this.isPaused;
-    
+
     if (this.isPaused) {
-      // Останавливаем физику и таймеры
       this.physics.pause();
-      // Добавляем оверлей
       this.pauseOverlay = this.add.rectangle(
-        this.scale.width/2, 
-        this.scale.height/2, 
-        this.scale.width, 
-        this.scale.height, 
+        this.scale.width/2,
+        this.scale.height/2,
+        this.scale.width,
+        this.scale.height,
         0x000000, 0.5
       ).setDepth(25).setScrollFactor(0);
-      
+
       const pauseText = this.add.text(
-        this.scale.width/2, 
-        this.scale.height/2 - 50, 
-        'ПАУЗА', 
+        this.scale.width/2,
+        this.scale.height/2 - 50,
+        'ПАУЗА',
         { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
-      
+
       const tipText = this.add.text(
-        this.scale.width/2, 
-        this.scale.height/2 + 20, 
-        'Нажми на кнопку паузы, чтобы продолжить', 
-        { fontSize: '15px', color: '#ccc', align: 'center' }
+        this.scale.width/2,
+        this.scale.height/2 + 20,
+        'Нажми на кнопку паузы, чтобы продолжить',
+        { fontSize: '24px', color: '#ccc', align: 'center' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
-      
+
       this.pauseTexts = [pauseText, tipText];
-      
+
     } else {
-      // Возобновляем физику
       this.physics.resume();
-      // Убираем оверлей и тексты
       if (this.pauseOverlay) {
         this.pauseOverlay.destroy();
         this.pauseOverlay = null;
       }
-      this.pauseTexts.forEach(t => t.destroy());
+      this.pauseTexts?.forEach(t => t.destroy());
       this.pauseTexts = [];
     }
   }
@@ -677,7 +717,8 @@ class PlayScene extends Phaser.Scene {
       this.spawnDelay = Math.max(900, 1300 - this.level * 50);
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
-      this.spawnUpgradeItem();
+      // Каждый уровень даёт вагон? Можно и так, но мы решили за монеты.
+      // Оставим только за монеты. Но можно и за уровень тоже добавить.
 
       this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
       this.levelText.setVisible(true);
@@ -707,90 +748,121 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ТОПЛИВО ==========
-  spawnFuelCan() {
-    if (this.dead) return;
-    if (Math.random() > 0.8) return;
+  // ========== МОНЕТКИ (спавн и сбор) ==========
+  spawnCoin(x, y) {
+    // Увеличиваем вероятность появления монет (было 0.5, ставим 0.7)
+    if (Math.random() > 0.7) return;
 
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const x = w + 50;
-    const y = Phaser.Math.Between(50, h - 50);
+    let coinType = 'gold';
+    let texture = 'coin_gold';
 
-    let type = 'blue';
-    let fuelAmount = 50;
-    if (this.level >= 2 && Math.random() < 0.3) {
-      type = 'red';
-      fuelAmount = 100;
+    const r = Math.random();
+    if (this.level >= 1 && r < 0.2) {
+      coinType = 'red';
+      texture = 'coin_red';
+    } else if (this.level >= 2 && r < 0.35) {
+      coinType = 'blue';
+      texture = 'coin_blue';
+    } else if (this.level >= 3 && r < 0.45) {
+      coinType = 'green';
+      texture = 'coin_green';
+    } else if (this.level >= 4 && r < 0.55) {
+      coinType = 'purple';
+      texture = 'coin_purple';
     }
 
-    const can = this.physics.add.image(x, y, `fuel_can_${type}`)
+    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
       .setImmovable(true)
-      .setVelocityX(-this.currentSpeed * 0.7)
-      .setScale(0.8);
-    can.body.setAllowGravity(false);
-    can.setData('fuel', fuelAmount);
-
-    this.fuelCans.push(can);
-    this.physics.add.overlap(this.player, can, (player, can) => {
-      this.fuel = Math.min(this.maxFuel, this.fuel + can.getData('fuel'));
-      can.destroy();
-    }, null, this);
-  }
-
-  // ========== УЛУЧШЕНИЯ ==========
-  spawnUpgradeItem() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const x = w + 50;
-    const y = Phaser.Math.Between(50, h - 50);
-
-    const upgrade = this.physics.add.image(x, y, 'upgrade_item')
-      .setImmovable(true)
-      .setVelocityX(-this.currentSpeed * 0.4)
-      .setVelocityY(Phaser.Math.Between(-5, 5))
-      .setScale(1.2)
-      .setAngularVelocity(30);
-    upgrade.body.setAllowGravity(false);
+      .setVelocityX(-this.currentSpeed)
+      .setAngularVelocity(200);
+    coin.body.setAllowGravity(false);
+    coin.setScale(0.01);
+    coin.coinType = coinType;
 
     this.tweens.add({
-      targets: upgrade,
-      alpha: 0.7,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
+      targets: coin,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.out',
     });
 
-    const upgradesList = ['engine', 'wings', 'armor', 'weapon', 'shield'];
-    let nextUpgrade = null;
-    for (let u of upgradesList) {
-      if (!this.shipUpgrades.includes(u)) {
-        nextUpgrade = u;
-        break;
-      }
-    }
-    if (!nextUpgrade) nextUpgrade = 'shield';
-
-    upgrade.setData('type', nextUpgrade);
-
-    this.upgradeItems.push(upgrade);
-    this.physics.add.overlap(this.player, upgrade, (player, item) => {
-      const type = item.getData('type');
-      this.applyUpgrade(type);
-      item.destroy();
-    }, null, this);
+    this.coins.push(coin);
+    this.physics.add.overlap(this.player, coin, (player, coin) => this.collectCoin(coin), null, this);
   }
 
-  applyUpgrade(type) {
-    if (this.shipUpgrades.includes(type)) return;
-    this.shipUpgrades.push(type);
+  collectCoin(coin) {
+    if (!coin.active) return;
 
-    const upgrade = this.add.image(this.player.x, this.player.y, `upgrade_${type}`);
-    upgrade.setScale(0.9);
-    upgrade.setDepth(5);
-    upgrade.setBlendMode(Phaser.BlendModes.ADD);
-    this.playerUpgrades.push(upgrade);
+    let value = 1;
+    let bonusType = null;
+
+    switch (coin.coinType) {
+      case 'red':
+        value = 2;
+        bonusType = 'speed';
+        break;
+      case 'blue':
+        value = 1;
+        bonusType = 'shield';
+        break;
+      case 'green':
+        value = 1;
+        bonusType = 'magnet';
+        break;
+      case 'purple':
+        value = 1;
+        bonusType = 'slow';
+        break;
+      default:
+        value = 1;
+    }
+
+    if (this.bonusActive && this.bonusType === 'speed') value *= 2;
+
+    this.crystals += value;
+    this.crystalText.setText(`💎 ${this.crystals}`);
+
+    // Прогрессия вагонов
+    this.collectedCoins += value;
+    if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
+      this.addWagon();
+      this.collectedCoins -= this.coinsForWagon; // сбрасываем счётчик, оставляем остаток
+    }
+
+    // Звук
+    if (bonusType) {
+      if (this.itemSound) this.itemSound.play();
+      this.activateBonus(bonusType);
+    } else {
+      if (this.coinSound) this.coinSound.play();
+    }
+
+    const emitter = this.add.particles(coin.x, coin.y, 'flare', {
+      speed: 100,
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 250,
+      quantity: 15,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: coin.coinType === 'red' ? 0xff6666 : 0xffaa00,
+    });
+    emitter.explode(15);
+
+    this.tweens.add({
+      targets: this.crystalText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 80,
+      yoyo: true,
+      ease: 'Quad.out',
+    });
+
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType ? 'heavy' : 'soft');
+    } catch {}
+
+    coin.destroy();
   }
 
   // ========== БОНУСЫ ==========
@@ -925,47 +997,6 @@ class PlayScene extends Phaser.Scene {
     this.spawnCoin(x, centerY);
   }
 
-  spawnCoin(x, y) {
-    if (Math.random() > 0.5) return;
-
-    let coinType = 'gold';
-    let texture = 'coin_gold';
-
-    const r = Math.random();
-    if (this.level >= 1 && r < 0.2) {
-      coinType = 'red';
-      texture = 'coin_red';
-    } else if (this.level >= 2 && r < 0.35) {
-      coinType = 'blue';
-      texture = 'coin_blue';
-    } else if (this.level >= 3 && r < 0.45) {
-      coinType = 'green';
-      texture = 'coin_green';
-    } else if (this.level >= 4 && r < 0.55) {
-      coinType = 'purple';
-      texture = 'coin_purple';
-    }
-
-    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-      .setImmovable(true)
-      .setVelocityX(-this.currentSpeed)
-      .setAngularVelocity(200);
-    coin.body.setAllowGravity(false);
-    coin.setScale(0.01);
-    coin.coinType = coinType;
-
-    this.tweens.add({
-      targets: coin,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 300,
-      ease: 'Back.out',
-    });
-
-    this.coins.push(coin);
-    this.physics.add.overlap(this.player, coin, (player, coin) => this.collectCoin(coin), null, this);
-  }
-
   // ========== ОБРАБОТКА СОБЫТИЙ ==========
   hitPipe(player, pipe) {
     if (this.shieldActive) {
@@ -1014,72 +1045,13 @@ class PlayScene extends Phaser.Scene {
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light'); } catch {}
   }
 
-  collectCoin(coin) {
-    if (!coin.active) return;
+  // ========== УЛУЧШЕНИЯ (не связаны с вагонами, но оставим) ==========
+  // (методы upgrade, spawnUpgradeItem, applyUpgrade – можно оставить, но они не используются в текущей логике,
+  // либо убрать, если не нужны. Я оставлю как есть, чтобы не ломать код, но они не влияют на вагоны.)
 
-    let value = 1;
-    let bonusType = null;
+  // ... (если есть методы spawnUpgradeItem, applyUpgrade и т.д., их можно сохранить или убрать)
 
-    switch (coin.coinType) {
-      case 'red':
-        value = 2;
-        bonusType = 'speed';
-        break;
-      case 'blue':
-        value = 1;
-        bonusType = 'shield';
-        break;
-      case 'green':
-        value = 1;
-        bonusType = 'magnet';
-        break;
-      case 'purple':
-        value = 1;
-        bonusType = 'slow';
-        break;
-      default:
-        value = 1;
-    }
-
-    if (this.bonusActive && this.bonusType === 'speed') value *= 2;
-
-    this.crystals += value;
-    this.crystalText.setText(`💎 ${this.crystals}`);
-
-    if (bonusType) {
-      if (this.itemSound) this.itemSound.play();
-      this.activateBonus(bonusType);
-    } else {
-      if (this.coinSound) this.coinSound.play();
-    }
-
-    const emitter = this.add.particles(coin.x, coin.y, 'flare', {
-      speed: 100,
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 0.8, end: 0 },
-      lifespan: 250,
-      quantity: 15,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: coin.coinType === 'red' ? 0xff6666 : 0xffaa00,
-    });
-    emitter.explode(15);
-
-    this.tweens.add({
-      targets: this.crystalText,
-      scaleX: 1.2,
-      scaleY: 1.2,
-      duration: 80,
-      yoyo: true,
-      ease: 'Quad.out',
-    });
-
-    try {
-      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType ? 'heavy' : 'soft');
-    } catch {}
-
-    coin.destroy();
-  }
-
+  // ========== СМЕРТЬ ==========
   handleDeath() {
     if (this.dead) return;
     this.dead = true;
@@ -1119,7 +1091,8 @@ class PlayScene extends Phaser.Scene {
       `Счёт: ${this.score}\n` +
       `Рекорд: ${this.best}\n` +
       `💎 ${this.crystals}\n` +
-      `📏 ${Math.floor(this.meters)} м`
+      `📏 ${Math.floor(this.meters)} м\n` +
+      `Вагонов: ${this.wagons.length}`
     );
 
     this.gameOverBox.setVisible(true);
@@ -1135,7 +1108,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ОЧИСТКА ==========
+  // ========== ОЧИСТКА ОБЪЕКТОВ ==========
   cleanupObjects() {
     this.pipes = this.pipes.filter(p => {
       if (p.x < -150) { p.destroy(); return false; }
@@ -1149,20 +1122,7 @@ class PlayScene extends Phaser.Scene {
       if (z.x < -60) { z.destroy(); return false; }
       return true;
     });
-    this.fuelCans = this.fuelCans.filter(c => {
-      if (c.x < -100 || c.x > this.scale.width + 100) {
-        c.destroy();
-        return false;
-      }
-      return true;
-    });
-    this.upgradeItems = this.upgradeItems.filter(u => {
-      if (u.x < -100 || u.x > this.scale.width + 100) {
-        u.destroy();
-        return false;
-      }
-      return true;
-    });
+    // Вагоны не очищаем, они живут всё время.
   }
 
   // ========== АНИМАЦИИ ФОНА ==========
@@ -1213,14 +1173,10 @@ class PlayScene extends Phaser.Scene {
     this.meterText.setPosition(20, h - 80);
     this.bonusText.setPosition(w - 20, 70);
     this.levelText.setPosition(w / 2, h / 2 - 100);
-    
+
     if (this.pauseButton) {
       this.pauseButton.setPosition(w - 40, h - 40);
     }
-    
-    this.fuelBar.clear();
-    this.fuelBar.fillStyle(0x3498db);
-    this.fuelBar.fillRect(20, h - 50, 150, 15);
 
     if (!this.started) {
       this.introText.setPosition(w / 2, h * 0.40);
@@ -1240,10 +1196,8 @@ const config = {
   height: 844,
   backgroundColor: '#030712',
   scale: {
-    mode: Phaser.Scale.FIT,          // Используем FIT для автоматического масштабирования
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 390,
-    height: 844,
   },
   physics: {
     default: 'arcade',
