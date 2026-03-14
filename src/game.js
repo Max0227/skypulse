@@ -585,8 +585,8 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
 
-    this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
-      fontSize: '24px',
+    this.introText = this.add.text(w / 2, h * 0.20, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
+      fontSize: '20px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
