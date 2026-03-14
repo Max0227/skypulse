@@ -225,7 +225,7 @@ class PlayScene extends Phaser.Scene {
     // Прогрессия вагонов
     this.wagons = [];
     this.collectedCoins = 0;
-    this.coinsForWagon = 15;      // каждые 15 монет – новый вагон
+    this.coinsForWagon = 10;      // каждые 10 монет – новый вагон
     this.maxWagons = 10;           // максимум вагонов
     this.wagonGap = 30;            // расстояние между вагонами (целевое)
     this.wagonSpring = 0.1;        // коэффициент "упругости" (0-1)
@@ -691,7 +691,7 @@ class PlayScene extends Phaser.Scene {
         this.scale.width/2,
         this.scale.height/2 + 20,
         'Нажми на кнопку паузы, чтобы продолжить',
-        { fontSize: '24px', color: '#ccc', align: 'center' }
+        { fontSize: '15px', color: '#ccc', align: 'center' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
