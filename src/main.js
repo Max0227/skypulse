@@ -164,7 +164,6 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0x3399ff);
     g.fillRoundedRect(0, 0, 50, 50, 10);
     g.fillStyle(0xffffff);
-    g.fillText('$', 18, 30, 20);
     g.generateTexture('shop_button', 50, 50);
 
     g.destroy();
