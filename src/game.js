@@ -13,6 +13,7 @@ class BootScene extends Phaser.Scene {
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3'); // НОВОЕ: фоновая музыка
   }
 
   create() {
@@ -23,52 +24,37 @@ class BootScene extends Phaser.Scene {
   createTextures() {
     const g = this.add.graphics();
 
-    // ========== ИГРОК: ЛЕТАЮЩАЯ ТАРЕЛКА С ИНОПЛАНЕТЯНИНОМ ==========
+    // ========== НОВЫЙ ИГРОК: ЛЕТАЮЩЕЕ ТАКСИ ИЗ ПЯТОГО ЭЛЕМЕНТА ==========
     g.clear();
-    g.fillStyle(0x4a90e2);
-    g.fillEllipse(32, 32, 50, 20);
-    g.fillStyle(0xaaddff, 0.8);
-    g.fillEllipse(32, 22, 30, 12);
-    g.fillStyle(0xffffff, 0.3);
-    g.fillEllipse(32, 22, 28, 10);
-    g.lineStyle(2, 0x88ccff);
-    g.strokeEllipse(32, 22, 28, 10);
-    g.fillStyle(0x88ff88);
-    g.fillCircle(28, 20, 5);
-    g.fillStyle(0x000000);
-    g.fillCircle(26, 18, 1);
-    g.fillCircle(30, 18, 1);
-    g.fillStyle(0xffffff);
-    g.fillCircle(26, 18, 0.5);
-    g.fillCircle(30, 18, 0.5);
-    g.lineStyle(1, 0x000000);
-    g.lineBetween(27, 23, 29, 23);
-    g.fillStyle(0x2c3e50);
-    g.fillEllipse(32, 42, 40, 8);
+    // Основной корпус (жёлтый)
+    g.fillStyle(0xffcc00);
+    g.fillRoundedRect(12, 12, 56, 32, 8);
+    // Крыша и задняя часть
     g.fillStyle(0xffaa00);
-    g.fillCircle(20, 30, 4);
-    g.fillCircle(44, 30, 4);
-    g.fillCircle(32, 36, 4);
-    g.fillStyle(0xffffff, 0.2);
-    g.fillEllipse(20, 26, 10, 4);
-    g.fillEllipse(44, 26, 10, 4);
-    g.generateTexture('player', 64, 64);
-
-    // Отдельная текстура для инопланетянина
-    g.clear();
-    g.fillStyle(0x88ff88);
-    g.fillCircle(16, 16, 8);
-    g.fillStyle(0x000000);
-    g.fillCircle(13, 14, 1.5);
-    g.fillCircle(19, 14, 1.5);
+    g.fillRoundedRect(20, 8, 40, 10, 4);
+    g.fillRect(56, 16, 8, 20);
+    // Окна (голубые)
+    g.fillStyle(0x88ccff);
+    g.fillRect(22, 16, 14, 8);
+    g.fillRect(40, 16, 14, 8);
+    // Фары
     g.fillStyle(0xffffff);
-    g.fillCircle(13, 14, 0.5);
-    g.fillCircle(19, 14, 0.5);
-    g.lineStyle(1, 0x000000);
-    g.lineBetween(14, 20, 18, 20);
-    g.generateTexture('alien_head', 32, 32);
+    g.fillCircle(18, 28, 4);
+    g.fillStyle(0xffffaa);
+    g.fillCircle(18, 28, 2);
+    // Шашечки такси
+    g.fillStyle(0x000000);
+    g.fillRect(40, 30, 6, 4);
+    g.fillRect(48, 30, 6, 4);
+    g.fillRect(56, 30, 6, 4);
+    // Номерной знак
+    g.fillStyle(0x333333);
+    g.fillRect(10, 34, 20, 6);
+    g.fillStyle(0xffaa00);
+    g.fillText('TAXI', 12, 36, 4); // просто для красоты, но в графике текст не отобразится
+    g.generateTexture('player', 80, 60);
 
-    // ========== КОЛОННЫ ==========
+    // ========== КОЛОННЫ (без изменений) ==========
     const createGate = (color, light, name) => {
       g.clear();
       g.fillStyle(color);
@@ -85,7 +71,7 @@ class BootScene extends Phaser.Scene {
     createGate(0xef4444, 0xf87171, 'gate_red');
     createGate(0xa855f7, 0xc084fc, 'gate_purple');
 
-    // ========== МОНЕТКИ ==========
+    // ========== МОНЕТКИ (без изменений) ==========
     const createCoin = (color, lineColor, name) => {
       g.clear();
       g.fillStyle(color);
@@ -102,7 +88,7 @@ class BootScene extends Phaser.Scene {
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
-    // ========== КАНИСТРЫ ==========
+    // ========== КАНИСТРЫ (без изменений) ==========
     g.clear();
     g.fillStyle(0x3498db);
     g.fillRoundedRect(4, 0, 24, 28, 6);
@@ -131,7 +117,7 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(20, 10, 6);
     g.generateTexture('fuel_can_red', 32, 32);
 
-    // ========== УЛУЧШЕНИЯ КОРАБЛЯ ==========
+    // ========== УЛУЧШЕНИЯ КОРАБЛЯ (без изменений) ==========
     g.clear();
     g.fillStyle(0xff5500);
     g.fillTriangle(8, 20, 8, 44, 0, 32);
@@ -308,6 +294,9 @@ class PlayScene extends Phaser.Scene {
         this.playerUpgrades.forEach(u => u.setPosition(this.player.x, this.player.y));
       }
     });
+
+    // НОВОЕ: Запускаем фоновую музыку, но не сразу, а после первого тапа
+    // Сама музыка будет запущена в методе startRun()
   }
 
   update() {
@@ -325,12 +314,6 @@ class PlayScene extends Phaser.Scene {
 
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
-
-    // Анимация инопланетянина
-    if (this.alien) {
-      this.alien.setPosition(this.player.x + 4, this.player.y - 2);
-      this.alien.setAngle(this.player.angle * 0.5);
-    }
 
     if (!this.shieldActive && (this.player.y < 0 || this.player.y > this.scale.height)) {
       this.handleDeath();
@@ -406,10 +389,8 @@ class PlayScene extends Phaser.Scene {
     this.coinSound = this.sound.add('coin_sound');
     this.itemSound = this.sound.add('item_sound');
     this.tapSound = this.sound.add('tap_sound');
-
-    this.alien = this.add.image(114, h / 2 - 2, 'alien_head');
-    this.alien.setScale(0.8);
-    this.alien.setDepth(6);
+    // НОВОЕ: фоновая музыка
+    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
 
     this.trailEmitter = this.add.particles(0, 0, 'flare', {
       speed: 40,
@@ -463,8 +444,7 @@ class PlayScene extends Phaser.Scene {
     this.fuelBar = this.add.graphics();
     this.fuelBar.fillStyle(0x3498db);
     this.fuelBar.fillRect(20, h - 50, 150, 15);
-    // Убираем надпись "ТОПЛИВО" (комментируем или удаляем)
-    // this.add.text(20, h - 70, 'ТОПЛИВО', { fontSize: '14px', color: '#fff' }).setDepth(10);
+    // Надпись "ТОПЛИВО" убрана
 
     this.bonusText = this.add.text(w - 20, 70, '', {
       fontSize: '20px',
@@ -521,6 +501,10 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
+
+    // НОВОЕ: Запускаем фоновую музыку
+    if (this.bgMusic) this.bgMusic.play();
+
     this.spawnGate();
     this.scheduleNextSpawn();
 
@@ -937,14 +921,13 @@ class PlayScene extends Phaser.Scene {
     this.crystals += value;
     this.crystalText.setText(`💎 ${this.crystals}`);
 
-    // Звук монетки (для золотых) или предмета (для бонусных)
+    // ИСПРАВЛЕНО: Звук предмета для бонусных монеток
     if (bonusType) {
       if (this.itemSound) this.itemSound.play();
+      this.activateBonus(bonusType);
     } else {
       if (this.coinSound) this.coinSound.play();
     }
-
-    if (bonusType) this.activateBonus(bonusType);
 
     const emitter = this.add.particles(coin.x, coin.y, 'flare', {
       speed: 100,
@@ -979,10 +962,11 @@ class PlayScene extends Phaser.Scene {
 
     this.trailEmitter.stop();
 
+    // НОВОЕ: Останавливаем музыку при смерти
+    if (this.bgMusic) this.bgMusic.stop();
+
     this.mainTimers.forEach(timer => timer && timer.remove());
     if (this.bonusTimer) this.bonusTimer.remove();
-
-    if (this.alien) this.alien.destroy();
 
     this.physics.pause();
 
