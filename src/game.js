@@ -1097,7 +1097,7 @@ const config = {
   height: 844,
   backgroundColor: '#030712',
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   physics: {
