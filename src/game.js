@@ -164,12 +164,11 @@ class BootScene extends Phaser.Scene {
     g.clear();
     g.fillStyle(0x3399ff);
     g.fillRoundedRect(0, 0, 50, 50, 10);
+    // Рисуем символ валюты без использования fillText
     g.fillStyle(0xffffff);
-    // Рисуем знак доллара линиями
-    g.fillRect(20, 10, 10, 30);   // вертикальная полоса
-    g.fillRect(10, 20, 30, 10);   // горизонтальная полоса
+    g.fillRect(20, 15, 10, 20);    // вертикальная полоса
+    g.fillRect(15, 20, 20, 10);    // горизонтальная полоса (получится крестик)
     g.generateTexture('shop_button', 50, 50);
-
     g.destroy();
   }
 }
