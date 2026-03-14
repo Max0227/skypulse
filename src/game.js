@@ -377,7 +377,7 @@ class PlayScene extends Phaser.Scene {
     }).setDepth(10).setScrollFactor(0);
 
     this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
-      fontSize: '24px',
+      fontSize: '17px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
@@ -411,7 +411,7 @@ class PlayScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0);
     subtitle.setName('subtitle');
     const tip = this.add.text(0, 100, 'Тапни, чтобы сыграть снова', {
-      fontSize: '22px', color: '#cbd5e1', align: 'center', fontStyle: 'bold'
+      fontSize: '20px', color: '#cbd5e1', align: 'center', fontStyle: 'bold'
     }).setOrigin(0.5).setScrollFactor(0);
     this.gameOverBox = this.add.container(w / 2, h / 2, [panel, title, subtitle, tip]);
     this.gameOverBox.setVisible(false);
@@ -481,7 +481,7 @@ class PlayScene extends Phaser.Scene {
         this.scale.width/2,
         this.scale.height/2 + 20,
         'Нажми на кнопку паузы, чтобы продолжить',
-        { fontSize: '24px', color: '#ccc', align: 'center' }
+        { fontSize: '18px', color: '#ccc', align: 'center' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
