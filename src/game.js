@@ -338,19 +338,16 @@ class PlayScene extends Phaser.Scene {
 
     // ========== УПРАВЛЕНИЕ ==========
     this.input.on('pointerdown', () => {
-      if (this.dead) {
-        this.scene.restart();
-        return;
-      }
-      if (!this.started) {
-        // Если игра ещё не началась, показываем меню выбора
-        if (!this.choiceMenu) {
-          this.showChoiceMenu();
-        }
-      } else {
-        this.flap();
-      }
-    });
+  if (this.dead) {
+    this.scene.restart();
+    return;
+  }
+  if (!this.started) {
+    this.startRun();  // сразу запускаем игру при первом тапе
+  } else {
+    this.flap();
+  }
+});
 
     this.physics.world.setBounds(0, 0, w, h);
     this.events.on('resize', this.onResize, this);
@@ -654,7 +651,6 @@ class PlayScene extends Phaser.Scene {
         title.destroy();
         continueBtn.destroy();
         newGameBtn.destroy();
-        this.choiceMenu = null;
       });
     }
 
