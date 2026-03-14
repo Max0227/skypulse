@@ -51,7 +51,6 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0x333333);
     g.fillRect(10, 34, 20, 6);
     g.fillStyle(0xffaa00);
-    g.fillText('TAXI', 12, 36, 4); // просто для красоты, но в графике текст не отобразится
     g.generateTexture('player', 80, 60);
 
     // ========== КОЛОННЫ (без изменений) ==========
