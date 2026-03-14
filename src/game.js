@@ -219,6 +219,9 @@ class PlayScene extends Phaser.Scene {
     this.gravity = 1300;
     this.jumpPower = 300;
 
+    // ========== ТЕКСТУРЫ ВОРОТ ==========
+    this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
+
     // ========== ПРОГРЕССИЯ ==========
     this.coinsForWagon = 10;
     this.collectedCoins = 0;
@@ -550,18 +553,17 @@ class PlayScene extends Phaser.Scene {
     this.introText.setVisible(false);
     if (this.bgMusic) this.bgMusic.play();
 
+    // Первый спавн ворот
     this.spawnGate();
-    this.scheduleNextSpawn();
-  }
 
-  scheduleNextSpawn() {
-    if (this.dead) return;
-    this.time.delayedCall(this.spawnDelay, () => {
-      if (!this.dead) {
-        this.spawnGate();
-        this.scheduleNextSpawn();
-      }
+    // Создаём циклический таймер для спавна ворот
+    this.gateTimer = this.time.addEvent({
+      delay: this.spawnDelay,
+      callback: this.spawnGate,
+      callbackScope: this,
+      loop: true,
     });
+    this.mainTimers.push(this.gateTimer);
   }
 
   flap() {
@@ -709,7 +711,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateHealthDisplay() {
-    this.healthIcons.forEach(h => h.destroy());
+    // Удаляем старые сердечки
+    if (this.healthIcons) {
+      this.healthIcons.forEach(h => h.destroy());
+    }
     this.healthIcons = [];
     for (let i = 0; i < this.maxHeadHP; i++) {
       let heart = this.add.image(20 + i * 30, this.scale.height - 40, 'heart')
@@ -1174,6 +1179,7 @@ class PlayScene extends Phaser.Scene {
 
   // ========== СМЕРТЬ ==========
   handleDeath() {
+    // Воскрешение
     if (this.upgradeLevels.revival > 0 && !this.dead) {
       this.upgradeLevels.revival--;
       this.headHP = this.maxHeadHP;
@@ -1186,8 +1192,10 @@ class PlayScene extends Phaser.Scene {
     this.trailEmitter.stop();
     if (this.bgMusic) this.bgMusic.stop();
 
+    // Останавливаем все таймеры
     this.mainTimers.forEach(timer => timer && timer.remove());
     if (this.bonusTimer) this.bonusTimer.remove();
+    if (this.gateTimer) this.gateTimer.remove();
 
     this.physics.pause();
     this.cameras.main.shake(300, 0.005);
@@ -1207,6 +1215,7 @@ class PlayScene extends Phaser.Scene {
 
     this.showGameOver();
 
+    // Отправка данных в Telegram
     if (window.Telegram?.WebApp) {
       const data = JSON.stringify({
         score: this.score,
