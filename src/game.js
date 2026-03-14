@@ -9,11 +9,10 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Звуки (файлы должны лежать в public/sounds/)
+    // Звуки (только эффекты, без фоновой музыки)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
-    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
     this.load.audio('upgrade_sound', 'sounds/upgrade.mp3');
     this.load.audio('planet_sound', 'sounds/planet.mp3');
   }
@@ -344,7 +343,7 @@ class PlayScene extends Phaser.Scene {
         return;
       }
       if (!this.started) {
-        // Если игра ещё не началась, показываем меню выбора (продолжить/новая игра)
+        // Если игра ещё не началась, показываем меню выбора
         if (!this.choiceMenu) {
           this.showChoiceMenu();
         }
@@ -473,11 +472,10 @@ class PlayScene extends Phaser.Scene {
     this.player.setBlendMode(Phaser.BlendModes.ADD);
     this.player.body.setMass(10000);
 
-    // Звуки
+    // Звуки (без фоновой музыки)
     this.coinSound = this.sound.add('coin_sound');
     this.itemSound = this.sound.add('item_sound');
     this.tapSound = this.sound.add('tap_sound', { volume: 0.2 });
-    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
     this.upgradeSound = this.sound.add('upgrade_sound');
     this.planetSound = this.sound.add('planet_sound');
 
@@ -650,18 +648,18 @@ class PlayScene extends Phaser.Scene {
         .setScrollFactor(0)
         .setInteractive();
       continueBtn.on('pointerdown', () => {
-        // Загружаем сохранение и запускаем игру
         this.loadProgress();
         this.startRun();
         overlay.destroy();
         title.destroy();
         continueBtn.destroy();
         newGameBtn.destroy();
+        this.choiceMenu = null;
       });
     }
 
     // Кнопка "Новая игра"
-    const newGameBtn = this.add.text(w/2, h/2 + 60, 'НОВАЯ ИГРА', {
+    const newGameBtn = this.add.text(w/2, continueBtn ? h/2 + 60 : h/2 - 20, 'НОВАЯ ИГРА', {
       fontSize: '28px',
       color: '#ffaa00',
       backgroundColor: '#0f172a',
@@ -673,13 +671,12 @@ class PlayScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setInteractive();
     newGameBtn.on('pointerdown', () => {
-      // Сбрасываем прогресс и начинаем новую игру
       this.newGame();
       overlay.destroy();
       title.destroy();
       if (continueBtn) continueBtn.destroy();
       newGameBtn.destroy();
-      this.startRun();
+      this.choiceMenu = null;
     });
 
     this.choiceMenu = [overlay, title, newGameBtn];
@@ -693,11 +690,9 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
-    if (this.bgMusic) this.bgMusic.play();
 
     this.spawnGate();
 
-    // Циклический таймер спавна ворот (заменяет рекурсивный)
     this.gateTimer = this.time.addEvent({
       delay: this.spawnDelay,
       callback: this.spawnGate,
@@ -781,7 +776,6 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  // Новая игра: сброс прогресса и перезапуск сцены
   newGame() {
     localStorage.removeItem('skypulse_save');
     this.scene.restart();
@@ -882,10 +876,9 @@ class PlayScene extends Phaser.Scene {
       case 'wagonGap': this.wagonGap -= 2; break;
       case 'headHP':
         this.maxHeadHP++;
-        this.headHP = this.maxHeadHP; // при улучшении здоровье восстанавливается до максимума
+        this.headHP = this.maxHeadHP;
         this.updateHealthDisplay();
         break;
-      // shieldDuration и revival используются в соответствующих местах
     }
 
     this.saveProgress();
@@ -1056,7 +1049,6 @@ class PlayScene extends Phaser.Scene {
       this.spawnDelay = Math.max(900, 1300 - this.level * 50);
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
-      // Обновляем таймер спавна
       if (this.gateTimer) {
         this.gateTimer.delay = this.spawnDelay;
         this.gateTimer.reset(this.spawnDelay);
@@ -1368,7 +1360,7 @@ class PlayScene extends Phaser.Scene {
   handleDeath() {
     if (this.upgradeLevels.revival > 0 && !this.dead) {
       this.upgradeLevels.revival--;
-      this.headHP = this.maxHeadHP; // воскрешение с полным здоровьем
+      this.headHP = this.maxHeadHP;
       this.updateHealthDisplay();
       this.cameras.main.flash(300, 100, 255, 100, false);
       return;
@@ -1376,7 +1368,6 @@ class PlayScene extends Phaser.Scene {
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
-    if (this.bgMusic) this.bgMusic.stop();
 
     this.mainTimers.forEach(timer => timer && timer.remove());
     if (this.bonusTimer) this.bonusTimer.remove();
