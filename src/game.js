@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 
 // =========================================================================
-// BootScene – создание всех текстур
+// BootScene – создание всех текстур и загрузка звуков
 // =========================================================================
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -9,7 +9,6 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
@@ -26,28 +25,22 @@ class BootScene extends Phaser.Scene {
 
     // ========== ИГРОК: ЛЕТАЮЩЕЕ ТАКСИ ИЗ ПЯТОГО ЭЛЕМЕНТА ==========
     g.clear();
-    // Основной корпус
     g.fillStyle(0xffcc00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
-    // Крыша и задняя часть
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(20, 8, 40, 10, 4);
     g.fillRect(56, 16, 8, 20);
-    // Окна
     g.fillStyle(0x88ccff);
     g.fillRect(22, 16, 14, 8);
     g.fillRect(40, 16, 14, 8);
-    // Фары
     g.fillStyle(0xffffff);
     g.fillCircle(18, 28, 4);
     g.fillStyle(0xffffaa);
     g.fillCircle(18, 28, 2);
-    // Шашечки такси
     g.fillStyle(0x000000);
     g.fillRect(40, 30, 6, 4);
     g.fillRect(48, 30, 6, 4);
     g.fillRect(56, 30, 6, 4);
-    // Номерной знак
     g.fillStyle(0x333333);
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
@@ -160,8 +153,7 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(24, 24, 20);
     g.generateTexture('upgrade_item', 48, 48);
 
-    // ========== ФОНОВЫЕ ОБЪЕКТЫ (ПЯТЫЙ ЭЛЕМЕНТ) ==========
-    // Огромный астероид
+    // ========== ФОНОВЫЕ ОБЪЕКТЫ ==========
     g.clear();
     g.fillStyle(0x6b4e2e);
     g.fillEllipse(40, 40, 70, 50);
@@ -175,7 +167,6 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(15, 15, 10);
     g.generateTexture('bg_asteroid_1', 100, 80);
 
-    // Кристаллический астероид
     g.clear();
     g.fillStyle(0x88aaff);
     g.fillEllipse(35, 35, 60, 45);
@@ -187,7 +178,6 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(30, 30, 8);
     g.generateTexture('bg_asteroid_2', 90, 70);
 
-    // Инопланетный корабль (тарелка)
     g.clear();
     g.fillStyle(0x88aaff);
     g.fillEllipse(40, 30, 70, 20);
@@ -202,7 +192,6 @@ class BootScene extends Phaser.Scene {
     g.fillEllipse(40, 30, 60, 15);
     g.generateTexture('bg_ship_1', 90, 50);
 
-    // Корабль Мангалот
     g.clear();
     g.fillStyle(0xcc3333);
     g.fillRoundedRect(20, 20, 70, 30, 8);
@@ -297,6 +286,7 @@ class PlayScene extends Phaser.Scene {
     this.level = 0;
     this.isPaused = false;
     this.pauseOverlay = null;
+    this.pauseTexts = []; // для хранения текстов паузы
 
     // Параметры сложности
     this.baseSpeed = 250;
@@ -372,7 +362,7 @@ class PlayScene extends Phaser.Scene {
     this.fuel = Math.max(0, this.fuel - this.fuelConsumption);
     this.fuelBar.clear();
     this.fuelBar.fillStyle(0x3498db);
-    this.fuelBar.fillRect(0, 0, (this.fuel / this.maxFuel) * 150, 15);
+    this.fuelBar.fillRect(20, this.scale.height - 50, 150, 15);
     if (this.fuel <= 0) this.handleDeath();
 
     const body = this.player.body;
@@ -441,7 +431,6 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
     
-    // Создаём 8-10 фоновых объектов
     const textures = ['bg_asteroid_1', 'bg_asteroid_2', 'bg_ship_1', 'bg_ship_2'];
     
     for (let i = 0; i < 10; i++) {
@@ -557,8 +546,8 @@ class PlayScene extends Phaser.Scene {
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
-    // Кнопка паузы
-    this.pauseButton = this.add.image(w - 40, 40, 'pause_button')
+    // Кнопка паузы в правом нижнем углу
+    this.pauseButton = this.add.image(w - 40, h - 40, 'pause_button')
       .setInteractive()
       .setDepth(20)
       .setScrollFactor(0);
@@ -638,9 +627,9 @@ class PlayScene extends Phaser.Scene {
     this.isPaused = !this.isPaused;
     
     if (this.isPaused) {
+      // Останавливаем физику и таймеры
       this.physics.pause();
-      this.scene.pause();
-      
+      // Добавляем оверлей
       this.pauseOverlay = this.add.rectangle(
         this.scale.width/2, 
         this.scale.height/2, 
@@ -649,32 +638,32 @@ class PlayScene extends Phaser.Scene {
         0x000000, 0.5
       ).setDepth(25).setScrollFactor(0);
       
-      this.add.text(
+      const pauseText = this.add.text(
         this.scale.width/2, 
         this.scale.height/2 - 50, 
         'ПАУЗА', 
         { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
       
-      this.add.text(
+      const tipText = this.add.text(
         this.scale.width/2, 
         this.scale.height/2 + 20, 
         'Нажми на кнопку паузы, чтобы продолжить', 
         { fontSize: '24px', color: '#ccc', align: 'center' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
       
-    } else {
-      this.physics.resume();
-      this.scene.resume();
+      this.pauseTexts = [pauseText, tipText];
       
+    } else {
+      // Возобновляем физику
+      this.physics.resume();
+      // Убираем оверлей и тексты
       if (this.pauseOverlay) {
         this.pauseOverlay.destroy();
         this.pauseOverlay = null;
       }
-      
-      this.children.list
-        .filter(child => child.type === 'Text' && (child.text === 'ПАУЗА' || child.text.includes('Нажми')))
-        .forEach(child => child.destroy());
+      this.pauseTexts.forEach(t => t.destroy());
+      this.pauseTexts = [];
     }
   }
 
@@ -1226,7 +1215,7 @@ class PlayScene extends Phaser.Scene {
     this.levelText.setPosition(w / 2, h / 2 - 100);
     
     if (this.pauseButton) {
-      this.pauseButton.setPosition(w - 40, 40);
+      this.pauseButton.setPosition(w - 40, h - 40);
     }
     
     this.fuelBar.clear();
@@ -1251,7 +1240,7 @@ const config = {
   height: 844,
   backgroundColor: '#030712',
   scale: {
-    mode: Phaser.Scale.RESIZE,
+    mode: Phaser.Scale.FIT,          // Используем FIT для автоматического масштабирования
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: 390,
     height: 844,
