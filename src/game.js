@@ -1,11 +1,18 @@
 import Phaser from 'phaser';
 
 // =========================================================================
-// BootScene – создание всех текстур
+// BootScene – создание всех текстур и загрузка звуков
 // =========================================================================
 class BootScene extends Phaser.Scene {
   constructor() {
     super('boot');
+  }
+
+  preload() {
+    // Загружаем звуки (файлы должны лежать в public/sounds/)
+    this.load.audio('coin_sound', 'sounds/coin.mp3');
+    this.load.audio('item_sound', 'sounds/item.mp3');
+    this.load.audio('tap_sound', 'sounds/tap.mp3');
   }
 
   create() {
@@ -18,18 +25,14 @@ class BootScene extends Phaser.Scene {
 
     // ========== ИГРОК: ЛЕТАЮЩАЯ ТАРЕЛКА С ИНОПЛАНЕТЯНИНОМ ==========
     g.clear();
-    // Корпус тарелки
     g.fillStyle(0x4a90e2);
     g.fillEllipse(32, 32, 50, 20);
-    // Верхний купол (полупрозрачный)
     g.fillStyle(0xaaddff, 0.8);
     g.fillEllipse(32, 22, 30, 12);
-    // Кабина (стекло)
     g.fillStyle(0xffffff, 0.3);
     g.fillEllipse(32, 22, 28, 10);
     g.lineStyle(2, 0x88ccff);
     g.strokeEllipse(32, 22, 28, 10);
-    // Инопланетянин (зелёная голова)
     g.fillStyle(0x88ff88);
     g.fillCircle(28, 20, 5);
     g.fillStyle(0x000000);
@@ -40,21 +43,18 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(30, 18, 0.5);
     g.lineStyle(1, 0x000000);
     g.lineBetween(27, 23, 29, 23);
-    // Нижняя часть тарелки
     g.fillStyle(0x2c3e50);
     g.fillEllipse(32, 42, 40, 8);
-    // Огни по кругу
     g.fillStyle(0xffaa00);
     g.fillCircle(20, 30, 4);
     g.fillCircle(44, 30, 4);
     g.fillCircle(32, 36, 4);
-    // Блики на корпусе
     g.fillStyle(0xffffff, 0.2);
     g.fillEllipse(20, 26, 10, 4);
     g.fillEllipse(44, 26, 10, 4);
     g.generateTexture('player', 64, 64);
 
-    // Отдельная текстура для инопланетянина (для анимации)
+    // Отдельная текстура для инопланетянина
     g.clear();
     g.fillStyle(0x88ff88);
     g.fillCircle(16, 16, 8);
@@ -86,50 +86,21 @@ class BootScene extends Phaser.Scene {
     createGate(0xa855f7, 0xc084fc, 'gate_purple');
 
     // ========== МОНЕТКИ ==========
-    g.clear();
-    g.fillStyle(0xfacc15);
-    g.fillCircle(16, 16, 14);
-    g.lineStyle(4, 0xfffbeb);
-    g.strokeCircle(16, 16, 9);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillCircle(10, 10, 4);
-    g.generateTexture('coin_gold', 32, 32);
-
-    g.clear();
-    g.fillStyle(0xef4444);
-    g.fillCircle(16, 16, 14);
-    g.lineStyle(4, 0xffaa00);
-    g.strokeCircle(16, 16, 9);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillCircle(10, 10, 4);
-    g.generateTexture('coin_red', 32, 32);
-
-    g.clear();
-    g.fillStyle(0x3498db);
-    g.fillCircle(16, 16, 14);
-    g.lineStyle(4, 0xffffff);
-    g.strokeCircle(16, 16, 9);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillCircle(10, 10, 4);
-    g.generateTexture('coin_blue', 32, 32);
-
-    g.clear();
-    g.fillStyle(0x2ecc71);
-    g.fillCircle(16, 16, 14);
-    g.lineStyle(4, 0xffffff);
-    g.strokeCircle(16, 16, 9);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillCircle(10, 10, 4);
-    g.generateTexture('coin_green', 32, 32);
-
-    g.clear();
-    g.fillStyle(0x9b59b6);
-    g.fillCircle(16, 16, 14);
-    g.lineStyle(4, 0xffffff);
-    g.strokeCircle(16, 16, 9);
-    g.fillStyle(0xffffff, 0.4);
-    g.fillCircle(10, 10, 4);
-    g.generateTexture('coin_purple', 32, 32);
+    const createCoin = (color, lineColor, name) => {
+      g.clear();
+      g.fillStyle(color);
+      g.fillCircle(16, 16, 14);
+      g.lineStyle(4, lineColor);
+      g.strokeCircle(16, 16, 9);
+      g.fillStyle(0xffffff, 0.4);
+      g.fillCircle(10, 10, 4);
+      g.generateTexture(name, 32, 32);
+    };
+    createCoin(0xfacc15, 0xfffbeb, 'coin_gold');
+    createCoin(0xef4444, 0xffaa00, 'coin_red');
+    createCoin(0x3498db, 0xffffff, 'coin_blue');
+    createCoin(0x2ecc71, 0xffffff, 'coin_green');
+    createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
     // ========== КАНИСТРЫ ==========
     g.clear();
@@ -161,35 +132,30 @@ class BootScene extends Phaser.Scene {
     g.generateTexture('fuel_can_red', 32, 32);
 
     // ========== УЛУЧШЕНИЯ КОРАБЛЯ ==========
-    // Двигатели
     g.clear();
     g.fillStyle(0xff5500);
     g.fillTriangle(8, 20, 8, 44, 0, 32);
     g.fillTriangle(56, 20, 56, 44, 64, 32);
     g.generateTexture('upgrade_engine', 64, 64);
 
-    // Крылья
     g.clear();
     g.fillStyle(0x3a6ea5);
     g.fillTriangle(0, 16, 0, 48, 20, 32);
     g.fillTriangle(64, 16, 64, 48, 44, 32);
     g.generateTexture('upgrade_wings', 64, 64);
 
-    // Броня
     g.clear();
     g.fillStyle(0x888888);
     g.fillRoundedRect(16, 8, 32, 8, 4);
     g.fillRoundedRect(16, 48, 32, 8, 4);
     g.generateTexture('upgrade_armor', 64, 64);
 
-    // Оружие
     g.clear();
     g.fillStyle(0xff0000);
     g.fillRect(8, 28, 8, 8);
     g.fillRect(48, 28, 8, 8);
     g.generateTexture('upgrade_weapon', 64, 64);
 
-    // Щит
     g.clear();
     g.fillStyle(0x88ccff, 0.7);
     g.fillCircle(32, 32, 30);
@@ -240,32 +206,15 @@ class BootScene extends Phaser.Scene {
     createPlanet(0xe74c3c, false, true, 6);
     createPlanet(0x1abc9c, true, true, 7);
 
-    // ========== ТУМАННОСТИ ==========
-    g.clear();
-    g.fillStyle(0xaa88ff, 0.1);
-    g.fillCircle(50, 50, 50);
-    g.fillStyle(0xff88aa, 0.1);
-    g.fillCircle(150, 150, 80);
-    g.generateTexture('nebula1', 200, 200);
-
-    g.clear();
-    g.fillStyle(0x88aaff, 0.1);
-    g.fillCircle(70, 70, 60);
-    g.fillStyle(0xaaff88, 0.1);
-    g.fillCircle(20, 120, 40);
-    g.generateTexture('nebula2', 200, 200);
-
     // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
     g.fillCircle(2, 2, 2);
     g.generateTexture('star', 4, 4);
-
     g.clear();
     g.fillStyle(0xffaa00, 0.8);
     g.fillCircle(4, 4, 4);
     g.generateTexture('flare', 8, 8);
-
     g.clear();
     g.fillStyle(0xffffff, 0.5);
     g.fillCircle(3, 3, 3);
@@ -292,8 +241,6 @@ class PlayScene extends Phaser.Scene {
     this.crystals = 0;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
-
-    // Топливо
     this.fuel = 100;
     this.maxFuel = 100;
     this.fuelConsumption = 0.05;
@@ -329,7 +276,6 @@ class PlayScene extends Phaser.Scene {
     this.scoreZones = [];
     this.stars = [];
     this.planets = [];
-    this.nebulas = [];
     this.fuelCans = [];
     this.upgradeItems = [];
 
@@ -338,7 +284,6 @@ class PlayScene extends Phaser.Scene {
 
     // Создание мира
     this.createBackground();
-    this.createNebulas();
     this.createPlanets();
     this.createPlayer();
     this.createUI();
@@ -368,7 +313,6 @@ class PlayScene extends Phaser.Scene {
   update() {
     this.updateStars();
     this.updatePlanets();
-    this.updateNebulas();
 
     if (!this.started || this.dead) return;
 
@@ -394,21 +338,7 @@ class PlayScene extends Phaser.Scene {
 
     // Магнит
     if (this.bonusActive && this.bonusType === 'magnet') {
-      this.coins.forEach(coin => {
-        if (coin.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, coin.x, coin.y) < 200) {
-          const angle = Phaser.Math.Angle.Between(coin.x, coin.y, this.player.x, this.player.y);
-          coin.x += Math.cos(angle) * 8;
-          coin.y += Math.sin(angle) * 8;
-        }
-      });
-      this.fuelCans.forEach(can => {
-        if (can.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, can.x, can.y) < 200) {
-          const angle = Phaser.Math.Angle.Between(can.x, can.y, this.player.x, this.player.y);
-          can.x += Math.cos(angle) * 8;
-          can.y += Math.sin(angle) * 8;
-        }
-      });
-      this.upgradeItems.forEach(item => {
+      [...this.coins, ...this.fuelCans, ...this.upgradeItems].forEach(item => {
         if (item.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y) < 200) {
           const angle = Phaser.Math.Angle.Between(item.x, item.y, this.player.x, this.player.y);
           item.x += Math.cos(angle) * 8;
@@ -445,26 +375,6 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  createNebulas() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    for (let i = 0; i < 4; i++) {
-      const neb = this.add.image(
-        Phaser.Math.Between(0, w * 2),
-        Phaser.Math.Between(0, h),
-        `nebula${Phaser.Math.Between(1, 2)}`
-      );
-      neb.setScale(Phaser.Math.FloatBetween(1.5, 3));
-      neb.setAlpha(0.3);
-      neb.setDepth(-20);
-      neb.setBlendMode(Phaser.BlendModes.ADD);
-      this.nebulas.push({
-        sprite: neb,
-        speed: Phaser.Math.Between(2, 8),
-      });
-    }
-  }
-
   createPlanets() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -491,6 +401,11 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setCircle(24, 15, 5);
     this.player.setBlendMode(Phaser.BlendModes.ADD);
     this.player.body.setMass(10000);
+
+    // Звуки
+    this.coinSound = this.sound.add('coin_sound');
+    this.itemSound = this.sound.add('item_sound');
+    this.tapSound = this.sound.add('tap_sound');
 
     this.alien = this.add.image(114, h / 2 - 2, 'alien_head');
     this.alien.setScale(0.8);
@@ -548,7 +463,8 @@ class PlayScene extends Phaser.Scene {
     this.fuelBar = this.add.graphics();
     this.fuelBar.fillStyle(0x3498db);
     this.fuelBar.fillRect(20, h - 50, 150, 15);
-    this.add.text(20, h - 70, 'ТОПЛИВО', { fontSize: '14px', color: '#fff' }).setDepth(10);
+    // Убираем надпись "ТОПЛИВО" (комментируем или удаляем)
+    // this.add.text(20, h - 70, 'ТОПЛИВО', { fontSize: '14px', color: '#fff' }).setDepth(10);
 
     this.bonusText = this.add.text(w - 20, 70, '', {
       fontSize: '20px',
@@ -637,6 +553,8 @@ class PlayScene extends Phaser.Scene {
       duration: 150,
       ease: 'Quad.out',
     });
+    // Звук тапа
+    if (this.tapSound) this.tapSound.play();
     try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch {}
   }
 
@@ -650,7 +568,6 @@ class PlayScene extends Phaser.Scene {
       this.spawnDelay = Math.max(900, 1300 - this.level * 50);
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
-      // При переходе на новый уровень спавним улучшение
       this.spawnUpgradeItem();
 
       this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
@@ -684,7 +601,6 @@ class PlayScene extends Phaser.Scene {
   // ========== ТОПЛИВО ==========
   spawnFuelCan() {
     if (this.dead) return;
-
     if (Math.random() > 0.8) return;
 
     const w = this.scale.width;
@@ -709,7 +625,6 @@ class PlayScene extends Phaser.Scene {
     this.fuelCans.push(can);
     this.physics.add.overlap(this.player, can, (player, can) => {
       this.fuel = Math.min(this.maxFuel, this.fuel + can.getData('fuel'));
-      // Мерцание убрано!
       can.destroy();
     }, null, this);
   }
@@ -785,7 +700,6 @@ class PlayScene extends Phaser.Scene {
         break;
       case 'shield':
         this.shieldActive = true;
-        // Отключаем столкновения для щита
         this.player.body.checkCollision.none = true;
         this.player.setTint(0x88ccff);
         this.bonusText.setColor('#88ccff').setText(`🛡️ ${this.bonusTime}с`);
@@ -826,7 +740,6 @@ class PlayScene extends Phaser.Scene {
     this.currentSpeed = this.baseSpeed;
     this.bonusMultiplier = 1;
     this.player.clearTint();
-    // Возвращаем столкновения
     this.player.body.checkCollision.none = false;
     this.bonusText.setVisible(false);
     if (this.bonusTimer) {
@@ -946,9 +859,7 @@ class PlayScene extends Phaser.Scene {
 
   // ========== ОБРАБОТКА СОБЫТИЙ ==========
   hitPipe(player, pipe) {
-    // Если щит активен, ничего не делаем (игрок неуязвим)
     if (this.shieldActive) {
-      // Можно добавить эффект искр при касании щита, но без смерти
       const emitter = this.add.particles(pipe.x, pipe.y, 'spark', {
         speed: 150,
         scale: { start: 0.4, end: 0 },
@@ -1025,6 +936,13 @@ class PlayScene extends Phaser.Scene {
 
     this.crystals += value;
     this.crystalText.setText(`💎 ${this.crystals}`);
+
+    // Звук монетки (для золотых) или предмета (для бонусных)
+    if (bonusType) {
+      if (this.itemSound) this.itemSound.play();
+    } else {
+      if (this.coinSound) this.coinSound.play();
+    }
 
     if (bonusType) this.activateBonus(bonusType);
 
@@ -1111,7 +1029,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ОЧИСТКА ОБЪЕКТОВ ==========
+  // ========== ОЧИСТКА ==========
   cleanupObjects() {
     this.pipes = this.pipes.filter(p => {
       if (p.x < -150) { p.destroy(); return false; }
@@ -1163,18 +1081,6 @@ class PlayScene extends Phaser.Scene {
       if (p.sprite.x < -200) {
         p.sprite.x = w + Phaser.Math.Between(300, 800);
         p.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
-      }
-    }
-  }
-
-  updateNebulas() {
-    const w = this.scale.width;
-    const factor = this.started && !this.dead ? 0.1 : 0.02;
-    for (let n of this.nebulas) {
-      n.sprite.x -= n.speed * factor * (1 / 60);
-      if (n.sprite.x < -300) {
-        n.sprite.x = w + Phaser.Math.Between(400, 1000);
-        n.sprite.y = Phaser.Math.Between(0, this.scale.height);
       }
     }
   }
