@@ -387,7 +387,7 @@ class PlayScene extends Phaser.Scene {
     // Звуки
     this.coinSound = this.sound.add('coin_sound');
     this.itemSound = this.sound.add('item_sound');
-    this.tapSound = this.sound.add('tap_sound');
+    if (this.tapSound) this.tapSound.play({ volume: 0.2 });
     // НОВОЕ: фоновая музыка
     this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
 
