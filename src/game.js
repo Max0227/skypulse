@@ -112,7 +112,7 @@ class BootScene extends Phaser.Scene {
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
-    // ========== ПЛАНЕТЫ (больше, разбросаны) ==========
+    // ========== ПЛАНЕТЫ ==========
     const createPlanet = (color, hasRing, hasAtmo, idx) => {
       g.clear();
       g.fillStyle(color);
@@ -133,7 +133,6 @@ class BootScene extends Phaser.Scene {
       g.generateTexture(`planet_${idx}`, 64, 64);
     };
     
-    // 15 планет для разнообразия
     for (let i = 1; i <= 15; i++) {
       let color, hasRing, hasAtmo;
       if (i % 3 === 1) { color = 0x4a90e2; hasRing = true; hasAtmo = true; }
@@ -213,6 +212,14 @@ class BootScene extends Phaser.Scene {
     g.fillRect(35, 15, 10, 30);
     g.generateTexture('pause_button', 60, 60);
 
+    // ========== ИКОНКА МАГАЗИНА ==========
+    g.clear();
+    g.fillStyle(0xffaa00);
+    g.fillCircle(16, 16, 14);
+    g.fillStyle(0xffdd44);
+    g.fillCircle(16, 16, 10);
+    g.generateTexture('shop_icon', 32, 32);
+
     // ========== ИКОНКА ВАГОНА ==========
     g.clear();
     g.fillStyle(0x88ccff);
@@ -266,13 +273,11 @@ class PlayScene extends Phaser.Scene {
     this.pauseOverlay = null;
     this.pauseTexts = [];
 
-    // Параметры сложности (ИЗМЕНЕНО: препятствия реже, но быстрее)
+    // Параметры сложности
     this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
-    this.gapSize = 240;             // начальный зазор
-    // spawnDelay увеличивается с уровнем (препятствия реже)
-    this.spawnDelay = 1300;          // базовый
-    this.spawnDelayIncrease = 50;    // прирост за уровень
+    this.gapSize = 240;
+    this.spawnDelay = 1300;
 
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
@@ -285,6 +290,32 @@ class PlayScene extends Phaser.Scene {
     this.shieldActive = false;
     this.magnetRange = 220;
     this.lastBonusTime = 0;
+
+    // ========== УЛУЧШЕНИЯ (МАГАЗИН) ==========
+    this.upgradeLevels = {
+      jumpPower: 0,
+      gravity: 0,
+      shieldDuration: 0,
+      magnetRange: 0,
+      wagonHP: 0,
+      maxWagons: 0,
+      wagonGap: 0,
+      headHP: 0,
+      revival: 0
+    };
+    this.upgradeCosts = {
+      jumpPower: 10,
+      gravity: 15,
+      shieldDuration: 20,
+      magnetRange: 20,
+      wagonHP: 25,
+      maxWagons: 30,
+      wagonGap: 30,
+      headHP: 40,
+      revival: 50
+    };
+    this.shopVisible = false;
+    this.shopElements = [];
 
     // Группы объектов
     this.pipes = [];
@@ -301,7 +332,7 @@ class PlayScene extends Phaser.Scene {
 
     // Создание мира
     this.createBackground();
-    this.createPlanets();            // много планет изначально
+    this.createPlanets();
     this.createShips();
     this.createAsteroids();
     this.createPlayer();
@@ -390,7 +421,6 @@ class PlayScene extends Phaser.Scene {
   createPlanets() {
     const w = this.scale.width;
     const h = this.scale.height;
-    // Создаём 15 планет, разбросанных далеко
     for (let i = 1; i <= 15; i++) {
       const x = Phaser.Math.Between(w, w * 15);
       const y = Phaser.Math.Between(50, h - 50);
@@ -574,6 +604,14 @@ class PlayScene extends Phaser.Scene {
     this.pauseButton.on('pointerover', () => this.pauseButton.setScale(1.1));
     this.pauseButton.on('pointerout', () => this.pauseButton.setScale(1));
 
+    // Кнопка магазина (скрыта по умолчанию)
+    this.shopButton = this.add.image(w - 120, h - 40, 'shop_icon')
+      .setInteractive()
+      .setDepth(20)
+      .setScrollFactor(0)
+      .setVisible(false);
+    this.shopButton.on('pointerdown', () => this.showShop());
+
     this.createGameOverBox();
   }
 
@@ -639,7 +677,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   flap() {
-    this.player.body.setVelocityY(-300);
+    // сила прыжка с учётом улучшений
+    const jumpBase = 300 + this.upgradeLevels.jumpPower * 20;
+    this.player.body.setVelocityY(-jumpBase);
     this.player.setScale(0.95);
     this.tweens.add({
       targets: this.player,
@@ -701,6 +741,8 @@ class PlayScene extends Phaser.Scene {
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
+      // Показываем кнопку магазина
+      if (this.shopButton) this.shopButton.setVisible(true);
     } else {
       this.physics.resume();
       if (this.pauseOverlay) {
@@ -711,6 +753,9 @@ class PlayScene extends Phaser.Scene {
         this.pauseTexts.forEach(t => t.destroy());
         this.pauseTexts = [];
       }
+      // Скрываем магазин
+      if (this.shopButton) this.shopButton.setVisible(false);
+      this.hideShop();
     }
   }
 
@@ -719,11 +764,8 @@ class PlayScene extends Phaser.Scene {
     if (newLevel > this.level) {
       this.level = newLevel;
       
-      // Увеличиваем скорость
       this.baseSpeed = 240 + this.level * 18;
-      // Препятствия становятся уже
       this.gapSize = Math.max(160, 240 - this.level * 6);
-      // Препятствия появляются реже (spawnDelay растёт)
       this.spawnDelay = Math.min(2500, 1300 + this.level * 50);
       
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
@@ -741,7 +783,6 @@ class PlayScene extends Phaser.Scene {
         ease: 'Power2',
       });
 
-      // Добавляем случайную планету при переходе уровня
       this.addRandomPlanet();
     }
   }
@@ -779,9 +820,7 @@ class PlayScene extends Phaser.Scene {
   addWagon() {
     if (this.wagons.length >= this.maxWagons) return;
     
-    // Сдвигаем целевую позицию игрока вправо, чтобы освободить место для вагонов
-    this.targetPlayerX += this.wagonGap * 0.5; // сдвиг на полрасстояния, чтобы 4 вагона влезали
-    // Ограничиваем, чтобы игрок не улетел за экран
+    this.targetPlayerX += this.wagonGap * 0.5;
     this.targetPlayerX = Math.min(this.scale.width * 0.8, this.targetPlayerX);
     
     let last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
@@ -796,7 +835,8 @@ class PlayScene extends Phaser.Scene {
     wagon.body.setMass(0.5);
     wagon.body.setDrag(0.9);
     wagon.setDepth(5 + this.wagons.length);
-    wagon.setData('hp', 1);
+    // здоровье вагона с учётом улучшений
+    wagon.setData('hp', 1 + this.upgradeLevels.wagonHP);
 
     this.physics.add.collider(wagon, this.pipes, this.wagonHit, null, this);
     this.wagons.push(wagon);
@@ -834,7 +874,6 @@ class PlayScene extends Phaser.Scene {
       if (index !== -1) {
         wagon.destroy();
         this.wagons.splice(index, 1);
-        // При потере вагона сдвигаем цель игрока обратно
         this.targetPlayerX -= this.wagonGap * 0.5;
         this.targetPlayerX = Math.max(110, this.targetPlayerX);
         this.cameras.main.shake(100, 0.005);
@@ -867,7 +906,6 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnCoin(x, y) {
-    // Увеличиваем вероятность появления монет до 0.9
     if (Math.random() > 0.9) return;
     
     let coinType = 'gold';
@@ -1005,7 +1043,7 @@ class PlayScene extends Phaser.Scene {
     
     this.bonusActive = true;
     this.bonusType = type;
-    this.bonusTime = 6;
+    this.bonusTime = 5 + this.upgradeLevels.shieldDuration * 2;
 
     switch (type) {
       case 'speed':
@@ -1062,6 +1100,140 @@ class PlayScene extends Phaser.Scene {
       this.bonusTimer.remove();
       this.bonusTimer = null;
     }
+  }
+
+  // ========== МАГАЗИН УЛУЧШЕНИЙ ==========
+  showShop() {
+    if (this.shopVisible) return;
+    this.shopVisible = true;
+    this.physics.pause();
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    // Затемняющий фон
+    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7)
+      .setDepth(40)
+      .setScrollFactor(0);
+    this.shopElements = [overlay];
+
+    // Панель магазина
+    const panel = this.add.rectangle(w/2, h/2, 500, 500, 0x0a0a1a, 0.95)
+      .setStrokeStyle(4, 0x22d3ee, 0.9)
+      .setDepth(41)
+      .setScrollFactor(0);
+    this.shopElements.push(panel);
+
+    const title = this.add.text(w/2, h/2 - 200, 'МАГАЗИН УЛУЧШЕНИЙ', {
+      fontSize: '28px',
+      color: '#ffaa00',
+      fontStyle: 'bold',
+      stroke: '#7c3aed',
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
+    this.shopElements.push(title);
+
+    const balance = this.add.text(w/2, h/2 - 160, `💎 ${this.crystals}`, {
+      fontSize: '24px',
+      color: '#fde047',
+      fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
+    this.shopElements.push(balance);
+
+    const upgrades = [
+      { key: 'jumpPower', name: 'Сила прыжка', current: 300 + this.upgradeLevels.jumpPower*20, next: 300 + (this.upgradeLevels.jumpPower+1)*20 },
+      { key: 'gravity', name: 'Гравитация', current: 1300 - this.upgradeLevels.gravity*50, next: 1300 - (this.upgradeLevels.gravity+1)*50 },
+      { key: 'shieldDuration', name: 'Длительность щита', current: 5 + this.upgradeLevels.shieldDuration*2, next: 5 + (this.upgradeLevels.shieldDuration+1)*2 },
+      { key: 'magnetRange', name: 'Радиус магнита', current: 220 + this.upgradeLevels.magnetRange*30, next: 220 + (this.upgradeLevels.magnetRange+1)*30 },
+      { key: 'wagonHP', name: 'Прочность вагонов', current: 1 + this.upgradeLevels.wagonHP, next: 1 + (this.upgradeLevels.wagonHP+1) },
+      { key: 'maxWagons', name: 'Макс. вагонов', current: 12 + this.upgradeLevels.maxWagons*2, next: 12 + (this.upgradeLevels.maxWagons+1)*2 },
+      { key: 'wagonGap', name: 'Дистанция между вагонами', current: 28 - this.upgradeLevels.wagonGap*2, next: 28 - (this.upgradeLevels.wagonGap+1)*2 },
+      { key: 'headHP', name: 'Макс. здоровье', current: 3 + this.upgradeLevels.headHP, next: 3 + (this.upgradeLevels.headHP+1) },
+      { key: 'revival', name: 'Воскрешение', current: this.upgradeLevels.revival, next: this.upgradeLevels.revival+1 },
+    ];
+
+    let y = h/2 - 120;
+    for (let up of upgrades) {
+      const cost = this.upgradeCosts[up.key];
+      const text = `${up.name}: ${up.current} → ${up.next} | цена: ${cost}`;
+      const t = this.add.text(w/2 - 100, y, text, {
+        fontSize: '14px',
+        color: '#fff',
+        backgroundColor: '#1a1a2e',
+        padding: { x: 5, y: 3 }
+      }).setDepth(42).setScrollFactor(0);
+      this.shopElements.push(t);
+
+      const btn = this.add.text(w/2 + 100, y, '[КУПИТЬ]', {
+        fontSize: '14px',
+        color: '#0f0',
+        backgroundColor: '#0f172a',
+        padding: { x: 5, y: 3 }
+      }).setInteractive().setDepth(42).setScrollFactor(0);
+      btn.on('pointerdown', () => this.buyUpgrade(up.key));
+      this.shopElements.push(btn);
+      y += 25;
+    }
+
+    const closeBtn = this.add.text(w/2, h/2 + 150, 'ЗАКРЫТЬ', {
+      fontSize: '20px',
+      color: '#f00',
+      backgroundColor: '#0f172a',
+      padding: { x: 15, y: 5 }
+    }).setInteractive().setDepth(42).setScrollFactor(0);
+    closeBtn.on('pointerdown', () => this.hideShop());
+    this.shopElements.push(closeBtn);
+  }
+
+  hideShop() {
+    if (!this.shopVisible) return;
+    this.shopElements.forEach(el => el.destroy());
+    this.shopElements = [];
+    this.shopVisible = false;
+    this.physics.resume();
+  }
+
+  buyUpgrade(key) {
+    if (this.crystals < this.upgradeCosts[key]) return;
+    this.crystals -= this.upgradeCosts[key];
+    this.crystalText.setText(`💎 ${this.crystals}`);
+    this.upgradeLevels[key]++;
+
+    switch (key) {
+      case 'jumpPower':
+        // уже применяется в flap()
+        break;
+      case 'gravity':
+        this.physics.world.gravity.y = 1300 - this.upgradeLevels.gravity * 50;
+        break;
+      case 'magnetRange':
+        this.magnetRange = 220 + this.upgradeLevels.magnetRange * 30;
+        break;
+      case 'wagonHP':
+        this.wagonBaseHP = 1 + this.upgradeLevels.wagonHP;
+        break;
+      case 'maxWagons':
+        this.maxWagons = 12 + this.upgradeLevels.maxWagons * 2;
+        this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+        break;
+      case 'wagonGap':
+        this.wagonGap = 28 - this.upgradeLevels.wagonGap * 2;
+        break;
+      case 'headHP':
+        this.maxHeadHP = 3 + this.upgradeLevels.headHP;
+        this.headHP = this.maxHeadHP;
+        // нужно обновить отображение сердечек (если они есть)
+        break;
+      case 'revival':
+        // используется в handleDeath
+        break;
+      case 'shieldDuration':
+        // используется в activateBonus
+        break;
+    }
+    this.playSound(this.itemSound);
+    this.hideShop();
+    this.showShop(); // обновить магазин
   }
 
   spawnGate() {
@@ -1180,6 +1352,15 @@ class PlayScene extends Phaser.Scene {
   }
 
   handleDeath() {
+    // Воскрешение
+    if (this.upgradeLevels.revival > 0 && !this.dead) {
+      this.upgradeLevels.revival--;
+      this.headHP = this.maxHeadHP;
+      // если есть отображение сердечек, нужно обновить
+      this.cameras.main.flash(300, 100, 255, 100, false);
+      return;
+    }
+
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
@@ -1205,6 +1386,18 @@ class PlayScene extends Phaser.Scene {
     emitter.explode(40);
 
     this.showGameOver();
+
+    // Отправляем результат в Telegram бота
+    if (window.Telegram?.WebApp) {
+      const data = JSON.stringify({
+        score: this.score,
+        level: this.level + 1,
+        wagons: this.wagons.length,
+        meters: Math.floor(this.meters)
+      });
+      window.Telegram.WebApp.sendData(data);
+    }
+
     try {
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('error');
     } catch {}
@@ -1322,6 +1515,7 @@ class PlayScene extends Phaser.Scene {
     this.levelText.setPosition(w / 2, h / 2 - 100);
 
     if (this.pauseButton) this.pauseButton.setPosition(w - 40, h - 40);
+    if (this.shopButton) this.shopButton.setPosition(w - 120, h - 40);
     if (this.wagonCountText) this.wagonCountText.setPosition(w - 150, h - 40);
     if (this.wagonProgressText) this.wagonProgressText.setPosition(w / 2, h - 40);
 
