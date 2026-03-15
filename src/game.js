@@ -9,6 +9,7 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
+    // Загружаем звуки (если есть)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
@@ -111,7 +112,7 @@ class BootScene extends Phaser.Scene {
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
-    // ========== ПЛАНЕТЫ ==========
+    // ========== ПЛАНЕТЫ (больше, разбросаны) ==========
     const createPlanet = (color, hasRing, hasAtmo, idx) => {
       g.clear();
       g.fillStyle(color);
@@ -132,13 +133,14 @@ class BootScene extends Phaser.Scene {
       g.generateTexture(`planet_${idx}`, 64, 64);
     };
     
-    createPlanet(0x4a90e2, true, true, 1);
-    createPlanet(0xe67e22, false, true, 2);
-    createPlanet(0x2ecc71, true, false, 3);
-    createPlanet(0x9b59b6, false, true, 4);
-    createPlanet(0xf1c40f, true, false, 5);
-    createPlanet(0xe74c3c, false, true, 6);
-    createPlanet(0x1abc9c, true, true, 7);
+    // 15 планет для разнообразия
+    for (let i = 1; i <= 15; i++) {
+      let color, hasRing, hasAtmo;
+      if (i % 3 === 1) { color = 0x4a90e2; hasRing = true; hasAtmo = true; }
+      else if (i % 3 === 2) { color = 0xe67e22; hasRing = false; hasAtmo = true; }
+      else { color = 0x2ecc71; hasRing = true; hasAtmo = false; }
+      createPlanet(color, hasRing, hasAtmo, i);
+    }
 
     // ========== КОСМИЧЕСКИЕ КОРАБЛИ ==========
     g.clear();
@@ -248,10 +250,13 @@ class PlayScene extends Phaser.Scene {
     // Прогрессия вагонов
     this.wagons = [];
     this.collectedCoins = 0;
-    this.coinsForWagon = 15;
-    this.maxWagons = 12;
-    this.wagonGap = 28;
-    this.wagonSpring = 0.12;
+    this.coinsForWagon = 15;      // монет на вагон
+    this.maxWagons = 12;           // максимум вагонов
+    this.wagonGap = 28;            // расстояние между вагонами
+    this.wagonSpring = 0.12;       // упругость
+    // Целевая позиция игрока по X (для смещения вправо, чтобы вагоны помещались)
+    this.targetPlayerX = 110;      // начальная позиция
+    this.playerXSpeed = 0.05;      // скорость смещения к цели
 
     // Состояние
     this.started = false;
@@ -261,11 +266,13 @@ class PlayScene extends Phaser.Scene {
     this.pauseOverlay = null;
     this.pauseTexts = [];
 
-    // Параметры сложности
+    // Параметры сложности (ИЗМЕНЕНО: препятствия реже, но быстрее)
     this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
-    this.gapSize = 240;
-    this.spawnDelay = 1400;
+    this.gapSize = 240;             // начальный зазор
+    // spawnDelay увеличивается с уровнем (препятствия реже)
+    this.spawnDelay = 1300;          // базовый
+    this.spawnDelayIncrease = 50;    // прирост за уровень
 
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
@@ -294,7 +301,7 @@ class PlayScene extends Phaser.Scene {
 
     // Создание мира
     this.createBackground();
-    this.createPlanets();
+    this.createPlanets();            // много планет изначально
     this.createShips();
     this.createAsteroids();
     this.createPlayer();
@@ -324,6 +331,9 @@ class PlayScene extends Phaser.Scene {
     this.updateAsteroids();
 
     if (!this.started || this.dead) return;
+
+    // Плавное смещение игрока к целевой позиции
+    this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
 
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
@@ -380,16 +390,17 @@ class PlayScene extends Phaser.Scene {
   createPlanets() {
     const w = this.scale.width;
     const h = this.scale.height;
-    for (let i = 1; i <= 7; i++) {
-      const x = Phaser.Math.Between(w, w * 5);
+    // Создаём 15 планет, разбросанных далеко
+    for (let i = 1; i <= 15; i++) {
+      const x = Phaser.Math.Between(w, w * 15);
       const y = Phaser.Math.Between(50, h - 50);
       const planet = this.add.image(x, y, `planet_${i}`);
-      planet.setScale(Phaser.Math.FloatBetween(1.2, 2.8));
-      planet.setAlpha(0.6);
+      planet.setScale(Phaser.Math.FloatBetween(2.0, 4.0));
+      planet.setAlpha(0.5 + Math.random() * 0.3);
       planet.setDepth(-15);
       this.planets.push({
         sprite: planet,
-        speed: Phaser.Math.Between(3, 15),
+        speed: Phaser.Math.Between(2, 12),
       });
     }
   }
@@ -398,20 +409,20 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
     const shipTextures = ['bg_ship_1', 'bg_ship_2'];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       const tex = shipTextures[Math.floor(Math.random() * shipTextures.length)];
       const ship = this.add.image(
-        Phaser.Math.Between(w, w * 8),
+        Phaser.Math.Between(w, w * 12),
         Phaser.Math.Between(50, h - 50),
         tex
       );
-      ship.setScale(Phaser.Math.FloatBetween(0.5, 1.2));
-      ship.setAlpha(0.8);
+      ship.setScale(Phaser.Math.FloatBetween(0.5, 1.5));
+      ship.setAlpha(0.7);
       ship.setDepth(-10);
       ship.setBlendMode(Phaser.BlendModes.ADD);
       this.ships.push({
         sprite: ship,
-        speed: Phaser.Math.Between(5, 15),
+        speed: Phaser.Math.Between(3, 10),
       });
     }
   }
@@ -420,27 +431,27 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
     const asteroidTextures = ['bg_asteroid_1', 'bg_asteroid_2'];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       const tex = asteroidTextures[Math.floor(Math.random() * asteroidTextures.length)];
       const asteroid = this.add.image(
-        Phaser.Math.Between(w, w * 8),
+        Phaser.Math.Between(w, w * 12),
         Phaser.Math.Between(50, h - 50),
         tex
       );
-      asteroid.setScale(Phaser.Math.FloatBetween(0.5, 1.2));
-      asteroid.setAlpha(0.8);
-      asteroid.setDepth(-10);
+      asteroid.setScale(Phaser.Math.FloatBetween(0.6, 1.8));
+      asteroid.setAlpha(0.7);
+      asteroid.setDepth(-12);
       asteroid.setBlendMode(Phaser.BlendModes.ADD);
       this.asteroids.push({
         sprite: asteroid,
-        speed: Phaser.Math.Between(5, 15),
+        speed: Phaser.Math.Between(4, 14),
       });
     }
   }
 
   createPlayer() {
     const h = this.scale.height;
-    this.player = this.physics.add.image(110, h / 2, 'player');
+    this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
     this.player.setScale(0.9);
     this.player.setCollideWorldBounds(false);
     this.player.setMaxVelocity(600, 1000);
@@ -708,9 +719,12 @@ class PlayScene extends Phaser.Scene {
     if (newLevel > this.level) {
       this.level = newLevel;
       
+      // Увеличиваем скорость
       this.baseSpeed = 240 + this.level * 18;
+      // Препятствия становятся уже
       this.gapSize = Math.max(160, 240 - this.level * 6);
-      this.spawnDelay = Math.max(900, 1400 - this.level * 40);
+      // Препятствия появляются реже (spawnDelay растёт)
+      this.spawnDelay = Math.min(2500, 1300 + this.level * 50);
       
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
@@ -727,6 +741,7 @@ class PlayScene extends Phaser.Scene {
         ease: 'Power2',
       });
 
+      // Добавляем случайную планету при переходе уровня
       this.addRandomPlanet();
     }
   }
@@ -734,7 +749,7 @@ class PlayScene extends Phaser.Scene {
   addRandomPlanet() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const idx = Phaser.Math.Between(1, 7);
+    const idx = Phaser.Math.Between(1, 15);
     const planet = this.add.image(w + 200, Phaser.Math.Between(50, h - 50), `planet_${idx}`);
     planet.setScale(Phaser.Math.FloatBetween(1.5, 3.0));
     planet.setAlpha(0.6);
@@ -763,6 +778,11 @@ class PlayScene extends Phaser.Scene {
 
   addWagon() {
     if (this.wagons.length >= this.maxWagons) return;
+    
+    // Сдвигаем целевую позицию игрока вправо, чтобы освободить место для вагонов
+    this.targetPlayerX += this.wagonGap * 0.5; // сдвиг на полрасстояния, чтобы 4 вагона влезали
+    // Ограничиваем, чтобы игрок не улетел за экран
+    this.targetPlayerX = Math.min(this.scale.width * 0.8, this.targetPlayerX);
     
     let last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
     let spawnX = last.x - this.wagonGap * 2;
@@ -814,6 +834,9 @@ class PlayScene extends Phaser.Scene {
       if (index !== -1) {
         wagon.destroy();
         this.wagons.splice(index, 1);
+        // При потере вагона сдвигаем цель игрока обратно
+        this.targetPlayerX -= this.wagonGap * 0.5;
+        this.targetPlayerX = Math.max(110, this.targetPlayerX);
         this.cameras.main.shake(100, 0.005);
         this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
         this.updateCameraZoom();
@@ -844,7 +867,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnCoin(x, y) {
-    if (Math.random() > 0.75) return;
+    // Увеличиваем вероятность появления монет до 0.9
+    if (Math.random() > 0.9) return;
     
     let coinType = 'gold';
     let texture = 'coin_gold';
@@ -1254,8 +1278,8 @@ class PlayScene extends Phaser.Scene {
     
     for (let p of this.planets) {
       p.sprite.x -= p.speed * factor * (1 / 60);
-      if (p.sprite.x < -200) {
-        p.sprite.x = w + Phaser.Math.Between(300, 800);
+      if (p.sprite.x < -300) {
+        p.sprite.x = w + Phaser.Math.Between(400, 2000);
         p.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
       }
     }
@@ -1268,7 +1292,7 @@ class PlayScene extends Phaser.Scene {
     for (let s of this.ships) {
       s.sprite.x -= s.speed * factor * (1 / 60);
       if (s.sprite.x < -200) {
-        s.sprite.x = w + Phaser.Math.Between(300, 1000);
+        s.sprite.x = w + Phaser.Math.Between(300, 1500);
         s.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
       }
     }
@@ -1281,7 +1305,7 @@ class PlayScene extends Phaser.Scene {
     for (let a of this.asteroids) {
       a.sprite.x -= a.speed * factor * (1 / 60);
       if (a.sprite.x < -200) {
-        a.sprite.x = w + Phaser.Math.Between(300, 1000);
+        a.sprite.x = w + Phaser.Math.Between(300, 1500);
         a.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
       }
     }
