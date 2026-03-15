@@ -9,10 +9,11 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки (если есть)
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
     this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
   }
 
@@ -46,8 +47,12 @@ class BootScene extends Phaser.Scene {
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
 
-    // ========== ВАГОНЧИКИ (разноцветные) ==========
-    const colors = [0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844, 0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66];
+    // ========== ВАГОНЧИКИ ==========
+    const colors = [
+      0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844,
+      0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66
+    ];
+    
     for (let i = 0; i < colors.length; i++) {
       g.clear();
       g.fillStyle(colors[i]);
@@ -61,6 +66,8 @@ class BootScene extends Phaser.Scene {
       g.fillStyle(0xffaa00);
       g.fillCircle(12, 24, 3);
       g.fillCircle(28, 24, 3);
+      g.fillStyle(0x000000, 0.2);
+      g.fillRect(6, 26, 36, 2);
       g.generateTexture(`wagon_${i}`, 48, 34);
     }
 
@@ -73,8 +80,11 @@ class BootScene extends Phaser.Scene {
       g.fillRoundedRect(10, 0, 15, 400, 8);
       g.fillStyle(light);
       g.fillRoundedRect(0, 0, 100, 30, 12);
+      g.fillStyle(color);
+      g.fillRoundedRect(0, 370, 100, 30, 12);
       g.generateTexture(name, 100, 400);
     };
+    
     createGate(0x0ea5e9, 0x67e8f9, 'gate_blue');
     createGate(0x22c55e, 0x86efac, 'gate_green');
     createGate(0xeab308, 0xfde047, 'gate_yellow');
@@ -88,36 +98,40 @@ class BootScene extends Phaser.Scene {
       g.fillCircle(16, 16, 14);
       g.lineStyle(4, lineColor);
       g.strokeCircle(16, 16, 9);
+      g.lineStyle(2, lineColor, 0.5);
+      g.strokeCircle(16, 16, 6);
       g.fillStyle(0xffffff, 0.4);
       g.fillCircle(10, 10, 4);
       g.generateTexture(name, 32, 32);
     };
+    
     createCoin(0xfacc15, 0xfffbeb, 'coin_gold');
     createCoin(0xef4444, 0xffaa00, 'coin_red');
     createCoin(0x3498db, 0xffffff, 'coin_blue');
     createCoin(0x2ecc71, 0xffffff, 'coin_green');
     createCoin(0x9b59b6, 0xffffff, 'coin_purple');
 
-    // ========== ПЛАНЕТЫ (декоративные) ==========
+    // ========== ПЛАНЕТЫ ==========
     const createPlanet = (color, hasRing, hasAtmo, idx) => {
       g.clear();
       g.fillStyle(color);
       g.fillCircle(32, 32, 28);
-      g.fillStyle(0x000000, 0.2);
+      g.fillStyle(0x000000, 0.3);
       g.fillCircle(20, 20, 6);
       g.fillCircle(44, 44, 8);
-      g.fillStyle(0xffffff, 0.1);
+      g.fillStyle(0xffffff, 0.15);
       g.fillCircle(30, 45, 5);
       if (hasRing) {
-        g.lineStyle(4, 0xccaa88, 0.6);
+        g.lineStyle(4, 0xccaa88, 0.7);
         g.strokeEllipse(32, 32, 70, 20);
       }
       if (hasAtmo) {
-        g.fillStyle(0x88aaff, 0.2);
+        g.fillStyle(0x88aaff, 0.25);
         g.fillCircle(32, 32, 34);
       }
       g.generateTexture(`planet_${idx}`, 64, 64);
     };
+    
     createPlanet(0x4a90e2, true, true, 1);
     createPlanet(0xe67e22, false, true, 2);
     createPlanet(0x2ecc71, true, false, 3);
@@ -126,8 +140,7 @@ class BootScene extends Phaser.Scene {
     createPlanet(0xe74c3c, false, true, 6);
     createPlanet(0x1abc9c, true, true, 7);
 
-    // ========== КОСМИЧЕСКИЕ КОРАБЛИ (фоновые) ==========
-    // Инопланетный корабль (тарелка)
+    // ========== КОСМИЧЕСКИЕ КОРАБЛИ ==========
     g.clear();
     g.fillStyle(0x88aaff);
     g.fillEllipse(40, 30, 70, 20);
@@ -136,9 +149,9 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0xffaa00);
     g.fillCircle(20, 30, 5);
     g.fillCircle(60, 30, 5);
+    g.fillCircle(40, 30, 3);
     g.generateTexture('bg_ship_1', 90, 50);
 
-    // Корабль Мангалот
     g.clear();
     g.fillStyle(0xcc3333);
     g.fillRoundedRect(20, 20, 70, 30, 8);
@@ -147,9 +160,10 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0xffaa00);
     g.fillCircle(35, 35, 5);
     g.fillCircle(55, 35, 5);
+    g.fillCircle(75, 35, 4);
     g.generateTexture('bg_ship_2', 120, 60);
 
-    // Астероиды
+    // ========== АСТЕРОИДЫ ==========
     g.clear();
     g.fillStyle(0x6b4e2e);
     g.fillEllipse(40, 40, 70, 50);
@@ -170,28 +184,44 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(45, 45, 12);
     g.generateTexture('bg_asteroid_2', 90, 70);
 
-    // ========== ЗВЁЗДЫ И ЧАСТИЦЫ ==========
+    // ========== ЧАСТИЦЫ ==========
     g.clear();
     g.fillStyle(0xffffff);
     g.fillCircle(2, 2, 2);
     g.generateTexture('star', 4, 4);
+    
     g.clear();
-    g.fillStyle(0xffaa00, 0.8);
+    g.fillStyle(0xffaa00, 0.9);
     g.fillCircle(4, 4, 4);
     g.generateTexture('flare', 8, 8);
+    
     g.clear();
-    g.fillStyle(0xffffff, 0.5);
+    g.fillStyle(0xffffff, 0.6);
     g.fillCircle(3, 3, 3);
     g.generateTexture('spark', 6, 6);
 
     // ========== КНОПКА ПАУЗЫ ==========
     g.clear();
-    g.fillStyle(0x2c3e50, 0.8);
+    g.fillStyle(0x2c3e50, 0.85);
     g.fillRoundedRect(0, 0, 60, 60, 10);
+    g.lineStyle(2, 0x22d3ee);
+    g.strokeRoundedRect(0, 0, 60, 60, 10);
     g.fillStyle(0xffffff);
     g.fillRect(15, 15, 10, 30);
     g.fillRect(35, 15, 10, 30);
     g.generateTexture('pause_button', 60, 60);
+
+    // ========== ИКОНКА ВАГОНА ==========
+    g.clear();
+    g.fillStyle(0x88ccff);
+    g.fillRoundedRect(8, 8, 32, 18, 4);
+    g.fillStyle(0x000000);
+    g.fillRect(12, 14, 4, 3);
+    g.fillRect(20, 14, 4, 3);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(10, 24, 2);
+    g.fillCircle(22, 24, 2);
+    g.generateTexture('wagon_icon', 48, 34);
 
     g.destroy();
   }
@@ -218,10 +248,10 @@ class PlayScene extends Phaser.Scene {
     // Прогрессия вагонов
     this.wagons = [];
     this.collectedCoins = 0;
-    this.coinsForWagon = 10;      // каждые 10 монет – новый вагон
-    this.maxWagons = 10;           // максимум вагонов
-    this.wagonGap = 30;            // расстояние между вагонами
-    this.wagonSpring = 0.1;        // упругость
+    this.coinsForWagon = 15;
+    this.maxWagons = 12;
+    this.wagonGap = 28;
+    this.wagonSpring = 0.12;
 
     // Состояние
     this.started = false;
@@ -232,10 +262,10 @@ class PlayScene extends Phaser.Scene {
     this.pauseTexts = [];
 
     // Параметры сложности
-    this.baseSpeed = 250;
+    this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
-    this.gapSize = 220;
-    this.spawnDelay = 1300;
+    this.gapSize = 240;
+    this.spawnDelay = 1400;
 
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
@@ -246,19 +276,21 @@ class PlayScene extends Phaser.Scene {
     this.bonusMultiplier = 1;
     this.bonusTimer = null;
     this.shieldActive = false;
-    this.magnetRange = 200;        // радиус магнита
+    this.magnetRange = 220;
+    this.lastBonusTime = 0;
 
     // Группы объектов
     this.pipes = [];
     this.coins = [];
     this.scoreZones = [];
     this.stars = [];
-    this.planets = [];             // декоративные планеты
-    this.ships = [];               // фоновые корабли
-    this.asteroids = [];            // фоновые астероиды
+    this.planets = [];
+    this.ships = [];
+    this.asteroids = [];
 
     // Таймеры
     this.mainTimers = [];
+    this.soundQueue = [];
 
     // Создание мира
     this.createBackground();
@@ -296,20 +328,23 @@ class PlayScene extends Phaser.Scene {
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
 
-    // Смерть при выходе за границы
-    if (!this.shieldActive && (this.player.y < 0 || this.player.y > this.scale.height)) {
+    if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
       this.handleDeath();
     }
 
-    // Магнит
     if (this.bonusActive && this.bonusType === 'magnet') {
-      [...this.coins].forEach(item => {
-        if (item.active && Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y) < this.magnetRange) {
+      const magnetCoins = this.coins.filter(item => item.active);
+      for (let item of magnetCoins) {
+        const dist = Phaser.Math.Distance.Between(
+          this.player.x, this.player.y,
+          item.x, item.y
+        );
+        if (dist < this.magnetRange) {
           const angle = Phaser.Math.Angle.Between(item.x, item.y, this.player.x, this.player.y);
-          item.x += Math.cos(angle) * 8;
-          item.y += Math.sin(angle) * 8;
+          item.x += Math.cos(angle) * 10;
+          item.y += Math.sin(angle) * 10;
         }
-      });
+      }
     }
 
     this.updateWagons();
@@ -323,8 +358,9 @@ class PlayScene extends Phaser.Scene {
   createBackground() {
     const w = this.scale.width;
     const h = this.scale.height;
+    
     this.add.rectangle(w / 2, h / 2, w, h, 0x030712).setDepth(-30);
-
+    
     for (let i = 0; i < 200; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
@@ -413,10 +449,12 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setMass(10000);
 
     // Звуки
-    this.coinSound = this.sound.add('coin_sound');
-    this.itemSound = this.sound.add('item_sound');
-    this.tapSound = this.sound.add('tap_sound', { volume: 0.2 });
-    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.5 });
+    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
 
     this.trailEmitter = this.add.particles(0, 0, 'flare', {
       speed: 40,
@@ -441,10 +479,11 @@ class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
       stroke: '#22d3ee',
       strokeThickness: 4,
+      fontFamily: 'Arial, sans-serif',
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
     this.bestText = this.add.text(20, 24, `🏆 ${this.best}`, {
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#7dd3fc',
       fontStyle: 'bold',
       stroke: '#0f172a',
@@ -452,7 +491,7 @@ class PlayScene extends Phaser.Scene {
     }).setDepth(10).setScrollFactor(0);
 
     this.crystalText = this.add.text(w - 20, 24, '💎 0', {
-      fontSize: '22px',
+      fontSize: '20px',
       color: '#fde047',
       fontStyle: 'bold',
       stroke: '#0f172a',
@@ -460,7 +499,7 @@ class PlayScene extends Phaser.Scene {
     }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
 
     this.meterText = this.add.text(20, h - 80, '📏 0 м', {
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#a5f3fc',
       fontStyle: 'bold',
       stroke: '#0f172a',
@@ -468,10 +507,11 @@ class PlayScene extends Phaser.Scene {
     }).setDepth(10).setScrollFactor(0);
 
     this.bonusText = this.add.text(w - 20, 70, '', {
-      fontSize: '20px',
+      fontSize: '18px',
       fontStyle: 'bold',
       stroke: '#0f172a',
       strokeThickness: 2,
+      align: 'right',
     }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
 
     this.levelText = this.add.text(w / 2, h / 2 - 100, '', {
@@ -482,16 +522,24 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 6,
     }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
 
-    this.wagonCountText = this.add.text(w - 150, h - 40, `🚃 0`, {
-      fontSize: '22px',
+    this.wagonCountText = this.add.text(w - 150, h - 40, `🚃 0/${this.maxWagons}`, {
+      fontSize: '18px',
       color: '#88ccff',
       fontStyle: 'bold',
       stroke: '#0f172a',
       strokeThickness: 2,
     }).setDepth(10).setScrollFactor(0);
 
-    this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ, ЧТОБЫ УДЛИНЯТЬ ТАКСИ', {
-      fontSize: '17px',
+    this.wagonProgressText = this.add.text(w / 2, h - 40, `${this.collectedCoins}/${this.coinsForWagon}`, {
+      fontSize: '14px',
+      color: '#a5f3fc',
+      fontStyle: 'bold',
+      stroke: '#0f172a',
+      strokeThickness: 1,
+    }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+
+    this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ\nЧТОБЫ УДЛИНИТЬ ТАКСИ', {
+      fontSize: '16px',
       color: '#fff',
       align: 'center',
       fontStyle: 'bold',
@@ -500,12 +548,20 @@ class PlayScene extends Phaser.Scene {
       shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 4, fill: true },
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
-    // Кнопка паузы
+    this.coinTipsText = this.add.text(w / 2, h * 0.55, '🟡 Золото | 🔴 Скорость | 🔵 Щит | 🟢 Магнит | 🟣 Замедление', {
+      fontSize: '12px',
+      color: '#cbd5e1',
+      align: 'center',
+      fontStyle: 'italic',
+    }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+
     this.pauseButton = this.add.image(w - 40, h - 40, 'pause_button')
       .setInteractive()
       .setDepth(20)
       .setScrollFactor(0);
     this.pauseButton.on('pointerdown', () => this.togglePause());
+    this.pauseButton.on('pointerover', () => this.pauseButton.setScale(1.1));
+    this.pauseButton.on('pointerout', () => this.pauseButton.setScale(1));
 
     this.createGameOverBox();
   }
@@ -513,20 +569,36 @@ class PlayScene extends Phaser.Scene {
   createGameOverBox() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const panel = this.add.rectangle(0, 0, Math.min(400, w * 0.85), 340, 0x0f172a, 0.95)
+    
+    const panel = this.add.rectangle(0, 0, Math.min(400, w * 0.85), 360, 0x0f172a, 0.95)
       .setStrokeStyle(4, 0x22d3ee, 0.9)
       .setScrollFactor(0);
-    const title = this.add.text(0, -120, 'ИГРА ОКОНЧЕНА', {
-      fontSize: '30px', color: '#fff', fontStyle: 'bold', stroke: '#7c3aed', strokeThickness: 4
+    
+    const title = this.add.text(0, -130, 'ИГРА ОКОНЧЕНА', {
+      fontSize: '32px',
+      color: '#fff',
+      fontStyle: 'bold',
+      stroke: '#7c3aed',
+      strokeThickness: 4
     }).setOrigin(0.5).setScrollFactor(0);
+    
     const subtitle = this.add.text(0, -30, '', {
-      fontSize: '24px', color: '#7dd3fc', fontStyle: 'bold', align: 'center',
-      stroke: '#0f172a', strokeThickness: 2
+      fontSize: '18px',
+      color: '#7dd3fc',
+      fontStyle: 'bold',
+      align: 'center',
+      stroke: '#0f172a',
+      strokeThickness: 2
     }).setOrigin(0.5).setScrollFactor(0);
     subtitle.setName('subtitle');
-    const tip = this.add.text(0, 100, 'Тапни, чтобы сыграть снова', {
-      fontSize: '20px', color: '#cbd5e1', align: 'center', fontStyle: 'bold'
+    
+    const tip = this.add.text(0, 110, 'Нажми, чтобы сыграть снова', {
+      fontSize: '18px',
+      color: '#cbd5e1',
+      align: 'center',
+      fontStyle: 'bold'
     }).setOrigin(0.5).setScrollFactor(0);
+    
     this.gameOverBox = this.add.container(w / 2, h / 2, [panel, title, subtitle, tip]);
     this.gameOverBox.setVisible(false);
   }
@@ -538,18 +610,17 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
+    this.coinTipsText.setVisible(false);
     if (this.bgMusic) this.bgMusic.play();
 
     this.spawnGate();
     this.scheduleNextSpawn();
-
-    // Таймер для монет (не нужен, монеты спавнятся с воротами)
   }
 
   scheduleNextSpawn() {
     if (this.dead) return;
     this.time.delayedCall(this.spawnDelay, () => {
-      if (!this.dead) {
+      if (!this.dead && this.started) {
         this.spawnGate();
         this.scheduleNextSpawn();
       }
@@ -566,36 +637,56 @@ class PlayScene extends Phaser.Scene {
       duration: 150,
       ease: 'Quad.out',
     });
-    if (this.tapSound) this.tapSound.play();
+    this.playSound(this.tapSound);
     try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch {}
   }
 
-  // ========== ПАУЗА ==========
+  playSound(sound, volume = null) {
+    if (!sound) return;
+    try {
+      if (sound.isPlaying) return;
+      if (volume !== null) sound.setVolume(volume);
+      sound.play();
+    } catch (e) {
+      console.warn('Sound play error:', e);
+    }
+  }
+
   togglePause() {
     this.isPaused = !this.isPaused;
 
     if (this.isPaused) {
       this.physics.pause();
       this.pauseOverlay = this.add.rectangle(
-        this.scale.width/2,
-        this.scale.height/2,
+        this.scale.width / 2,
+        this.scale.height / 2,
         this.scale.width,
         this.scale.height,
         0x000000, 0.5
       ).setDepth(25).setScrollFactor(0);
 
       const pauseText = this.add.text(
-        this.scale.width/2,
-        this.scale.height/2 - 50,
-        'ПАУЗА',
-        { fontSize: '48px', color: '#fff', fontStyle: 'bold' }
+        this.scale.width / 2,
+        this.scale.height / 2 - 50,
+        '⏸️ ПАУЗА',
+        {
+          fontSize: '48px',
+          color: '#fff',
+          fontStyle: 'bold',
+          stroke: '#7c3aed',
+          strokeThickness: 4
+        }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       const tipText = this.add.text(
-        this.scale.width/2,
-        this.scale.height/2 + 20,
+        this.scale.width / 2,
+        this.scale.height / 2 + 30,
         'Нажми на кнопку паузы, чтобы продолжить',
-        { fontSize: '18px', color: '#ccc', align: 'center' }
+        {
+          fontSize: '16px',
+          color: '#ccc',
+          align: 'center'
+        }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
@@ -612,19 +703,23 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ========== ПРОГРЕССИЯ ==========
   updateLevel() {
     const newLevel = Math.floor(this.meters / 300);
     if (newLevel > this.level) {
       this.level = newLevel;
-      this.baseSpeed = 250 + this.level * 20;
-      this.gapSize = Math.max(160, 220 - this.level * 8);
-      this.spawnDelay = Math.max(900, 1300 - this.level * 50);
+      
+      this.baseSpeed = 240 + this.level * 18;
+      this.gapSize = Math.max(160, 240 - this.level * 6);
+      this.spawnDelay = Math.max(900, 1400 - this.level * 40);
+      
       if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
 
       this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
       this.levelText.setVisible(true);
       this.levelText.setAlpha(1);
+      
+      this.playSound(this.levelUpSound);
+      
       this.tweens.add({
         targets: this.levelText,
         alpha: 0,
@@ -650,7 +745,6 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ВАГОНЫ ==========
   updateWagons() {
     if (this.wagons.length === 0) return;
     let prev = this.player;
@@ -669,10 +763,12 @@ class PlayScene extends Phaser.Scene {
 
   addWagon() {
     if (this.wagons.length >= this.maxWagons) return;
-    let last = this.wagons.length > 0 ? this.wagons[this.wagons.length-1] : this.player;
+    
+    let last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
     let spawnX = last.x - this.wagonGap * 2;
     let spawnY = last.y;
     let texIndex = Phaser.Math.Between(0, 9);
+    
     let wagon = this.physics.add.image(spawnX, spawnY, `wagon_${texIndex}`);
     wagon.setScale(0.8);
     wagon.body.setCircle(12, 8, 6);
@@ -680,12 +776,11 @@ class PlayScene extends Phaser.Scene {
     wagon.body.setMass(0.5);
     wagon.body.setDrag(0.9);
     wagon.setDepth(5 + this.wagons.length);
-    wagon.setData('hp', 1); // базовое здоровье
+    wagon.setData('hp', 1);
 
     this.physics.add.collider(wagon, this.pipes, this.wagonHit, null, this);
     this.wagons.push(wagon);
 
-    // Эффект появления (прилетает справа)
     wagon.x = this.scale.width + 50;
     wagon.y = this.player.y;
     this.tweens.add({
@@ -696,8 +791,20 @@ class PlayScene extends Phaser.Scene {
       onComplete: () => { wagon.x = spawnX; }
     });
 
-    this.wagonCountText.setText(`🚃 ${this.wagons.length}`);
+    this.playSound(this.wagonSound);
+    this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
     this.updateCameraZoom();
+
+    const emitter = this.add.particles(wagon.x, wagon.y, 'spark', {
+      speed: 80,
+      scale: { start: 0.6, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 300,
+      quantity: 10,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: 0x88ccff,
+    });
+    emitter.explode(10);
   }
 
   wagonHit(wagon, pipe) {
@@ -708,7 +815,7 @@ class PlayScene extends Phaser.Scene {
         wagon.destroy();
         this.wagons.splice(index, 1);
         this.cameras.main.shake(100, 0.005);
-        this.wagonCountText.setText(`🚃 ${this.wagons.length}`);
+        this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
         this.updateCameraZoom();
       }
     } else {
@@ -736,31 +843,36 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== МОНЕТКИ ==========
   spawnCoin(x, y) {
-    if (Math.random() > 0.7) return;
+    if (Math.random() > 0.75) return;
+    
     let coinType = 'gold';
     let texture = 'coin_gold';
 
     const r = Math.random();
-    if (this.level >= 1 && r < 0.2) {
+    if (this.level >= 1 && r < 0.15) {
       coinType = 'red';
       texture = 'coin_red';
-    } else if (this.level >= 2 && r < 0.35) {
+    } else if (this.level >= 2 && r < 0.28) {
       coinType = 'blue';
       texture = 'coin_blue';
-    } else if (this.level >= 3 && r < 0.45) {
+    } else if (this.level >= 3 && r < 0.40) {
       coinType = 'green';
       texture = 'coin_green';
-    } else if (this.level >= 4 && r < 0.55) {
+    } else if (this.level >= 4 && r < 0.50) {
       coinType = 'purple';
       texture = 'coin_purple';
     }
 
-    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
+    const coin = this.physics.add.image(
+      x + Phaser.Math.Between(-20, 20),
+      y,
+      texture
+    )
       .setImmovable(true)
       .setVelocityX(-this.currentSpeed)
       .setAngularVelocity(200);
+    
     coin.body.setAllowGravity(false);
     coin.setScale(0.01);
     coin.coinType = coinType;
@@ -774,36 +886,61 @@ class PlayScene extends Phaser.Scene {
     });
 
     this.coins.push(coin);
-    this.physics.add.overlap(this.player, coin, (player, coin) => this.collectCoin(coin), null, this);
+    this.physics.add.overlap(
+      this.player,
+      coin,
+      (player, coin) => this.collectCoin(coin),
+      null,
+      this
+    );
   }
 
   collectCoin(coin) {
     if (!coin.active) return;
+    
     let value = 1;
     let bonusType = null;
+    
     switch (coin.coinType) {
-      case 'red': value = 2; bonusType = 'speed'; break;
-      case 'blue': value = 1; bonusType = 'shield'; break;
-      case 'green': value = 1; bonusType = 'magnet'; break;
-      case 'purple': value = 1; bonusType = 'slow'; break;
-      default: value = 1;
+      case 'red':
+        value = 2;
+        bonusType = 'speed';
+        break;
+      case 'blue':
+        value = 1;
+        bonusType = 'shield';
+        break;
+      case 'green':
+        value = 1;
+        bonusType = 'magnet';
+        break;
+      case 'purple':
+        value = 1;
+        bonusType = 'slow';
+        break;
+      default:
+        value = 1;
     }
+    
     if (this.bonusActive && this.bonusType === 'speed') value *= 2;
 
     this.crystals += value;
     this.crystalText.setText(`💎 ${this.crystals}`);
     this.collectedCoins += value;
 
+    this.wagonProgressText.setText(`${this.collectedCoins}/${this.coinsForWagon}`);
+
     if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
       this.addWagon();
       this.collectedCoins -= this.coinsForWagon;
+      this.wagonProgressText.setText(`${this.collectedCoins}/${this.coinsForWagon}`);
     }
 
     if (bonusType) {
-      if (this.itemSound) this.itemSound.play();
+      this.playSound(this.itemSound);
       this.activateBonus(bonusType);
     } else {
-      if (this.coinSound) this.coinSound.play();
+      this.playSound(this.coinSound);
     }
 
     const emitter = this.add.particles(coin.x, coin.y, 'flare', {
@@ -826,16 +963,25 @@ class PlayScene extends Phaser.Scene {
       ease: 'Quad.out',
     });
 
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType ? 'heavy' : 'soft'); } catch {}
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(
+        bonusType ? 'heavy' : 'soft'
+      );
+    } catch {}
+    
     coin.destroy();
   }
 
-  // ========== БОНУСЫ ==========
   activateBonus(type) {
+    const now = Date.now();
+    if (now - this.lastBonusTime < 500) return;
+    this.lastBonusTime = now;
+
     if (this.bonusActive) this.deactivateBonus();
+    
     this.bonusActive = true;
     this.bonusType = type;
-    this.bonusTime = 5;
+    this.bonusTime = 6;
 
     switch (type) {
       case 'speed':
@@ -857,6 +1003,7 @@ class PlayScene extends Phaser.Scene {
         this.bonusText.setColor('#9b59b6').setText(`⏳ ${this.bonusTime}с`);
         break;
     }
+    
     this.bonusText.setVisible(true);
 
     if (this.bonusTimer) this.bonusTimer.remove();
@@ -893,9 +1040,9 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ========== СПАВН КОЛОНН ==========
   spawnGate() {
     if (this.dead) return;
+    
     const w = this.scale.width;
     const h = this.scale.height;
 
@@ -932,10 +1079,11 @@ class PlayScene extends Phaser.Scene {
       });
     });
 
-    if (this.level >= 2 && Math.random() < 0.3) {
+    if (this.level >= 2 && Math.random() < 0.4) {
+      const moveDistance = Phaser.Math.Between(-50, 50);
       this.tweens.add({
         targets: [topPipe, bottomPipe],
-        y: `+=${Phaser.Math.Between(-40, 40)}`,
+        y: `+=${moveDistance}`,
         duration: 1200,
         yoyo: true,
         repeat: -1,
@@ -959,12 +1107,12 @@ class PlayScene extends Phaser.Scene {
     this.spawnCoin(x, centerY);
   }
 
-  // ========== ОБРАБОТКА СОБЫТИЙ ==========
   hitPipe(player, pipe) {
     if (this.shieldActive) {
       const emitter = this.add.particles(pipe.x, pipe.y, 'spark', {
         speed: 150,
         scale: { start: 0.4, end: 0 },
+        alpha: { start: 0.8, end: 0 },
         lifespan: 300,
         quantity: 15,
         blendMode: Phaser.BlendModes.ADD,
@@ -979,16 +1127,19 @@ class PlayScene extends Phaser.Scene {
   passGate(zone) {
     if (zone.passed) return;
     zone.passed = true;
+    
     this.score += 1 * this.bonusMultiplier;
     this.scoreText.setText(String(this.score));
     this.meters += 10;
     this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
     this.updateLevel();
+    
     if (this.score > this.best) {
       this.best = this.score;
       localStorage.setItem('skypulse_best', String(this.best));
       this.bestText.setText(`🏆 ${this.best}`);
     }
+    
     this.tweens.add({
       targets: this.scoreText,
       scaleX: 1.2,
@@ -997,8 +1148,11 @@ class PlayScene extends Phaser.Scene {
       yoyo: true,
       ease: 'Quad.out',
     });
+    
     this.cameras.main.shake(20, 0.001);
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light'); } catch {}
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light');
+    } catch {}
   }
 
   handleDeath() {
@@ -1027,7 +1181,9 @@ class PlayScene extends Phaser.Scene {
     emitter.explode(40);
 
     this.showGameOver();
-    try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('error'); } catch {}
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('error');
+    } catch {}
   }
 
   showGameOver() {
@@ -1037,7 +1193,7 @@ class PlayScene extends Phaser.Scene {
       `Рекорд: ${this.best}\n` +
       `💎 ${this.crystals}\n` +
       `📏 ${Math.floor(this.meters)} м\n` +
-      `Вагонов: ${this.wagons.length}`
+      `🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
     );
     this.gameOverBox.setVisible(true);
     this.gameOverBox.setScale(0.9);
@@ -1052,27 +1208,37 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ОЧИСТКА ==========
   cleanupObjects() {
     this.pipes = this.pipes.filter(p => {
-      if (p.x < -150) { p.destroy(); return false; }
+      if (p.x < -150) {
+        p.destroy();
+        return false;
+      }
       return true;
     });
+
     this.coins = this.coins.filter(c => {
-      if (!c.active || c.x < -100) { c.destroy(); return false; }
+      if (!c.active || c.x < -100) {
+        c.destroy();
+        return false;
+      }
       return true;
     });
+
     this.scoreZones = this.scoreZones.filter(z => {
-      if (z.x < -60) { z.destroy(); return false; }
+      if (z.x < -60) {
+        z.destroy();
+        return false;
+      }
       return true;
     });
   }
 
-  // ========== АНИМАЦИИ ФОНА ==========
   updateStars() {
     const w = this.scale.width;
     const h = this.scale.height;
     const factor = this.started && !this.dead ? 1 : 0.3;
+    
     for (let s of this.stars) {
       s.sprite.x -= s.speed * factor * (1 / 60);
       if (s.sprite.x < -10) {
@@ -1085,6 +1251,7 @@ class PlayScene extends Phaser.Scene {
   updatePlanets() {
     const w = this.scale.width;
     const factor = this.started && !this.dead ? 0.2 : 0.05;
+    
     for (let p of this.planets) {
       p.sprite.x -= p.speed * factor * (1 / 60);
       if (p.sprite.x < -200) {
@@ -1097,6 +1264,7 @@ class PlayScene extends Phaser.Scene {
   updateShips() {
     const w = this.scale.width;
     const factor = this.started && !this.dead ? 0.3 : 0.1;
+    
     for (let s of this.ships) {
       s.sprite.x -= s.speed * factor * (1 / 60);
       if (s.sprite.x < -200) {
@@ -1109,6 +1277,7 @@ class PlayScene extends Phaser.Scene {
   updateAsteroids() {
     const w = this.scale.width;
     const factor = this.started && !this.dead ? 0.3 : 0.1;
+    
     for (let a of this.asteroids) {
       a.sprite.x -= a.speed * factor * (1 / 60);
       if (a.sprite.x < -200) {
@@ -1118,7 +1287,6 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ========== АДАПТАЦИЯ ==========
   onResize() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -1131,9 +1299,11 @@ class PlayScene extends Phaser.Scene {
 
     if (this.pauseButton) this.pauseButton.setPosition(w - 40, h - 40);
     if (this.wagonCountText) this.wagonCountText.setPosition(w - 150, h - 40);
+    if (this.wagonProgressText) this.wagonProgressText.setPosition(w / 2, h - 40);
 
     if (!this.started) {
       this.introText.setPosition(w / 2, h * 0.40);
+      this.coinTipsText.setPosition(w / 2, h * 0.55);
     }
 
     this.gameOverBox.setPosition(w / 2, h / 2);
@@ -1152,13 +1322,19 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    fullscreenTarget: 'parent',
   },
   physics: {
     default: 'arcade',
     arcade: {
       gravity: { y: 1300 },
       debug: false,
+      maxEntities: 500,
     },
+  },
+  render: {
+    pixelArt: false,
+    antialias: true,
   },
   scene: [BootScene, PlayScene],
 };
