@@ -30,17 +30,17 @@ const DIFFICULTY_CURVE = {
   30: { speed: 620, gap: 160, spawnDelay: 700, coinChance: 0.40 }
 };
 
-const UPGRADE_COSTS = {
-  jumpPower: { base: 10, multiplier: 1.15 },
-  gravity: { base: 15, multiplier: 1.15 },
-  shieldDuration: { base: 20, multiplier: 1.2 },
-  magnetRange: { base: 20, multiplier: 1.2 },
-  wagonHP: { base: 25, multiplier: 1.15 },
-  maxWagons: { base: 30, multiplier: 1.25 },
-  wagonGap: { base: 30, multiplier: 1.2 },
-  headHP: { base: 40, multiplier: 1.2 },
-  revival: { base: 50, multiplier: 1.5 }
-};
+const SHOP_UPGRADES = [
+  { key: 'jumpPower', name: 'Сила прыжка', icon: '🚀', cost: 10, maxLevel: 10 },
+  { key: 'gravity', name: 'Гравитация', icon: '⬇️', cost: 15, maxLevel: 10 },
+  { key: 'shieldDuration', name: 'Длительность щита', icon: '🛡️', cost: 20, maxLevel: 10 },
+  { key: 'magnetRange', name: 'Радиус магнита', icon: '🧲', cost: 20, maxLevel: 10 },
+  { key: 'wagonHP', name: 'Прочность вагонов', icon: '💪', cost: 25, maxLevel: 10 },
+  { key: 'maxWagons', name: 'Макс. вагонов', icon: '🚃', cost: 30, maxLevel: 10 },
+  { key: 'wagonGap', name: 'Дистанция вагонов', icon: '📏', cost: 30, maxLevel: 10 },
+  { key: 'headHP', name: 'Макс. здоровье', icon: '❤️', cost: 40, maxLevel: 10 },
+  { key: 'revival', name: 'Воскрешение', icon: '🔄', cost: 50, maxLevel: 5 },
+];
 
 const ACHIEVEMENTS = {
   first_wagon: { id: 'first_wagon', name: 'Первый вагон', icon: '🚃', reward: 10 },
@@ -52,6 +52,18 @@ const ACHIEVEMENTS = {
   score_500: { id: 'score_500', name: '500 очков', icon: '🏆🏆', reward: 100 },
   no_damage: { id: 'no_damage', name: 'Безопасный полёт', icon: '❤️', reward: 50 },
   all_bonuses: { id: 'all_bonuses', name: 'Все бонусы', icon: '✨', reward: 75 },
+};
+
+const UPGRADE_COSTS = {
+  jumpPower: { base: 10, multiplier: 1.15 },
+  gravity: { base: 15, multiplier: 1.15 },
+  shieldDuration: { base: 20, multiplier: 1.2 },
+  magnetRange: { base: 20, multiplier: 1.2 },
+  wagonHP: { base: 25, multiplier: 1.15 },
+  maxWagons: { base: 30, multiplier: 1.25 },
+  wagonGap: { base: 30, multiplier: 1.2 },
+  headHP: { base: 40, multiplier: 1.2 },
+  revival: { base: 50, multiplier: 1.5 }
 };
 
 // =========================================================================
@@ -139,7 +151,7 @@ class GameManager {
 const gameManager = new GameManager();
 
 // =========================================================================
-// МЕНЕДЖЕР ЗВУКОВ (Web Audio API)
+// МЕНЕДЖЕР ЗВУКОВ (Web Audio API + загрузка MP3)
 // =========================================================================
 
 class AudioManager {
@@ -148,6 +160,7 @@ class AudioManager {
     this.sounds = {};
     this.masterGain = this.audioContext.createGain();
     this.masterGain.connect(this.audioContext.destination);
+    this.music = null;
   }
 
   createSound(name, frequency, duration, type = 'sine') {
@@ -171,10 +184,25 @@ class AudioManager {
     osc.stop(this.audioContext.currentTime + sound.duration);
   }
 
-  playMusic(loop = true) {
-    // Фоновая музыка будет генерироваться как последовательность нот (упрощённо)
+  loadMusic(scene) {
+    // Загружаем вашу музыку fifth_element_theme.mp3
+    scene.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+  }
+
+  playMusic(scene) {
     if (!gameManager.data.musicEnabled) return;
-    // Можно реализовать простую мелодию, но для краткости оставим заглушку
+    if (!this.music) {
+      this.music = scene.sound.add('bg_music', { loop: true, volume: 0.4 });
+    }
+    if (!this.music.isPlaying) {
+      this.music.play();
+    }
+  }
+
+  stopMusic() {
+    if (this.music && this.music.isPlaying) {
+      this.music.stop();
+    }
   }
 }
 
@@ -353,12 +381,13 @@ class UpgradeSystem {
   getUpgradeCost(key) {
     const level = this.upgrades[key] || 0;
     const config = UPGRADE_COSTS[key];
+    if (!config) return 999999;
     return Math.floor(config.base * Math.pow(config.multiplier, level));
   }
 }
 
 // =========================================================================
-// BOOT SCENE – создание всех текстур
+// BOOT SCENE – создание всех текстур и загрузка музыки
 // =========================================================================
 
 class BootScene extends Phaser.Scene {
@@ -367,7 +396,21 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Ничего не загружаем, текстуры создаём программно
+    // Создаём глобальный аудио менеджер
+    if (!window.audioManager) {
+      window.audioManager = new AudioManager();
+      // Создаём звуковые эффекты (синтезированные)
+      window.audioManager.createSound('coin', 800, 0.1);
+      window.audioManager.createSound('item', 1200, 0.15);
+      window.audioManager.createSound('tap', 600, 0.05);
+      window.audioManager.createSound('wagon', 400, 0.2);
+      window.audioManager.createSound('levelup', 1600, 0.3);
+      window.audioManager.createSound('purchase', 700, 0.2);
+      window.audioManager.createSound('revive', 500, 0.3);
+      window.audioManager.createSound('hit', 300, 0.2);
+    }
+    // Загружаем фоновую музыку
+    window.audioManager.loadMusic(this);
   }
 
   create() {
@@ -681,18 +724,9 @@ class MenuScene extends Phaser.Scene {
       color: COLORS.text_muted
     }).setOrigin(0.5);
 
-    // Инициализация аудио менеджера (глобально)
-    if (!window.audioManager) {
-      window.audioManager = new AudioManager();
-      // Создаём звуки
-      window.audioManager.createSound('coin', 800, 0.1);
-      window.audioManager.createSound('item', 1200, 0.15);
-      window.audioManager.createSound('tap', 600, 0.05);
-      window.audioManager.createSound('wagon', 400, 0.2);
-      window.audioManager.createSound('levelup', 1600, 0.3);
-      window.audioManager.createSound('purchase', 700, 0.2);
-      window.audioManager.createSound('revive', 500, 0.3);
-      window.audioManager.createSound('hit', 300, 0.2);
+    // Запускаем музыку
+    if (window.audioManager) {
+      window.audioManager.playMusic(this);
     }
   }
 
@@ -733,7 +767,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс (исправленная и улучшенная)
+// PLAY SCENE – основной игровой процесс
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -789,15 +823,14 @@ class PlayScene extends Phaser.Scene {
     this.bonusMultiplier = 1;
     this.bonusTimer = null;
     this.shieldActive = false;
-    this.magnetActive = false; // добавим отдельный флаг для магнита
+    this.magnetActive = false;
     this.magnetRange = 220;
     this.lastBonusTime = 0;
-    this.shieldDuration = 5; // базовая длительность щита
+    this.shieldDuration = 5;
 
-    // Улучшения – будут применены через UpgradeSystem
+    // Улучшения
     this.upgradeSystem = new UpgradeSystem(this);
     this.jumpPower = this.upgradeSystem.getUpgradeValue('jumpPower');
-    // Гравитация уже применена в UpgradeSystem.applyAllUpgrades
 
     // Группы объектов
     this.pipes = [];
@@ -1410,7 +1443,7 @@ class PlayScene extends Phaser.Scene {
 
     this.bonusActive = true;
     this.bonusType = type;
-    this.bonusTime = this.shieldDuration; // используем длительность щита как базовую для всех (можно настроить отдельно)
+    this.bonusTime = this.shieldDuration;
 
     switch (type) {
       case 'speed':
@@ -1703,14 +1736,8 @@ class PlayScene extends Phaser.Scene {
 
     for (let up of upgrades) {
       const current = this.upgradeSystem.getUpgradeValue(up.key);
-      const next = this.upgradeSystem.getUpgradeValue(up.key, true); // для следующего уровня
-      // Для простоты покажем текущее значение, а следующее можно вычислить
       const level = this.upgradeSystem.upgrades[up.key] || 0;
-      const maxLevel = UPGRADE_COSTS[up.key] ? (() => {
-        // примерная логика, можно захардкодить
-        if (up.key === 'revival') return 5;
-        else return 10;
-      })() : 10;
+      const maxLevel = up.key === 'revival' ? 5 : 10;
       const text = `${up.icon} ${up.name}: ${current}`;
       const cost = this.upgradeSystem.getUpgradeCost(up.key);
       const canAfford = this.crystals >= cost && level < maxLevel;
@@ -2153,13 +2180,10 @@ class ShopScene extends Phaser.Scene {
     this.add.text(w/2,30,'МАГАЗИН', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
     this.add.text(w/2,80,`💎 ${gameManager.data.crystals}`, { fontSize:'20px', fontFamily:"'Space Mono', monospace", color:COLORS.accent, stroke:'#0f172a', strokeThickness:2 }).setOrigin(0.5);
 
-    // Для отображения улучшений используем временный объект, так как здесь нет UpgradeSystem
-    // Можно создать простую копию
-    const upgrades = GAME_CONFIG.SHOP_UPGRADES;
     let y = 130;
-    for (let up of upgrades) {
+    for (let up of SHOP_UPGRADES) {
       const level = gameManager.data.upgrades[up.key] || 0;
-      const cost = Math.floor(up.cost * Math.pow(1.15, level)); // упрощённо
+      const cost = Math.floor(up.cost * Math.pow(1.15, level));
       const canAfford = gameManager.data.crystals >= cost && level < up.maxLevel;
       const bg = this.add.rectangle(w/2, y, w-20, 50, 0x1a1a3a).setStrokeStyle(2, canAfford ? COLORS.primary : COLORS.text_muted);
       this.add.text(20, y-15, `${up.icon} ${up.name}`, { fontSize:'14px', fontFamily:"'Orbitron', sans-serif", color:COLORS.text_primary }).setOrigin(0,0.5);
