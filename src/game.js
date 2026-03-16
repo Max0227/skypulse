@@ -214,13 +214,26 @@ class BootScene extends Phaser.Scene {
     g.fillRect(35, 15, 10, 30);
     g.generateTexture('pause_button', 60, 60);
 
-    // ========== ИКОНКА МАГАЗИНА ==========
+    // ========== НОВАЯ КНОПКА МАГАЗИНА (золотая корзина) ==========
     g.clear();
+    g.fillStyle(0xffaa00, 0.9);
+    g.fillRoundedRect(0, 0, 60, 60, 12);
+    g.lineStyle(3, 0xffdd44, 1);
+    g.strokeRoundedRect(0, 0, 60, 60, 12);
+    // Ручка корзины
+    g.fillStyle(0xcc8800);
+    g.fillRect(20, 8, 20, 6);
+    // Тело корзины
+    g.fillStyle(0xffcc00);
+    g.fillRoundedRect(12, 14, 36, 30, 6);
     g.fillStyle(0xffaa00);
-    g.fillCircle(16, 16, 14);
-    g.fillStyle(0xffdd44);
-    g.fillCircle(16, 16, 10);
-    g.generateTexture('shop_icon', 32, 32);
+    g.fillRect(18, 24, 8, 12);
+    g.fillRect(34, 24, 8, 12);
+    // Блики
+    g.fillStyle(0xffffaa, 0.5);
+    g.fillCircle(18, 20, 3);
+    g.fillCircle(42, 30, 2);
+    g.generateTexture('shop_button', 60, 60);
 
     // ========== ИКОНКА ВАГОНА ==========
     g.clear();
@@ -367,6 +380,13 @@ class PlayScene extends Phaser.Scene {
     this.stationActive = false;
     this.stationTimer = null;
 
+    // Новые переменные для обратного отсчёта
+    this.resumeCountdownTimer = null;
+    this.countdownActive = false;
+    this.countdownText = null;
+    this.countdownOverlay = null;
+    this.countdownPrepareText = null;
+
     // Загрузка прогресса
     this.loadProgress();
 
@@ -439,7 +459,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (this.isPaused) return;
+    if (this.isPaused || this.countdownActive) return;
 
     this.updateStars(delta);
     this.updatePlanets(delta);
@@ -698,6 +718,7 @@ class PlayScene extends Phaser.Scene {
       fontStyle: 'italic',
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
+    // Кнопка паузы
     this.pauseButton = this.add.image(w - 40, h - 40, 'pause_button')
       .setInteractive()
       .setDepth(20)
@@ -706,12 +727,15 @@ class PlayScene extends Phaser.Scene {
     this.pauseButton.on('pointerover', () => this.pauseButton.setScale(1.1));
     this.pauseButton.on('pointerout', () => this.pauseButton.setScale(1));
 
-    this.shopButton = this.add.image(w - 120, h - 40, 'shop_icon')
+    // Новая кнопка магазина (золотая корзина)
+    this.shopButton = this.add.image(w - 120, h - 40, 'shop_button')
       .setInteractive()
       .setDepth(20)
       .setScrollFactor(0)
       .setVisible(true);
-    this.shopButton.on('pointerdown', () => this.showShop());
+    this.shopButton.on('pointerdown', () => this.openShop());
+    this.shopButton.on('pointerover', () => this.shopButton.setScale(1.1));
+    this.shopButton.on('pointerout', () => this.shopButton.setScale(1));
 
     this.createGameOverBox();
 
@@ -888,6 +912,20 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
+  // Новый метод: открытие магазина с автоматической паузой
+  openShop() {
+    if (this.dead || this.shopVisible) return;
+    // Если идёт обратный отсчёт, отменяем его
+    if (this.countdownActive) {
+      this.cancelResumeCountdown();
+    }
+    // Ставим паузу (если не была)
+    if (!this.isPaused) {
+      this.togglePause();
+    }
+    this.showShop();
+  }
+
   updateLevel() {
     const newLevel = Math.floor(this.meters / 300);
     if (newLevel > this.level) {
@@ -995,7 +1033,7 @@ class PlayScene extends Phaser.Scene {
       onComplete: () => msg.destroy()
     });
 
-    this.showShop();
+    this.openShop(); // автоматически открываем магазин
 
     if (this.stationPlanet.label) this.stationPlanet.label.destroy();
     this.stationPlanet.destroy();
@@ -1321,27 +1359,31 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  // ========== КИБЕРПАНК МАГАЗИН ==========
+  // ========== ПОЛНОЭКРАННЫЙ КИБЕРПАНК МАГАЗИН ==========
   showShop() {
     if (this.shopVisible) return;
     this.shopVisible = true;
+    // Пауза уже должна быть включена через openShop, но на всякий случай
     this.physics.pause();
 
     const w = this.scale.width;
     const h = this.scale.height;
 
-    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x0a0a1a, 0.9)
+    // Затемняющий фон (весь экран)
+    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x0a0a1a, 0.95)
       .setDepth(40)
       .setScrollFactor(0)
       .setInteractive();
 
-    const panel = this.add.rectangle(w/2, h/2, 500, 500, 0x0d0d1a)
+    // Панель магазина на весь экран с отступами
+    const panel = this.add.rectangle(w/2, h/2, w - 40, h - 80, 0x0d0d1a)
       .setStrokeStyle(4, 0x00ffff, 0.8)
       .setDepth(41)
       .setScrollFactor(0);
 
-    const title = this.add.text(w/2, h/2 - 200, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '28px',
+    // Заголовок с неоновым свечением
+    const title = this.add.text(w/2, h/2 - (h/2) + 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
+      fontSize: '32px',
       fontFamily: '"Courier New", monospace',
       color: '#00ffff',
       stroke: '#ff00ff',
@@ -1349,8 +1391,9 @@ class PlayScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 10, fill: true }
     }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
 
-    const balance = this.add.text(w/2, h/2 - 160, `💎 ${this.crystals}`, {
-      fontSize: '24px',
+    // Баланс
+    const balance = this.add.text(w/2, h/2 - (h/2) + 80, `💎 ${this.crystals}`, {
+      fontSize: '28px',
       fontFamily: '"Courier New", monospace',
       color: '#ffaa00',
       stroke: '#ff5500',
@@ -1373,14 +1416,14 @@ class PlayScene extends Phaser.Scene {
       { key: 'revival', name: 'Воскрешение', current: this.upgradeLevels.revival, next: this.upgradeLevels.revival+1 },
     ];
 
-    let y = h/2 - 120;
+    let y = h/2 - 150; // начальная позиция по вертикали
     for (let up of upgrades) {
       const cost = this.upgradeCosts[up.key];
       const text = `${up.name}: ${up.current} → ${up.next}`;
-      
+
       // Текст улучшения
-      const t = this.add.text(w/2 - 150, y, text, {
-        fontSize: '14px',
+      const t = this.add.text(w/2 - 180, y, text, {
+        fontSize: '16px',
         fontFamily: '"Courier New", monospace',
         color: '#ffffff',
         stroke: '#00aaff',
@@ -1391,7 +1434,7 @@ class PlayScene extends Phaser.Scene {
 
       // Цена
       const priceText = this.add.text(w/2 + 50, y, `${cost} 💎`, {
-        fontSize: '14px',
+        fontSize: '16px',
         fontFamily: '"Courier New", monospace',
         color: '#ffaa00',
         stroke: '#ff5500',
@@ -1400,8 +1443,8 @@ class PlayScene extends Phaser.Scene {
       this.shopElements.push(priceText);
 
       // Кнопка покупки
-      const btn = this.add.text(w/2 + 130, y, '[КУПИТЬ]', {
-        fontSize: '14px',
+      const btn = this.add.text(w/2 + 140, y, '[КУПИТЬ]', {
+        fontSize: '16px',
         fontFamily: '"Courier New", monospace',
         color: '#00ff00',
         backgroundColor: '#1a1a3a',
@@ -1417,15 +1460,16 @@ class PlayScene extends Phaser.Scene {
       this.shopElements.push(btn);
       this.shopBuyButtons.push({ key: up.key, btnObj: btn });
 
-      y += 30;
+      y += 40;
     }
 
-    const closeBtn = this.add.text(w/2, h/2 + 150, 'ЗАКРЫТЬ', {
-      fontSize: '20px',
+    // Кнопка закрытия (запускает обратный отсчёт)
+    const closeBtn = this.add.text(w/2, h/2 + 230, 'ЗАКРЫТЬ', {
+      fontSize: '24px',
       fontFamily: '"Courier New", monospace',
       color: '#ff00ff',
       backgroundColor: '#1a1a2e',
-      padding: { x: 15, y: 5 },
+      padding: { x: 20, y: 10 },
       shadow: { offsetX: 0, offsetY: 0, color: '#ff00ff', blur: 8, fill: true }
     })
     .setInteractive()
@@ -1433,7 +1477,7 @@ class PlayScene extends Phaser.Scene {
     .setScrollFactor(0)
     .on('pointerover', () => closeBtn.setStyle({ color: '#ffffff', backgroundColor: '#ff00ff' }))
     .on('pointerout', () => closeBtn.setStyle({ color: '#ff00ff', backgroundColor: '#1a1a2e' }))
-    .on('pointerdown', () => this.hideShop());
+    .on('pointerdown', () => this.startResumeCountdown());
 
     this.shopElements.push(closeBtn);
   }
@@ -1443,9 +1487,92 @@ class PlayScene extends Phaser.Scene {
     this.shopElements.forEach(el => el.destroy());
     this.shopElements = [];
     this.shopVisible = false;
-    this.physics.resume();
+    // Паузу не снимаем — это будет делать обратный отсчёт
   }
 
+  // Новый метод: начало обратного отсчёта перед выходом из паузы
+  startResumeCountdown() {
+    if (this.countdownActive) return;
+    // Скрываем магазин
+    this.hideShop();
+
+    this.countdownActive = true;
+    let count = 3;
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    // Затемняющий фон для отсчёта
+    this.countdownOverlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7)
+      .setDepth(50)
+      .setScrollFactor(0);
+
+    // Текст отсчёта
+    this.countdownText = this.add.text(w/2, h/2, '3', {
+      fontSize: '120px',
+      fontFamily: '"Courier New", monospace',
+      color: '#00ffff',
+      stroke: '#ff00ff',
+      strokeThickness: 8,
+      shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 20, fill: true }
+    }).setOrigin(0.5).setDepth(51).setScrollFactor(0);
+
+    // Подпись
+    this.countdownPrepareText = this.add.text(w/2, h/2 + 100, 'ПРИГОТОВЬСЯ', {
+      fontSize: '32px',
+      fontFamily: '"Courier New", monospace',
+      color: '#ffffff',
+      stroke: '#00aaff',
+      strokeThickness: 2
+    }).setOrigin(0.5).setDepth(51).setScrollFactor(0);
+
+    this.resumeCountdownTimer = this.time.addEvent({
+      delay: 1000,
+      callback: () => {
+        count--;
+        if (count > 0) {
+          this.countdownText.setText(count.toString());
+        } else {
+          // Завершаем отсчёт
+          this.countdownText.setText('ПОЕХАЛИ!');
+          this.time.delayedCall(500, () => {
+            this.countdownOverlay.destroy();
+            this.countdownText.destroy();
+            this.countdownPrepareText.destroy();
+            this.countdownActive = false;
+            // Снимаем паузу
+            if (this.isPaused) {
+              this.togglePause(); // снимет паузу
+            }
+          });
+          this.resumeCountdownTimer.remove();
+        }
+      },
+      repeat: 2
+    });
+  }
+
+  // Новый метод: отмена обратного отсчёта (если игрок снова откроет магазин)
+  cancelResumeCountdown() {
+    if (this.resumeCountdownTimer) {
+      this.resumeCountdownTimer.remove();
+      this.resumeCountdownTimer = null;
+    }
+    if (this.countdownOverlay) {
+      this.countdownOverlay.destroy();
+      this.countdownOverlay = null;
+    }
+    if (this.countdownText) {
+      this.countdownText.destroy();
+      this.countdownText = null;
+    }
+    if (this.countdownPrepareText) {
+      this.countdownPrepareText.destroy();
+      this.countdownPrepareText = null;
+    }
+    this.countdownActive = false;
+  }
+
+  // Методы покупки улучшений
   buyUpgrade(key) {
     if (this.crystals < this.upgradeCosts[key]) return;
     this.crystals -= this.upgradeCosts[key];
@@ -1505,6 +1632,7 @@ class PlayScene extends Phaser.Scene {
       if (item) item.textObj.setText(text);
     }
 
+    // Обновляем баланс
     const balanceText = this.shopElements.find(el => el.text && el.text.includes('💎') && el.depth === 42);
     if (balanceText) balanceText.setText(`💎 ${this.crystals}`);
   }
