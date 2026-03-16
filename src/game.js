@@ -155,15 +155,15 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки (используем прямые ссылки на бесплатные звуки)
-    this.load.audio('coin_sound', 'https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
-    this.load.audio('item_sound', 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    this.load.audio('tap_sound', 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
-    this.load.audio('wagon_sound', 'https://assets.mixkit.co/active_storage/sfx/2848/2848-preview.mp3');
-    this.load.audio('level_up_sound', 'https://assets.mixkit.co/active_storage/sfx/2058/2058-preview.mp3');
-    this.load.audio('bg_music', 'https://assets.mixkit.co/active_storage/music/226/226-preview.mp3');
-    this.load.audio('purchase_sound', 'https://assets.mixkit.co/active_storage/sfx/2073/2073-preview.mp3');
-    this.load.audio('revive_sound', 'https://assets.mixkit.co/active_storage/sfx/2862/2862-preview.mp3');
+    // Загружаем звуки (локальные файлы)
+    this.load.audio('coin_sound', 'sounds/coin.mp3');
+    this.load.audio('item_sound', 'sounds/item.mp3');
+    this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
+    this.load.audio('bg_music', 'sounds/bg_music.mp3');
+    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
+    this.load.audio('revive_sound', 'sounds/revive.mp3');
   }
 
   create() {
@@ -174,7 +174,7 @@ class BootScene extends Phaser.Scene {
   createTextures() {
     const g = this.add.graphics();
 
-    // ========== ИГРОК: НЕОНОВОЕ ТАКСИ ==========
+    // ========== ИГРОК ==========
     g.clear();
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
@@ -258,11 +258,12 @@ class BootScene extends Phaser.Scene {
     createCoin(0x44ff44, 0xffffff, 'coin_green');
     createCoin(0xff44ff, 0xffffff, 'coin_purple');
 
-    // ========== ПЛАНЕТЫ ==========
+    // ========== ПЛАНЕТЫ (ИСПРАВЛЕНО) ==========
+    const neonColors = [0x00ffff, 0xff00ff, 0xffff00, 0x00ffaa, 0xffaa00, 0xaa00ff, 0xff44aa, 0x44ffaa];
+    
     for (let i = 1; i <= 15; i++) {
       g.clear();
-      const hue = (i * 24) % 360;
-      const color = Phaser.Display.Color.HSLToRGB(hue / 360, 0.7, 0.5).color;
+      const color = neonColors[i % neonColors.length];
       
       g.fillStyle(color);
       g.fillCircle(32, 32, 28);
@@ -351,7 +352,7 @@ class BootScene extends Phaser.Scene {
     g.clear();
     g.fillStyle(0x1a1a3a, 0.9);
     g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, COLORS.primary);
+    g.lineStyle(2, 0x00ffff);
     g.strokeRoundedRect(0, 0, 50, 50, 8);
     g.fillStyle(0xffffff);
     g.fillRect(15, 15, 8, 20);
@@ -360,9 +361,9 @@ class BootScene extends Phaser.Scene {
 
     // ========== КНОПКА МАГАЗИНА ==========
     g.clear();
-    g.fillStyle(COLORS.accent, 0.9);
+    g.fillStyle(0xffaa00, 0.9);
     g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, COLORS.accent);
+    g.lineStyle(2, 0xffaa00);
     g.strokeRoundedRect(0, 0, 50, 50, 8);
     g.fillStyle(0xcc8800);
     g.fillRect(15, 8, 20, 5);
