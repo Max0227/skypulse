@@ -70,7 +70,7 @@ class GameManager {
     try {
       const saved = localStorage.getItem('skypulse_data');
       const data = saved ? JSON.parse(saved) : this.getDefaultData();
-      // Валидация
+      // Валидация структуры
       if (!data.upgrades) data.upgrades = {};
       if (!data.achievements) data.achievements = {};
       if (!data.stats) data.stats = this.getDefaultData().stats;
@@ -151,7 +151,7 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки (заглушки base64, чтобы не было ошибок 404)
+    // Загружаем звуки (base64 заглушки, чтобы не было ошибок 404)
     const silentBase64 = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==';
     this.load.audio('coin_sound', silentBase64);
     this.load.audio('item_sound', silentBase64);
@@ -563,7 +563,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс
+// PLAY SCENE – основной игровой процесс (исправленная версия)
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -587,7 +587,7 @@ class PlayScene extends Phaser.Scene {
     this.coinsForWagon = 15;
     this.maxWagons = 12 + (gameManager.data.upgrades.maxWagons || 0) * 2;
     this.wagonGap = 28 - (gameManager.data.upgrades.wagonGap || 0) * 2;
-    this.wagonSpring = 0.15;
+    this.wagonSpring = 0.25; // Увеличено для лучшего следования
     this.targetPlayerX = 110;
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
@@ -823,8 +823,19 @@ class PlayScene extends Phaser.Scene {
 
   createPlayer() {
     const h = this.scale.height;
-    this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
     
+    // Проверка существования текстуры
+    if (!this.textures.exists('player')) {
+      const g = this.add.graphics();
+      g.fillStyle(0xffaa00);
+      g.fillRect(0, 0, 50, 30);
+      g.generateTexture('player_fallback', 50, 30);
+      g.destroy();
+      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player_fallback');
+    } else {
+      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
+    }
+
     this.player.setScale(0.9);
     this.player.setCollideWorldBounds(false);
     this.player.setMaxVelocity(600, 1000);
@@ -850,14 +861,25 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
-    // Звуки
-    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-    this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-    this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+    // Звуки (с заглушками)
+    try {
+      this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+      this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+      this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+      this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+      this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+      this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+      this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+    } catch (e) {
+      // Заглушки
+      this.coinSound = { play: () => {} };
+      this.itemSound = { play: () => {} };
+      this.tapSound = { play: () => {} };
+      this.wagonSound = { play: () => {} };
+      this.levelUpSound = { play: () => {} };
+      this.purchaseSound = { play: () => {} };
+      this.reviveSound = { play: () => {} };
+    }
   }
 
   createUI() {
@@ -1064,7 +1086,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   flap() {
-    const jumpBase = 300 + this.upgradeLevels.jumpPower * 20;
+    const jumpBase = 300 + (this.upgradeLevels.jumpPower || 0) * 20;
     this.player.body.setVelocityY(-jumpBase);
     this.player.setScale(0.95);
     this.tweens.add({
@@ -1084,7 +1106,7 @@ class PlayScene extends Phaser.Scene {
       if (sound.isPlaying) return;
       if (volume !== null) sound.setVolume(volume);
       sound.play();
-    } catch (e) { console.warn('Sound error:', e); }
+    } catch (e) { /* игнорируем */ }
   }
 
   togglePause() {
@@ -1334,7 +1356,7 @@ class PlayScene extends Phaser.Scene {
     wagon.body.setMass(0.5);
     wagon.body.setDrag(0.9);
     wagon.setDepth(5 + this.wagons.length);
-    wagon.setData('hp', 1 + this.upgradeLevels.wagonHP);
+    wagon.setData('hp', 1 + (this.upgradeLevels.wagonHP || 0));
     wagon.setTint(0x88aaff);
     wagon.setBlendMode(Phaser.BlendModes.ADD);
 
@@ -1498,9 +1520,14 @@ class PlayScene extends Phaser.Scene {
       this.updateProgressBar();
     }
 
+    // Если такой же бонус уже активен, добавляем время
     if (bonusType) {
-      this.playSound(this.itemSound);
-      this.activateBonus(bonusType);
+      if (this.bonusActive && this.bonusType === bonusType) {
+        this.bonusTime += 2;
+        this.playSound(this.itemSound);
+      } else {
+        this.activateBonus(bonusType);
+      }
       this.createBonusEffect(bonusType, coin.x, coin.y);
     } else {
       this.playSound(this.coinSound);
@@ -1538,253 +1565,134 @@ class PlayScene extends Phaser.Scene {
     gameManager.save();
   }
 
+  // ========== ИСПРАВЛЕННАЯ СИСТЕМА БОНУСОВ ==========
   activateBonus(type) {
-    const now = Date.now();
-    if (now - this.lastBonusTime < 500) return;
-    this.lastBonusTime = now;
-
-    if (this.bonusActive) this.deactivateBonus();
+    if (this.bonusActive && this.bonusType !== type) {
+      this.deactivateBonus();
+    }
     
     this.bonusActive = true;
     this.bonusType = type;
-    this.bonusTime = 5 + this.upgradeLevels.shieldDuration * 2;
-
-    switch (type) {
+    
+    // Время зависит от типа бонуса и уровня улучшения
+    switch(type) {
+      case 'shield':
+        this.bonusTime = 4 + (this.upgradeLevels.shieldDuration || 0) * 1.5;
+        this.shieldActive = true;
+        // Отключаем только вертикальные коллизии, чтобы монеты собирались
+        this.player.body.checkCollision.down = false;
+        this.player.body.checkCollision.up = false;
+        this.player.setTint(0x00ffff);
+        this.bonusText.setColor('#00ffff').setText(`🛡️ ${Math.ceil(this.bonusTime)}с`);
+        break;
+        
       case 'speed':
+        this.bonusTime = 6 + (this.upgradeLevels.shieldDuration || 0) * 0.5;
         this.currentSpeed = this.baseSpeed * 1.5;
         this.bonusMultiplier = 2;
-        this.bonusText.setColor('#00ffff').setText(`🚀 x2 ${this.bonusTime}с`);
+        this.player.setTint(0xffff00);
+        this.bonusText.setColor('#ffff00').setText(`🚀 x2 ${Math.ceil(this.bonusTime)}с`);
         break;
-      case 'shield':
-        this.shieldActive = true;
-        this.player.body.checkCollision.none = true;
-        this.player.setTint(0x00ffff);
-        this.bonusText.setColor('#00ffff').setText(`🛡️ ${this.bonusTime}с`);
-        break;
+        
       case 'magnet':
-        this.bonusText.setColor('#00ff00').setText(`🧲 ${this.bonusTime}с`);
+        this.bonusTime = 5 + (this.upgradeLevels.magnetRange || 0) * 0.3;
+        this.player.setTint(0xff00ff);
+        this.bonusText.setColor('#ff00ff').setText(`🧲 ${Math.ceil(this.bonusTime)}с`);
         break;
+        
       case 'slow':
+        this.bonusTime = 5 + (this.upgradeLevels.shieldDuration || 0) * 0.5;
         this.currentSpeed = this.baseSpeed * 0.6;
-        this.bonusText.setColor('#ff00ff').setText(`⏳ ${this.bonusTime}с`);
+        this.player.setTint(0xff8800);
+        this.bonusText.setColor('#ff8800').setText(`⏳ ${Math.ceil(this.bonusTime)}с`);
         break;
     }
     
     this.bonusText.setVisible(true);
-    this.updatePlayerVisuals();
-
-    if (this.bonusTimer) this.bonusTimer.remove();
-    this.bonusTimer = this.time.addEvent({
-      delay: 1000,
-      callback: () => {
-        this.bonusTime -= 1;
-        if (this.bonusTime <= 0) {
-          this.deactivateBonus();
-        } else {
-          let emoji = '🚀';
-          if (type === 'shield') emoji = '🛡️';
-          else if (type === 'magnet') emoji = '🧲';
-          else if (type === 'slow') emoji = '⏳';
-          this.bonusText.setText(`${emoji} ${this.bonusTime}с`);
-        }
-      },
-      loop: true
-    });
+    this.createBonusEffect(type, this.player.x, this.player.y);
+    this.startBonusTimer();
   }
 
   deactivateBonus() {
     this.bonusActive = false;
     this.bonusType = null;
+    
+    // Восстанавливаем коллизии
     this.shieldActive = false;
+    this.player.body.checkCollision.down = true;
+    this.player.body.checkCollision.up = true;
+    
     this.currentSpeed = this.baseSpeed;
     this.bonusMultiplier = 1;
     this.player.clearTint();
-    this.player.body.checkCollision.none = false;
     this.bonusText.setVisible(false);
-    this.updatePlayerVisuals();
+    
     if (this.bonusTimer) {
       this.bonusTimer.remove();
       this.bonusTimer = null;
     }
   }
 
-  showShop() {
-    if (this.shopVisible) return;
-    this.shopVisible = true;
-
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-
-    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x0a0a1a, 0.95)
-      .setDepth(40)
-      .setScrollFactor(0)
-      .setInteractive();
-
-    const panel = this.add.rectangle(w/2, h/2, w - 30, h - 60, 0x0d0d1a)
-      .setStrokeStyle(3, 0x00ffff, 0.8)
-      .setDepth(41)
-      .setScrollFactor(0);
-
-    const title = this.add.text(w/2, 30, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '22px',
-      fontFamily,
-      color: '#00ffff',
-      stroke: '#ff00ff',
-      strokeThickness: 2,
-      shadow: { blur: 15, color: '#00ffff', fill: true }
-    }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
-
-    const balance = this.add.text(w/2, 60, `💎 ${this.crystals}`, {
-      fontSize: '18px',
-      fontFamily,
-      color: '#ffaa00',
-      stroke: '#ff5500',
-      strokeThickness: 2
-    }).setOrigin(0.5).setDepth(42).setScrollFactor(0);
-
-    this.shopElements = [overlay, panel, title, balance];
-    this.shopUpgradeTexts = [];
-    this.shopBuyButtons = [];
-
-    const upgrades = [
-      { key:'jumpPower', name:'Сила прыжка', current:300 + this.upgradeLevels.jumpPower*20, next:300 + (this.upgradeLevels.jumpPower+1)*20 },
-      { key:'gravity', name:'Гравитация', current:1300 - this.upgradeLevels.gravity*50, next:1300 - (this.upgradeLevels.gravity+1)*50 },
-      { key:'shieldDuration', name:'Длительность щита', current:5 + this.upgradeLevels.shieldDuration*2, next:5 + (this.upgradeLevels.shieldDuration+1)*2 },
-      { key:'magnetRange', name:'Радиус магнита', current:220 + this.upgradeLevels.magnetRange*30, next:220 + (this.upgradeLevels.magnetRange+1)*30 },
-      { key:'wagonHP', name:'Прочность вагонов', current:1 + this.upgradeLevels.wagonHP, next:1 + (this.upgradeLevels.wagonHP+1) },
-      { key:'maxWagons', name:'Макс. вагонов', current:12 + this.upgradeLevels.maxWagons*2, next:12 + (this.upgradeLevels.maxWagons+1)*2 },
-      { key:'wagonGap', name:'Дистанция между вагонами', current:28 - this.upgradeLevels.wagonGap*2, next:28 - (this.upgradeLevels.wagonGap+1)*2 },
-      { key:'headHP', name:'Макс. здоровье', current:3 + this.upgradeLevels.headHP, next:3 + (this.upgradeLevels.headHP+1) },
-      { key:'revival', name:'Воскрешение', current:this.upgradeLevels.revival, next:this.upgradeLevels.revival+1 },
-    ];
-
-    let y = 90;
-    const col1X = 40;
-    const col2X = w - 180;
-
-    for (let up of upgrades) {
-      const cost = this.upgradeCosts[up.key];
-      const text = `${up.name}: ${up.current} → ${up.next}`;
-      const priceText = `${cost} 💎`;
-
-      const t = this.add.text(col1X, y, text, {
-        fontSize: '11px',
-        fontFamily,
-        color: '#ffffff',
-        stroke: '#00aaff',
-        strokeThickness: 0.5
-      }).setDepth(42).setScrollFactor(0);
-      this.shopElements.push(t);
-      this.shopUpgradeTexts.push({ key: up.key, textObj: t });
-
-      const price = this.add.text(col2X, y, priceText, {
-        fontSize: '11px',
-        fontFamily,
-        color: '#ffaa00',
-        stroke: '#ff5500',
-        strokeThickness: 0.5
-      }).setDepth(42).setScrollFactor(0);
-      this.shopElements.push(price);
-
-      const btn = this.add.text(col2X + 50, y, '[КУПИТЬ]', {
-        fontSize: '10px',
-        fontFamily,
-        color: '#00ff00',
-        backgroundColor: '#1a1a3a',
-        padding: { x: 3, y: 1 },
-        shadow: { blur: 5, color: '#00ff00', fill: true }
-      })
-      .setInteractive()
-      .setDepth(42)
-      .setScrollFactor(0)
-      .on('pointerover', () => btn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' }))
-      .on('pointerout', () => btn.setStyle({ color: '#00ff00', backgroundColor: '#1a1a3a' }))
-      .on('pointerdown', () => this.buyUpgrade(up.key));
-      this.shopElements.push(btn);
-      this.shopBuyButtons.push({ key: up.key, btnObj: btn });
-
-      y += 25;
-    }
-
-    const closeBtn = this.add.text(w/2, h - 30, 'ЗАКРЫТЬ', {
-      fontSize: '16px',
-      fontFamily,
-      color: '#ff00ff',
-      backgroundColor: '#1a1a2e',
-      padding: { x: 12, y: 4 },
-      shadow: { blur: 8, color: '#ff00ff', fill: true }
-    })
-    .setInteractive()
-    .setDepth(42)
-    .setScrollFactor(0)
-    .on('pointerover', () => closeBtn.setStyle({ color: '#ffffff', backgroundColor: '#ff00ff' }))
-    .on('pointerout', () => closeBtn.setStyle({ color: '#ff00ff', backgroundColor: '#1a1a2e' }))
-    .on('pointerdown', () => this.startResumeCountdown());
-
-    this.shopElements.push(closeBtn);
+  startBonusTimer() {
+    if (this.bonusTimer) this.bonusTimer.remove();
+    
+    this.bonusTimer = this.time.addEvent({
+      delay: 100, // обновляем каждые 100 мс для плавности
+      callback: () => {
+        this.bonusTime -= 0.1;
+        
+        if (this.bonusTime <= 0) {
+          this.deactivateBonus();
+        } else {
+          // Обновляем текст каждую секунду
+          if (Math.floor(this.bonusTime) !== Math.floor(this.bonusTime + 0.1)) {
+            const emoji = this.getBonusEmoji(this.bonusType);
+            this.bonusText.setText(`${emoji} ${Math.ceil(this.bonusTime)}с`);
+          }
+        }
+      },
+      loop: true
+    });
   }
 
-  hideShop() {
-    if (!this.shopVisible) return;
-    this.shopElements.forEach(el => el.destroy());
-    this.shopElements = [];
-    this.shopVisible = false;
+  getBonusEmoji(type) {
+    const emojis = {
+      shield: '🛡️',
+      speed: '🚀',
+      magnet: '🧲',
+      slow: '⏳'
+    };
+    return emojis[type] || '✨';
   }
 
-  buyUpgrade(key) {
-    if (this.crystals < this.upgradeCosts[key]) return;
-    this.crystals -= this.upgradeCosts[key];
-    this.crystalText.setText(`💎 ${this.crystals}`);
-    this.upgradeLevels[key]++;
-
-    switch (key) {
-      case 'gravity':
-        this.physics.world.gravity.y = 1300 - this.upgradeLevels.gravity * 50;
-        break;
-      case 'magnetRange':
-        this.magnetRange = 220 + this.upgradeLevels.magnetRange * 30;
-        break;
-      case 'maxWagons':
-        this.maxWagons = 12 + this.upgradeLevels.maxWagons * 2;
-        this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
-        break;
-      case 'wagonGap':
-        this.wagonGap = 28 - this.upgradeLevels.wagonGap * 2;
-        break;
-      case 'headHP':
-        this.maxHeadHP = 3 + this.upgradeLevels.headHP;
-        this.headHP = this.maxHeadHP;
-        this.updateHearts();
-        break;
-    }
-
-    this.playSound(this.purchaseSound);
-    if (this.shopVisible) this.updateShopTexts();
-    gameManager.data.upgrades = { ...this.upgradeLevels };
-    gameManager.data.crystals = this.crystals;
-    gameManager.save();
-  }
-
-  updateShopTexts() {
-    const upgrades = [
-      { key:'jumpPower', name:'Сила прыжка', current:300 + this.upgradeLevels.jumpPower*20, next:300 + (this.upgradeLevels.jumpPower+1)*20 },
-      { key:'gravity', name:'Гравитация', current:1300 - this.upgradeLevels.gravity*50, next:1300 - (this.upgradeLevels.gravity+1)*50 },
-      { key:'shieldDuration', name:'Длительность щита', current:5 + this.upgradeLevels.shieldDuration*2, next:5 + (this.upgradeLevels.shieldDuration+1)*2 },
-      { key:'magnetRange', name:'Радиус магнита', current:220 + this.upgradeLevels.magnetRange*30, next:220 + (this.upgradeLevels.magnetRange+1)*30 },
-      { key:'wagonHP', name:'Прочность вагонов', current:1 + this.upgradeLevels.wagonHP, next:1 + (this.upgradeLevels.wagonHP+1) },
-      { key:'maxWagons', name:'Макс. вагонов', current:12 + this.upgradeLevels.maxWagons*2, next:12 + (this.upgradeLevels.maxWagons+1)*2 },
-      { key:'wagonGap', name:'Дистанция между вагонами', current:28 - this.upgradeLevels.wagonGap*2, next:28 - (this.upgradeLevels.wagonGap+1)*2 },
-      { key:'headHP', name:'Макс. здоровье', current:3 + this.upgradeLevels.headHP, next:3 + (this.upgradeLevels.headHP+1) },
-      { key:'revival', name:'Воскрешение', current:this.upgradeLevels.revival, next:this.upgradeLevels.revival+1 },
-    ];
-    for (let up of upgrades) {
-      const text = `${up.name}: ${up.current} → ${up.next}`;
-      const item = this.shopUpgradeTexts.find(i => i.key === up.key);
-      if (item) item.textObj.setText(text);
-    }
-    const balanceText = this.shopElements.find(el => el.text && el.text.includes('💎') && el.depth === 42);
-    if (balanceText) balanceText.setText(`💎 ${this.crystals}`);
+  createBonusEffect(type, x, y) {
+    const colors = {
+      shield: [0x00ffff, 0x88ccff],
+      speed: [0xffff00, 0xffaa00],
+      magnet: [0xff00ff, 0xff88ff],
+      slow: [0xff8800, 0xffaa44]
+    };
+    
+    const emitter = this.add.particles(x, y, 'flare', {
+      speed: { min: -150, max: 150 },
+      scale: { start: 1.2, end: 0 },
+      alpha: { start: 0.9, end: 0 },
+      lifespan: 500,
+      quantity: 30,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: colors[type] || [0xffffff]
+    });
+    
+    emitter.explode(30);
+    
+    this.tweens.add({
+      targets: this.player,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 200,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
   }
 
   // ========== ДОПОЛНИТЕЛЬНЫЕ СИСТЕМЫ ==========
@@ -2101,6 +2009,7 @@ class PlayScene extends Phaser.Scene {
         tint: [0x00ffff, 0xff00ff]
       });
       emitter.explode(20);
+      this.player.body.setVelocityY(-100); // легкое отталкивание
       return;
     } else {
       this.headHP--;
@@ -2419,136 +2328,6 @@ class PlayScene extends Phaser.Scene {
       this.unlockAchievement('all_bonuses');
     }
   }
-
-  createBonusEffect(type, x, y) {
-    const colors = {
-      speed: 0x00ffff,
-      shield: 0x00ff00,
-      magnet: 0xff00ff,
-      slow: 0xffaa00
-    };
-    
-    const emitter = this.add.particles(x, y, 'spark', {
-      speed: 150,
-      scale: { start: 1, end: 0 },
-      alpha: { start: 0.9, end: 0 },
-      lifespan: 400,
-      quantity: 25,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: colors[type] || 0xffffff
-    });
-    
-    emitter.explode(25);
-  }
-
-  updatePlayerVisuals() {
-    if (!this.player) return;
-    
-    if (this.shieldActive) {
-      this.player.setTint(0x00ffff);
-      this.player.setScale(0.95);
-    } else if (this.bonusActive && this.bonusType === 'speed') {
-      this.player.setTint(0xffff00);
-      this.player.setScale(0.92);
-    } else {
-      this.player.clearTint();
-      this.player.setScale(0.9);
-    }
-  }
-
-  checkWagonCollisions() {
-    for (let wagon of this.wagons) {
-      if (!wagon.active) continue;
-      
-      const dist = Phaser.Math.Distance.Between(
-        this.player.x, this.player.y,
-        wagon.x, wagon.y
-      );
-      
-      if (dist > this.wagonGap * 3) {
-        const index = this.wagons.indexOf(wagon);
-        if (index !== -1) {
-          wagon.destroy();
-          this.wagons.splice(index, 1);
-          this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
-        }
-      }
-    }
-  }
-
-  showNotification(text, duration = 2000, color = '#ffffff') {
-    const w = this.scale.width;
-    const notification = this.add.text(w / 2, 100, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: color,
-      stroke: '#000000',
-      strokeThickness: 2,
-      align: 'center'
-    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
-    
-    this.tweens.add({
-      targets: notification,
-      alpha: 0,
-      duration: duration,
-      ease: 'Power2.easeOut',
-      onComplete: () => notification.destroy()
-    });
-  }
-
-  getGameInfo() {
-    return {
-      score: this.score,
-      level: this.level + 1,
-      meters: Math.floor(this.meters),
-      wagons: this.wagons.length,
-      maxWagons: this.maxWagons,
-      crystals: this.crystals,
-      health: this.headHP,
-      maxHealth: this.maxHeadHP,
-      bonusActive: this.bonusActive,
-      bonusType: this.bonusType,
-      bonusTime: this.bonusTime
-    };
-  }
-
-  exportStats() {
-    const stats = {
-      game: this.getGameInfo(),
-      records: gameManager.data.stats,
-      upgrades: this.upgradeLevels,
-      achievements: this.achievements,
-      timestamp: new Date().toISOString()
-    };
-    
-    return JSON.stringify(stats, null, 2);
-  }
-}
-
-// =========================================================================
-// GAME OVER SCENE
-// =========================================================================
-
-class GameOverScene extends Phaser.Scene {
-  constructor() { super('gameover'); }
-  init(data) { this.resultData = data; }
-  create() {
-    const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0,y:0,add:false });
-    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
-    gradient.fillRect(0,0,w,h);
-    gradient.generateTexture('gameover_bg',w,h);
-    gradient.destroy();
-    this.add.image(0,0,'gameover_bg').setOrigin(0);
-    this.add.text(w/2, h*0.15, 'ИГРА ОКОНЧЕНА', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.danger, stroke:COLORS.secondary, strokeThickness:3, align:'center' }).setOrigin(0.5);
-    const stats = `\n🎯 Счёт: ${this.resultData.score}\n⭐ Уровень: ${this.resultData.level}\n🚃 Вагонов: ${this.resultData.wagons}\n💎 Кристаллов: ${this.resultData.crystals}\n`;
-    this.add.text(w/2, h*0.40, stats, { fontSize:'18px', fontFamily:"'Space Mono', monospace", color:COLORS.text_primary, align:'center', lineSpacing:10 }).setOrigin(0.5);
-    this.createButton(w/2, h*0.65, 'ГЛАВНОЕ МЕНЮ', () => this.scene.start('menu'));
-  }
-  createButton(x,y,t,c) {
-    const btn = this.add.text(x,y,t, { fontSize:'18px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:30,y:10}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
-    return btn;
-  }
 }
 
 // =========================================================================
@@ -2658,204 +2437,53 @@ class StatsScene extends Phaser.Scene {
 // =========================================================================
 
 class SettingsScene extends Phaser.Scene {
-  constructor() {
-    super('settings');
-  }
-
+  constructor() { super('settings'); }
   create() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-
-    // Фон
-    const gradient = this.make.graphics({ x: 0, y: 0, add: false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('settings_bg', w, h);
+    const w = this.scale.width, h = this.scale.height, fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('settings_bg',w,h);
     gradient.destroy();
-
-    this.add.image(0, 0, 'settings_bg').setOrigin(0);
-
-    // Заголовок
-    this.add.text(w / 2, 40, 'НАСТРОЙКИ', {
-      fontSize: '36px',
-      fontFamily,
-      color: COLORS.primary,
-      stroke: COLORS.secondary,
-      strokeThickness: 3
-    }).setOrigin(0.5);
-
+    this.add.image(0,0,'settings_bg').setOrigin(0);
+    this.add.text(w/2,40,'НАСТРОЙКИ', { fontSize:'36px', fontFamily, color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
     let y = 120;
-
-    // Звук
-    this.createToggle(
-      w / 2, y, 'Звук',
-      gameManager.data.soundEnabled,
-      (value) => {
-        gameManager.data.soundEnabled = value;
-        gameManager.save();
-      }
-    );
-    y += 70;
-
-    // Музыка
-    this.createToggle(
-      w / 2, y, 'Музыка',
-      gameManager.data.musicEnabled,
-      (value) => {
-        gameManager.data.musicEnabled = value;
-        gameManager.save();
-      }
-    );
-    y += 70;
-
-    // Кнопка очистки данных
-    this.createButton(w / 2, y, 'ОЧИСТИТЬ ДАННЫЕ', () => {
-      this.confirmClearData();
-    }, 'danger');
-    y += 70;
-
-    // Кнопка экспорта
-    this.createButton(w / 2, y, 'ЭКСПОРТИРОВАТЬ', () => {
-      this.exportData();
+    this.createToggle(w/2, y, 'Звук', gameManager.data.soundEnabled, (v) => { gameManager.data.soundEnabled = v; gameManager.save(); }); y+=70;
+    this.createToggle(w/2, y, 'Музыка', gameManager.data.musicEnabled, (v) => { gameManager.data.musicEnabled = v; gameManager.save(); }); y+=70;
+    this.createButton(w/2, y, 'ОЧИСТИТЬ ДАННЫЕ', () => this.confirmClearData(), 'danger'); y+=70;
+    this.createButton(w/2, y, 'ЭКСПОРТИРОВАТЬ', () => this.exportData());
+    this.createButton(w/2, h-50, 'НАЗАД', () => this.scene.start('menu'));
+  }
+  createToggle(x,y,label,init,cb) {
+    const bg = this.add.rectangle(x,y,250,50,0x1a1a3a).setStrokeStyle(2,COLORS.primary);
+    this.add.text(x-100,y,label,{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:COLORS.text_primary }).setOrigin(0,0.5);
+    const toggleBg = this.add.rectangle(x+80,y,60,30,init?0x00aa00:0xaa0000).setStrokeStyle(2,COLORS.primary).setInteractive().on('pointerdown',()=>{
+      init = !init;
+      toggleBg.setFillStyle(init?0x00aa00:0xaa0000);
+      toggleText.setText(init?'ВКЛ':'ВЫКЛ');
+      cb(init);
     });
-
-    // Кнопка назад
-    this.createButton(w / 2, h - 50, 'НАЗАД', () => {
-      this.scene.start('menu');
-    });
+    const toggleText = this.add.text(x+80,y,init?'ВКЛ':'ВЫКЛ',{ fontSize:'12px', fontFamily:"'Orbitron', monospace", color:'#ffffff' }).setOrigin(0.5);
   }
-
-  createToggle(x, y, label, initialValue, callback) {
-    const bg = this.add.rectangle(x, y, 250, 50, 0x1a1a3a)
-      .setStrokeStyle(2, COLORS.primary);
-
-    const text = this.add.text(x - 100, y, label, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: COLORS.text_primary
-    }).setOrigin(0, 0.5);
-
-    const toggleBg = this.add.rectangle(x + 80, y, 60, 30, initialValue ? 0x00aa00 : 0xaa0000)
-      .setStrokeStyle(2, COLORS.primary)
-      .setInteractive()
-      .on('pointerdown', () => {
-        initialValue = !initialValue;
-        toggleBg.setFillStyle(initialValue ? 0x00aa00 : 0xaa0000);
-        toggleText.setText(initialValue ? 'ВКЛ' : 'ВЫКЛ');
-        callback(initialValue);
-      });
-
-    const toggleText = this.add.text(x + 80, y, initialValue ? 'ВКЛ' : 'ВЫКЛ', {
-      fontSize: '12px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#ffffff'
-    }).setOrigin(0.5);
-
-    return { bg, text, toggleBg, toggleText };
+  createButton(x,y,t,c,type='normal') {
+    const colors = { normal:{bg:'#1a1a3a',text:COLORS.primary}, danger:{bg:'#3a1a1a',text:'#ff4444'} };
+    const col = colors[type];
+    const btn = this.add.text(x,y,t,{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:col.text, backgroundColor:col.bg, padding:{x:20,y:10}, stroke:col.text, strokeThickness:2 }).setOrigin(0.5).setInteractive()
+      .on('pointerover',function(){this.setStyle({color:'#ffffff',backgroundColor:col.text}); this.setScale(1.05);})
+      .on('pointerout',function(){this.setStyle({color:col.text,backgroundColor:col.bg}); this.setScale(1);})
+      .on('pointerdown',c);
   }
-
-  createButton(x, y, text, callback, type = 'normal') {
-    const colors = {
-      normal: { bg: '#1a1a3a', text: COLORS.primary },
-      danger: { bg: '#3a1a1a', text: '#ff4444' }
-    };
-
-    const color = colors[type] || colors.normal;
-
-    const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: color.text,
-      backgroundColor: color.bg,
-      padding: { x: 20, y: 10 },
-      stroke: color.text,
-      strokeThickness: 2
-    })
-      .setOrigin(0.5)
-      .setInteractive()
-      .on('pointerover', function () {
-        this.setStyle({
-          color: '#ffffff',
-          backgroundColor: color.text
-        });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function () {
-        this.setStyle({
-          color: color.text,
-          backgroundColor: color.bg
-        });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
-
-    return btn;
-  }
-
   confirmClearData() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-
-    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.7)
-      .setDepth(50)
-      .setScrollFactor(0);
-
-    const panel = this.add.rectangle(w / 2, h / 2, 280, 150, 0x0a0a1a, 0.95)
-      .setStrokeStyle(2, COLORS.danger)
-      .setDepth(51)
-      .setScrollFactor(0);
-
-    const text = this.add.text(w / 2, h / 2 - 30, 'Очистить все данные?', {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: COLORS.danger
-    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
-
-    const yesBtn = this.add.text(w / 2 - 60, h / 2 + 30, 'ДА', {
-      fontSize: '14px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#00ff00',
-      backgroundColor: '#1a1a3a',
-      padding: { x: 15, y: 5 }
-    })
-      .setInteractive()
-      .setOrigin(0.5)
-      .setDepth(52)
-      .setScrollFactor(0)
-      .on('pointerdown', () => {
-        localStorage.clear();
-        location.reload();
-      });
-
-    const noBtn = this.add.text(w / 2 + 60, h / 2 + 30, 'НЕТ', {
-      fontSize: '14px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#ff0000',
-      backgroundColor: '#1a1a3a',
-      padding: { x: 15, y: 5 }
-    })
-      .setInteractive()
-      .setOrigin(0.5)
-      .setDepth(52)
-      .setScrollFactor(0)
-      .on('pointerdown', () => {
-        overlay.destroy();
-        panel.destroy();
-        text.destroy();
-        yesBtn.destroy();
-        noBtn.destroy();
-      });
+    const w=this.scale.width,h=this.scale.height;
+    const ov=this.add.rectangle(w/2,h/2,w,h,0x000000,0.7).setDepth(50).setScrollFactor(0);
+    const pn=this.add.rectangle(w/2,h/2,280,150,0x0a0a1a,0.95).setStrokeStyle(2,COLORS.danger).setDepth(51).setScrollFactor(0);
+    const tx=this.add.text(w/2,h/2-30,'Очистить все данные?',{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:COLORS.danger }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+    const yes=this.add.text(w/2-60,h/2+30,'ДА',{ fontSize:'14px', fontFamily:"'Orbitron', monospace", color:'#00ff00', backgroundColor:'#1a1a3a', padding:{x:15,y:5} }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0).on('pointerdown',()=>{ localStorage.clear(); location.reload(); });
+    const no=this.add.text(w/2+60,h/2+30,'НЕТ',{ fontSize:'14px', fontFamily:"'Orbitron', monospace", color:'#ff0000', backgroundColor:'#1a1a3a', padding:{x:15,y:5} }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0).on('pointerdown',()=>{ ov.destroy(); pn.destroy(); tx.destroy(); yes.destroy(); no.destroy(); });
   }
-
   exportData() {
-    const data = {
-      gameManager: gameManager.data,
-      timestamp: new Date().toISOString()
-    };
-
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
+    const data = { gameManager: gameManager.data, timestamp: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -2866,7 +2494,33 @@ class SettingsScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// КОНФИГУРАЦИЯ И ЗАПУСК ИГРЫ
+// GAME OVER SCENE
+// =========================================================================
+
+class GameOverScene extends Phaser.Scene {
+  constructor() { super('gameover'); }
+  init(data) { this.resultData = data; }
+  create() {
+    const w = this.scale.width, h = this.scale.height;
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('gameover_bg',w,h);
+    gradient.destroy();
+    this.add.image(0,0,'gameover_bg').setOrigin(0);
+    this.add.text(w/2, h*0.15, 'ИГРА ОКОНЧЕНА', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.danger, stroke:COLORS.secondary, strokeThickness:3, align:'center' }).setOrigin(0.5);
+    const stats = `\n🎯 Счёт: ${this.resultData.score}\n⭐ Уровень: ${this.resultData.level}\n🚃 Вагонов: ${this.resultData.wagons}\n💎 Кристаллов: ${this.resultData.crystals}\n`;
+    this.add.text(w/2, h*0.40, stats, { fontSize:'18px', fontFamily:"'Space Mono', monospace", color:COLORS.text_primary, align:'center', lineSpacing:10 }).setOrigin(0.5);
+    this.createButton(w/2, h*0.65, 'ГЛАВНОЕ МЕНЮ', () => this.scene.start('menu'));
+  }
+  createButton(x,y,t,c) {
+    const btn = this.add.text(x,y,t, { fontSize:'18px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:30,y:10}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
+    return btn;
+  }
+}
+
+// =========================================================================
+// КОНФИГУРАЦИЯ
 // =========================================================================
 
 const config = {
@@ -2875,24 +2529,9 @@ const config = {
   width: 390,
   height: 844,
   backgroundColor: '#030712',
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    expandParent: true
-  },
-  physics: {
-    default: 'arcade',
-    arcade: {
-      gravity: { y: 1300 },
-      debug: false,
-      maxEntities: 500
-    }
-  },
-  render: {
-    pixelArt: false,
-    antialias: true,
-    powerPreference: 'high-performance'
-  },
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: true },
+  physics: { default: 'arcade', arcade: { gravity: { y:1300 }, debug: false, maxEntities:500 } },
+  render: { pixelArt: false, antialias: true, powerPreference: 'high-performance' },
   scene: [
     BootScene,
     MenuScene,
@@ -2905,5 +2544,4 @@ const config = {
   ]
 };
 
-// Запуск игры
 new Phaser.Game(config);
