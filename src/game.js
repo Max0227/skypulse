@@ -851,39 +851,49 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-    const h = this.scale.height;
-    this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
-    this.player.setScale(0.9);
-    this.player.setCollideWorldBounds(false);
-    this.player.setMaxVelocity(600, 1000);
-    this.player.body.setCircle(24, 15, 5);
-    this.player.setBlendMode(Phaser.BlendModes.ADD);
-    this.player.body.setMass(10000);
-    this.player.body.setDrag(500, 0); // добавим трение, чтобы не отбрасывало
-
-    this.trailEmitter = this.add.particles(0, 0, 'flare', {
-      speed: 40,
-      scale: { start: 0.4, end: 0 },
-      alpha: { start: 0.8, end: 0 },
-      lifespan: 200,
-      blendMode: Phaser.BlendModes.ADD,
-      follow: this.player,
-      followOffset: { x: -20, y: 0 },
-      quantity: 4,
-      frequency: 15,
-      tint: [0x00ffff, 0xff00ff, 0xffff00]
-    });
-
-    // Звуки
-    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-    this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-    this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-    // Музыка глобальная
+  const h = this.scale.height;
+  this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
+  
+  // Отладка - убедимся, что текстура загружена
+  if (!this.textures.exists('player')) {
+    console.error('Player texture not found!');
   }
+  
+  this.player.setScale(0.9);
+  this.player.setCollideWorldBounds(false);
+  this.player.setMaxVelocity(600, 1000);
+  this.player.body.setCircle(24, 15, 5);
+  this.player.setBlendMode(Phaser.BlendModes.ADD);
+  this.player.body.setMass(10000);
+  this.player.body.setDrag(500, 0);
+  
+  // Убедимся, что игрок видим
+  this.player.setDepth(15);
+  this.player.setVisible(true);
+
+  // Неоновый след
+  this.trailEmitter = this.add.particles(0, 0, 'flare', {
+    speed: 40,
+    scale: { start: 0.4, end: 0 },
+    alpha: { start: 0.8, end: 0 },
+    lifespan: 200,
+    blendMode: Phaser.BlendModes.ADD,
+    follow: this.player,
+    followOffset: { x: -20, y: 0 },
+    quantity: 4,
+    frequency: 15,
+    tint: [0x00ffff, 0xff00ff, 0xffff00]
+  });
+
+  // Звуки
+  this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+  this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+  this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+  this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+  this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+  this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+  this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+}
 
   createUI() {
     const w = this.scale.width;
