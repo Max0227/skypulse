@@ -57,7 +57,7 @@ const GAME_CONFIG = {
 };
 
 // =========================================================================
-// ГЛОБАЛЬНЫЙ МЕНЕДЖЕР ДАННЫХ (с валидацией)
+// ГЛОБАЛЬНЫЙ МЕНЕДЖЕР ДАННЫХ
 // =========================================================================
 
 class GameManager {
@@ -70,13 +70,13 @@ class GameManager {
     try {
       const saved = localStorage.getItem('skypulse_data');
       const data = saved ? JSON.parse(saved) : this.getDefaultData();
-      // Валидация структуры
+      // Валидация
       if (!data.upgrades) data.upgrades = {};
       if (!data.achievements) data.achievements = {};
       if (!data.stats) data.stats = this.getDefaultData().stats;
-      if (!data.crystals) data.crystals = 0;
-      if (!data.skins) data.skins = ['wagon_default'];
-      if (!data.selectedSkin) data.selectedSkin = 'wagon_default';
+      if (data.crystals === undefined) data.crystals = 0;
+      if (!data.soundEnabled) data.soundEnabled = true;
+      if (!data.musicEnabled) data.musicEnabled = true;
       return data;
     } catch (e) {
       console.error('Failed to load data:', e);
@@ -92,13 +92,20 @@ class GameManager {
       totalMeters: 0,
       totalGates: 0,
       level: 0,
-      upgrades: {},
+      upgrades: {
+        jumpPower: 0,
+        gravity: 0,
+        shieldDuration: 0,
+        magnetRange: 0,
+        wagonHP: 0,
+        maxWagons: 0,
+        wagonGap: 0,
+        headHP: 0,
+        revival: 0,
+      },
       achievements: {},
-      skins: ['wagon_default'],
-      selectedSkin: 'wagon_default',
       soundEnabled: true,
       musicEnabled: true,
-      lastPlayDate: null,
       stats: {
         totalGames: 0,
         totalPlayTime: 0,
@@ -135,19 +142,6 @@ class GameManager {
 const gameManager = new GameManager();
 
 // =========================================================================
-// ЛОГГЕР
-// =========================================================================
-
-class GameLogger {
-  static log(message, data = {}) {
-    console.log(`[GAME] ${message}`, data);
-  }
-  static error(message, error) {
-    console.error(`[ERROR] ${message}`, error);
-  }
-}
-
-// =========================================================================
 // BOOT SCENE – создание всех текстур
 // =========================================================================
 
@@ -157,34 +151,24 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки с обработкой ошибок (файлы могут отсутствовать)
-    try {
-      this.load.audio('coin_sound', 'sounds/coin.mp3');
-      this.load.audio('item_sound', 'sounds/item.mp3');
-      this.load.audio('tap_sound', 'sounds/tap.mp3');
-      this.load.audio('wagon_sound', 'sounds/wagon.mp3');
-      this.load.audio('level_up_sound', 'sounds/level_up.mp3');
-      this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
-      this.load.audio('purchase_sound', 'sounds/purchase.mp3');
-      this.load.audio('revive_sound', 'sounds/revive.mp3');
-    } catch (e) {
-      GameLogger.error('Sound preload error', e);
-    }
+    // Загружаем звуки (заглушки base64, чтобы не было ошибок 404)
+    const silentBase64 = 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==';
+    this.load.audio('coin_sound', silentBase64);
+    this.load.audio('item_sound', silentBase64);
+    this.load.audio('tap_sound', silentBase64);
+    this.load.audio('wagon_sound', silentBase64);
+    this.load.audio('level_up_sound', silentBase64);
+    this.load.audio('purchase_sound', silentBase64);
+    this.load.audio('revive_sound', silentBase64);
   }
 
   create() {
-    // Сначала создаём текстуры, потом музыку и переход
     this.createTextures();
-    try {
-      gameManager.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
-    } catch (e) {
-      GameLogger.warn('Failed to load bg music, continuing without');
-    }
     this.scene.start('menu');
   }
 
   createTextures() {
-    const g = this.add.graphics();
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
 
     // ========== ИГРОК: НЕОНОВОЕ ТАКСИ ==========
     g.clear();
@@ -360,7 +344,8 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(3, 3, 3);
     g.generateTexture('spark', 6, 6);
 
-    // ========== КНОПКА ПАУЗЫ ==========
+    // ========== КНОПКИ ==========
+    // Кнопка паузы
     g.clear();
     g.fillStyle(0x1a1a3a, 0.9);
     g.fillRoundedRect(0, 0, 50, 50, 8);
@@ -371,7 +356,7 @@ class BootScene extends Phaser.Scene {
     g.fillRect(27, 15, 8, 20);
     g.generateTexture('pause_button', 50, 50);
 
-    // ========== КНОПКА МАГАЗИНА ==========
+    // Кнопка магазина
     g.clear();
     g.fillStyle(0xffaa00, 0.9);
     g.fillRoundedRect(0, 0, 50, 50, 8);
@@ -389,7 +374,7 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(35, 25, 2);
     g.generateTexture('shop_button', 50, 50);
 
-    // ========== КНОПКА МЕНЮ ==========
+    // Кнопка меню
     g.clear();
     g.fillStyle(0xff00ff, 0.9);
     g.fillRoundedRect(0, 0, 50, 50, 8);
@@ -401,7 +386,7 @@ class BootScene extends Phaser.Scene {
     g.fillRect(15, 27, 20, 8);
     g.generateTexture('menu_button', 50, 50);
 
-    // ========== СЕРДЕЧКО ==========
+    // Сердечко
     g.clear();
     g.fillStyle(0xff4444);
     g.fillTriangle(8, 6, 16, 18, 24, 6);
@@ -411,7 +396,7 @@ class BootScene extends Phaser.Scene {
     g.strokeTriangle(8, 6, 16, 18, 24, 6);
     g.generateTexture('heart', 32, 24);
 
-    // ========== СТАНЦИЯ ==========
+    // Станция
     g.clear();
     g.fillStyle(0x220066);
     g.fillCircle(48, 48, 40);
@@ -424,8 +409,6 @@ class BootScene extends Phaser.Scene {
     g.generateTexture('station_planet', 96, 96);
 
     g.destroy();
-
-    GameLogger.log('All textures created');
   }
 }
 
@@ -502,23 +485,28 @@ class MenuScene extends Phaser.Scene {
     ).setOrigin(0.5);
 
     // Кнопка "Играть"
-    const playBtn = this.createButton(w / 2, h * 0.45, 'ИГРАТЬ', () => {
+    this.createButton(w / 2, h * 0.45, 'ИГРАТЬ', () => {
       this.scene.start('play');
     }, 'large');
 
     // Кнопка "Магазин"
-    const shopBtn = this.createButton(w / 2, h * 0.58, 'МАГАЗИН', () => {
+    this.createButton(w / 2, h * 0.58, 'МАГАЗИН', () => {
       this.scene.start('shop');
     });
 
     // Кнопка "Достижения"
-    const achievBtn = this.createButton(w / 2, h * 0.68, 'ДОСТИЖЕНИЯ', () => {
+    this.createButton(w / 2, h * 0.68, 'ДОСТИЖЕНИЯ', () => {
       this.scene.start('achievements');
     });
 
     // Кнопка "Статистика"
-    const statsBtn = this.createButton(w / 2, h * 0.78, 'СТАТИСТИКА', () => {
+    this.createButton(w / 2, h * 0.78, 'СТАТИСТИКА', () => {
       this.scene.start('stats');
+    });
+
+    // Кнопка "Настройки"
+    this.createButton(w / 2, h * 0.88, 'НАСТРОЙКИ', () => {
+      this.scene.start('settings');
     });
 
     // Версия
@@ -527,11 +515,6 @@ class MenuScene extends Phaser.Scene {
       fontFamily: "'Space Mono', monospace",
       color: COLORS.text_muted
     }).setOrigin(0.5);
-
-    // Музыка
-    if (gameManager.bgMusic && !gameManager.bgMusic.isPlaying) {
-      gameManager.bgMusic.play();
-    }
   }
 
   createButton(x, y, text, callback, size = 'normal') {
@@ -580,7 +563,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс (исправленный)
+// PLAY SCENE – основной игровой процесс
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -592,12 +575,13 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // ===== Инициализация переменных =====
+    // Счётчики
     this.score = 0;
     this.crystals = gameManager.data.crystals;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
 
+    // Вагоны
     this.wagons = [];
     this.collectedCoins = 0;
     this.coinsForWagon = 15;
@@ -608,6 +592,7 @@ class PlayScene extends Phaser.Scene {
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
 
+    // Состояние
     this.started = false;
     this.dead = false;
     this.level = 0;
@@ -615,15 +600,18 @@ class PlayScene extends Phaser.Scene {
     this.pauseOverlay = null;
     this.pauseTexts = [];
 
+    // Здоровье
     this.maxHeadHP = 3 + (gameManager.data.upgrades.headHP || 0);
     this.headHP = this.maxHeadHP;
 
+    // Сложность
     this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
     this.gapSize = 240;
     this.spawnDelay = 1300;
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
+    // Бонусы
     this.bonusActive = false;
     this.bonusType = null;
     this.bonusTime = 0;
@@ -633,7 +621,8 @@ class PlayScene extends Phaser.Scene {
     this.magnetRange = 220 + (gameManager.data.upgrades.magnetRange || 0) * 30;
     this.lastBonusTime = 0;
 
-    this.upgradeLevels = { ...gameManager.data.upgrades }; // копия
+    // Улучшения
+    this.upgradeLevels = { ...gameManager.data.upgrades };
     this.upgradeCosts = {
       jumpPower: 10, gravity: 15, shieldDuration: 20, magnetRange: 20,
       wagonHP: 25, maxWagons: 30, wagonGap: 30, headHP: 40, revival: 50
@@ -642,6 +631,7 @@ class PlayScene extends Phaser.Scene {
     this.shopVisible = false;
     this.shopElements = [];
 
+    // Группы объектов
     this.pipes = [];
     this.coins = [];
     this.scoreZones = [];
@@ -650,11 +640,15 @@ class PlayScene extends Phaser.Scene {
     this.ships = [];
     this.asteroids = [];
 
+    // Таймеры
     this.spawnTimer = null;
+
+    // Станция
     this.stationPlanet = null;
     this.stationActive = false;
     this.stationTimer = null;
 
+    // Обратный отсчёт
     this.resumeCountdownTimer = null;
     this.countdownActive = false;
     this.countdownText = null;
@@ -666,12 +660,6 @@ class PlayScene extends Phaser.Scene {
     this.initDailyRewards();
     this.initLeaderboard();
     this.initStats();
-
-    // Загрузка прогресса (уже частично использовано)
-    this.loadProgress();
-
-    // Устанавливаем гравитацию после загрузки улучшений
-    this.physics.world.gravity.y = 1300 - this.upgradeLevels.gravity * 50;
 
     // Создание мира
     this.createBackground();
@@ -694,62 +682,6 @@ class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, w, h);
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
-  }
-
-  // Очистка при переходе
-  shutdown() {
-    if (this.spawnTimer) this.spawnTimer.remove();
-    if (this.bonusTimer) this.bonusTimer.remove();
-    if (this.stationTimer) this.stationTimer.remove();
-    if (this.resumeCountdownTimer) this.resumeCountdownTimer.remove();
-    this.coins.forEach(c => c.destroy());
-    this.pipes.forEach(p => p.destroy());
-    this.wagons.forEach(w => w.destroy());
-    if (this.trailEmitter) this.trailEmitter.stop();
-    GameLogger.log('PlayScene shutdown');
-  }
-
-  loadProgress() {
-    try {
-      const saved = localStorage.getItem('skypulse_progress');
-      if (saved) {
-        const data = JSON.parse(saved);
-        this.crystals = data.crystals || 0;
-        this.collectedCoins = data.collectedCoins || 0;
-        this.maxWagons = data.maxWagons || 12;
-        this.wagonGap = data.wagonGap || 28;
-        this.magnetRange = data.magnetRange || 220;
-        this.maxHeadHP = data.maxHeadHP || 3;
-        this.headHP = this.maxHeadHP;
-        if (data.upgradeLevels) {
-          for (let key in this.upgradeLevels) {
-            if (data.upgradeLevels[key] !== undefined) this.upgradeLevels[key] = data.upgradeLevels[key];
-          }
-        }
-        this.maxWagons = 12 + this.upgradeLevels.maxWagons * 2;
-        this.wagonGap = 28 - this.upgradeLevels.wagonGap * 2;
-        this.magnetRange = 220 + this.upgradeLevels.magnetRange * 30;
-        this.maxHeadHP = 3 + this.upgradeLevels.headHP;
-        this.headHP = this.maxHeadHP;
-      }
-    } catch (e) { GameLogger.error('Failed to load progress', e); }
-  }
-
-  saveProgress() {
-    const data = {
-      crystals: this.crystals,
-      collectedCoins: this.collectedCoins,
-      maxWagons: this.maxWagons,
-      wagonGap: this.wagonGap,
-      magnetRange: this.magnetRange,
-      maxHeadHP: this.maxHeadHP,
-      upgradeLevels: this.upgradeLevels
-    };
-    localStorage.setItem('skypulse_progress', JSON.stringify(data));
-    // Синхронизируем с глобальным менеджером
-    gameManager.data.crystals = this.crystals;
-    gameManager.data.upgrades = { ...this.upgradeLevels };
-    gameManager.save();
   }
 
   update(time, delta) {
@@ -891,20 +823,8 @@ class PlayScene extends Phaser.Scene {
 
   createPlayer() {
     const h = this.scale.height;
-
-    // Проверка существования текстуры
-    if (!this.textures.exists('player')) {
-      GameLogger.error('Player texture missing, creating fallback');
-      const g = this.add.graphics();
-      g.fillStyle(0xffaa00);
-      g.fillRect(0, 0, 50, 30);
-      g.generateTexture('player_fallback', 50, 30);
-      g.destroy();
-      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player_fallback');
-    } else {
-      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
-    }
-
+    this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
+    
     this.player.setScale(0.9);
     this.player.setCollideWorldBounds(false);
     this.player.setMaxVelocity(600, 1000);
@@ -912,8 +832,11 @@ class PlayScene extends Phaser.Scene {
     this.player.setBlendMode(Phaser.BlendModes.ADD);
     this.player.body.setMass(10000);
     this.player.body.setDrag(500, 0);
-    this.player.setDepth(15); // поверх UI
+    
+    this.player.setDepth(15);
+    this.player.setVisible(true);
 
+    // Неоновый след
     this.trailEmitter = this.add.particles(0, 0, 'flare', {
       speed: 40,
       scale: { start: 0.4, end: 0 },
@@ -927,25 +850,14 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
-    // Звуки (с защитой)
-    try {
-      this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-      this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-      this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-      this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-      this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-      this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-      this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-    } catch (e) {
-      GameLogger.warn('Sounds not loaded, using dummy');
-      this.coinSound = { play: () => {} };
-      this.itemSound = { play: () => {} };
-      this.tapSound = { play: () => {} };
-      this.wagonSound = { play: () => {} };
-      this.levelUpSound = { play: () => {} };
-      this.purchaseSound = { play: () => {} };
-      this.reviveSound = { play: () => {} };
-    }
+    // Звуки
+    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+    this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+    this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
   }
 
   createUI() {
@@ -1011,6 +923,7 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
+    // Прогресс-бар монет
     this.progressBarBg = this.add.rectangle(w / 2, h - 30, 150, 6, 0x333333).setDepth(9).setScrollFactor(0);
     this.progressBar = this.add.rectangle(w / 2 - 75, h - 30, 0, 4, 0xffaa00).setOrigin(0, 0.5).setDepth(10).setScrollFactor(0);
     this.progressBarText = this.add.text(w / 2, h - 30, `${this.collectedCoins}/${this.coinsForWagon}`, {
@@ -1021,6 +934,7 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 1
     }).setOrigin(0.5).setDepth(11).setScrollFactor(0);
 
+    // Сердечки
     this.heartContainer = this.add.container(10, 30).setDepth(10).setScrollFactor(0);
     this.updateHearts();
 
@@ -1058,6 +972,7 @@ class PlayScene extends Phaser.Scene {
       .on('pointerover', () => this.shopButton.setScale(1.1))
       .on('pointerout', () => this.shopButton.setScale(1));
 
+    // Кнопка меню
     this.menuButton = this.add.image(w - 145, h - 35, 'menu_button')
       .setInteractive()
       .setDepth(20)
@@ -1133,7 +1048,6 @@ class PlayScene extends Phaser.Scene {
     this.started = true;
     this.introText.setVisible(false);
     this.coinTipsText.setVisible(false);
-    // Музыка уже играет из меню
     this.spawnGate();
     this.scheduleNextSpawn();
     this.checkStationSpawn();
@@ -1165,12 +1079,12 @@ class PlayScene extends Phaser.Scene {
   }
 
   playSound(sound, volume = null) {
-    if (!sound || !sound.play) return;
+    if (!sound) return;
     try {
       if (sound.isPlaying) return;
       if (volume !== null) sound.setVolume(volume);
       sound.play();
-    } catch (e) { /* игнорируем */ }
+    } catch (e) { console.warn('Sound error:', e); }
   }
 
   togglePause() {
@@ -1231,7 +1145,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   openShop() {
-    if (this.dead || this.shopVisible) return;
+    if (this.dead) return;
     if (this.countdownActive) this.cancelResumeCountdown();
     if (!this.isPaused) this.togglePause();
     this.showShop();
@@ -1260,16 +1174,14 @@ class PlayScene extends Phaser.Scene {
     const newLevel = Math.floor(this.meters / 300);
     if (newLevel > this.level) {
       this.level = newLevel;
-      this.baseSpeed = 240 + this.level * 18;
-      this.gapSize = Math.max(160, 240 - this.level * 6);
-      this.spawnDelay = Math.min(2500, 1300 + this.level * 50);
-      if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
+      this.updateDifficulty();
       
       this.targetPlayerX = Math.min(this.maxTargetX, 110 + this.level * 3);
       
       this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`);
       this.levelText.setVisible(true).setAlpha(1);
       this.playSound(this.levelUpSound);
+      this.createLevelUpEffect();
       this.tweens.add({
         targets: this.levelText,
         alpha: 0,
@@ -1327,7 +1239,8 @@ class PlayScene extends Phaser.Scene {
     const bonus = this.wagons.length * 10;
     this.crystals += bonus;
     this.crystalText.setText(`💎 ${this.crystals}`);
-    this.saveProgress();
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
 
     const emitter = this.add.particles(this.stationPlanet.x, this.stationPlanet.y, 'flare', {
       speed: 200,
@@ -1359,8 +1272,6 @@ class PlayScene extends Phaser.Scene {
       duration: 1500,
       onComplete: () => msg.destroy()
     });
-
-    this.openShop();
 
     if (this.stationPlanet.label) this.stationPlanet.label.destroy();
     this.stationPlanet.destroy();
@@ -1454,14 +1365,11 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0x88ccff]
     });
     emitter.explode(15);
-
-    this.saveProgress();
   }
 
   wagonHit(wagon, pipe) {
     let hp = wagon.getData('hp') - 1;
     if (hp <= 0) {
-      // Удаляем вагон из массива безопасно
       this.wagons = this.wagons.filter(w => w !== wagon);
       wagon.destroy();
       this.targetPlayerX -= this.wagonGap * 0.5;
@@ -1469,7 +1377,6 @@ class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(100, 0.005);
       this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
       this.updateCameraZoom();
-      this.saveProgress();
     } else {
       wagon.setData('hp', hp);
       this.tweens.add({
@@ -1529,7 +1436,7 @@ class PlayScene extends Phaser.Scene {
     coin.setScale(0.01);
     coin.coinType = coinType;
     coin.setBlendMode(Phaser.BlendModes.ADD);
-    coin.collected = false; // защита от двойного сбора
+    coin.collected = false;
 
     this.tweens.add({
       targets: coin,
@@ -1594,6 +1501,7 @@ class PlayScene extends Phaser.Scene {
     if (bonusType) {
       this.playSound(this.itemSound);
       this.activateBonus(bonusType);
+      this.createBonusEffect(bonusType, coin.x, coin.y);
     } else {
       this.playSound(this.coinSound);
     }
@@ -1628,7 +1536,6 @@ class PlayScene extends Phaser.Scene {
     gameManager.data.crystals = this.crystals;
     gameManager.data.upgrades = { ...this.upgradeLevels };
     gameManager.save();
-    this.saveProgress();
   }
 
   activateBonus(type) {
@@ -1664,6 +1571,7 @@ class PlayScene extends Phaser.Scene {
     }
     
     this.bonusText.setVisible(true);
+    this.updatePlayerVisuals();
 
     if (this.bonusTimer) this.bonusTimer.remove();
     this.bonusTimer = this.time.addEvent({
@@ -1693,6 +1601,7 @@ class PlayScene extends Phaser.Scene {
     this.player.clearTint();
     this.player.body.checkCollision.none = false;
     this.bonusText.setVisible(false);
+    this.updatePlayerVisuals();
     if (this.bonusTimer) {
       this.bonusTimer.remove();
       this.bonusTimer = null;
@@ -1702,7 +1611,6 @@ class PlayScene extends Phaser.Scene {
   showShop() {
     if (this.shopVisible) return;
     this.shopVisible = true;
-    this.physics.pause();
 
     const w = this.scale.width;
     const h = this.scale.height;
@@ -1853,7 +1761,6 @@ class PlayScene extends Phaser.Scene {
 
     this.playSound(this.purchaseSound);
     if (this.shopVisible) this.updateShopTexts();
-    this.saveProgress();
     gameManager.data.upgrades = { ...this.upgradeLevels };
     gameManager.data.crystals = this.crystals;
     gameManager.save();
@@ -1923,6 +1830,7 @@ class PlayScene extends Phaser.Scene {
     if (this.score >= 100 && !this.achievements.score_100.unlocked) this.unlockAchievement('score_100');
     if (this.score >= 500 && !this.achievements.score_500.unlocked) this.unlockAchievement('score_500');
     if (this.headHP === this.maxHeadHP && this.score > 10 && !this.achievements.no_damage.unlocked) this.unlockAchievement('no_damage');
+    this.checkCoinAchievements();
   }
 
   unlockAchievement(key) {
@@ -1932,6 +1840,7 @@ class PlayScene extends Phaser.Scene {
     this.crystals += reward;
     this.crystalText.setText(`💎 ${this.crystals}`);
     gameManager.data.crystals = this.crystals;
+    gameManager.unlockAchievement(key);
     gameManager.save();
     this.showAchievementNotification(key, reward);
     this.saveAchievements();
@@ -2198,7 +2107,6 @@ class PlayScene extends Phaser.Scene {
       this.updateHearts();
       this.cameras.main.shake(100, 0.003);
       this.playSound(this.tapSound);
-      // Принудительно сбрасываем горизонтальную скорость, чтобы не отбрасывало
       this.player.body.setVelocityX(0);
       if (this.headHP <= 0) {
         this.handleDeath();
@@ -2261,7 +2169,8 @@ class PlayScene extends Phaser.Scene {
         duration: 1500,
         onComplete: () => msg.destroy()
       });
-      this.saveProgress();
+      gameManager.data.upgrades = { ...this.upgradeLevels };
+      gameManager.save();
       return;
     }
 
@@ -2422,32 +2331,197 @@ class PlayScene extends Phaser.Scene {
   }
 
   onResize() {
+    this.updateUIOnResize();
+  }
+
+  // ========== ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ==========
+  updateUIOnResize() {
     const w = this.scale.width;
     const h = this.scale.height;
-
-    this.scoreText.setPosition(w / 2, 30);
-    this.crystalText.setPosition(w - 10, 10);
-    this.meterText.setPosition(10, h - 50);
+    
+    if (this.scoreText) this.scoreText.setPosition(w / 2, 30);
+    if (this.bestText) this.bestText.setPosition(10, 10);
+    if (this.crystalText) this.crystalText.setPosition(w - 10, 10);
+    if (this.meterText) this.meterText.setPosition(10, h - 50);
+    if (this.wagonCountText) this.wagonCountText.setPosition(w - 100, h - 30);
     if (this.bonusText) this.bonusText.setPosition(w - 10, 40);
-    this.levelText.setPosition(w / 2, h / 2 - 70);
+    if (this.levelText) this.levelText.setPosition(w / 2, h / 2 - 70);
     
     if (this.pauseButton) this.pauseButton.setPosition(w - 35, h - 35);
     if (this.shopButton) this.shopButton.setPosition(w - 90, h - 35);
     if (this.menuButton) this.menuButton.setPosition(w - 145, h - 35);
-    if (this.wagonCountText) this.wagonCountText.setPosition(w - 100, h - 30);
     
     if (this.progressBarBg) {
       this.progressBarBg.setPosition(w / 2, h - 30);
       this.progressBar.setPosition(w / 2 - 75, h - 30);
       this.progressBarText.setPosition(w / 2, h - 30);
     }
-
+    
     if (!this.started) {
-      this.introText.setPosition(w / 2, h * 0.40);
-      this.coinTipsText.setPosition(w / 2, h * 0.50);
+      if (this.introText) this.introText.setPosition(w / 2, h * 0.40);
+      if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.50);
     }
+    
+    if (this.heartContainer) {
+      this.heartContainer.setPosition(10, 30);
+    }
+  }
 
-    this.gameOverBox.setPosition(w / 2, h / 2);
+  updateDifficulty() {
+    const difficultyLevels = [
+      { level: 0, speed: 240, gap: 240, spawnDelay: 1300 },
+      { level: 5, speed: 300, gap: 220, spawnDelay: 1200 },
+      { level: 10, speed: 360, gap: 200, spawnDelay: 1100 },
+      { level: 15, speed: 420, gap: 180, spawnDelay: 1000 },
+      { level: 20, speed: 480, gap: 160, spawnDelay: 900 },
+      { level: 30, speed: 600, gap: 140, spawnDelay: 800 },
+      { level: 50, speed: 800, gap: 120, spawnDelay: 700 }
+    ];
+    
+    let currentDifficulty = difficultyLevels[0];
+    for (let diff of difficultyLevels) {
+      if (this.level >= diff.level) {
+        currentDifficulty = diff;
+      }
+    }
+    
+    this.baseSpeed = currentDifficulty.speed;
+    this.gapSize = currentDifficulty.gap;
+    this.spawnDelay = currentDifficulty.spawnDelay;
+    
+    if (!this.bonusActive) {
+      this.currentSpeed = this.baseSpeed;
+    }
+  }
+
+  createLevelUpEffect() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    
+    const emitter = this.add.particles(w / 2, h / 2, 'flare', {
+      speed: { min: -200, max: 200 },
+      scale: { start: 1.5, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 600,
+      quantity: 30,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: [0x00ffff, 0xff00ff, 0xffff00, 0x00ff00]
+    });
+    
+    emitter.explode(30);
+    
+    this.cameras.main.shake(200, 0.01);
+    this.cameras.main.flash(200, 255, 255, 100);
+  }
+
+  checkCoinAchievements() {
+    if (this.collectedCoins >= 50 && !this.achievements.all_bonuses.unlocked) {
+      this.unlockAchievement('all_bonuses');
+    }
+  }
+
+  createBonusEffect(type, x, y) {
+    const colors = {
+      speed: 0x00ffff,
+      shield: 0x00ff00,
+      magnet: 0xff00ff,
+      slow: 0xffaa00
+    };
+    
+    const emitter = this.add.particles(x, y, 'spark', {
+      speed: 150,
+      scale: { start: 1, end: 0 },
+      alpha: { start: 0.9, end: 0 },
+      lifespan: 400,
+      quantity: 25,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: colors[type] || 0xffffff
+    });
+    
+    emitter.explode(25);
+  }
+
+  updatePlayerVisuals() {
+    if (!this.player) return;
+    
+    if (this.shieldActive) {
+      this.player.setTint(0x00ffff);
+      this.player.setScale(0.95);
+    } else if (this.bonusActive && this.bonusType === 'speed') {
+      this.player.setTint(0xffff00);
+      this.player.setScale(0.92);
+    } else {
+      this.player.clearTint();
+      this.player.setScale(0.9);
+    }
+  }
+
+  checkWagonCollisions() {
+    for (let wagon of this.wagons) {
+      if (!wagon.active) continue;
+      
+      const dist = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y,
+        wagon.x, wagon.y
+      );
+      
+      if (dist > this.wagonGap * 3) {
+        const index = this.wagons.indexOf(wagon);
+        if (index !== -1) {
+          wagon.destroy();
+          this.wagons.splice(index, 1);
+          this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+        }
+      }
+    }
+  }
+
+  showNotification(text, duration = 2000, color = '#ffffff') {
+    const w = this.scale.width;
+    const notification = this.add.text(w / 2, 100, text, {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', monospace",
+      color: color,
+      stroke: '#000000',
+      strokeThickness: 2,
+      align: 'center'
+    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+    
+    this.tweens.add({
+      targets: notification,
+      alpha: 0,
+      duration: duration,
+      ease: 'Power2.easeOut',
+      onComplete: () => notification.destroy()
+    });
+  }
+
+  getGameInfo() {
+    return {
+      score: this.score,
+      level: this.level + 1,
+      meters: Math.floor(this.meters),
+      wagons: this.wagons.length,
+      maxWagons: this.maxWagons,
+      crystals: this.crystals,
+      health: this.headHP,
+      maxHealth: this.maxHeadHP,
+      bonusActive: this.bonusActive,
+      bonusType: this.bonusType,
+      bonusTime: this.bonusTime
+    };
+  }
+
+  exportStats() {
+    const stats = {
+      game: this.getGameInfo(),
+      records: gameManager.data.stats,
+      upgrades: this.upgradeLevels,
+      achievements: this.achievements,
+      timestamp: new Date().toISOString()
+    };
+    
+    return JSON.stringify(stats, null, 2);
   }
 }
 
@@ -2580,7 +2654,219 @@ class StatsScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// КОНФИГУРАЦИЯ
+// SETTINGS SCENE
+// =========================================================================
+
+class SettingsScene extends Phaser.Scene {
+  constructor() {
+    super('settings');
+  }
+
+  create() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
+
+    // Фон
+    const gradient = this.make.graphics({ x: 0, y: 0, add: false });
+    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
+    gradient.fillRect(0, 0, w, h);
+    gradient.generateTexture('settings_bg', w, h);
+    gradient.destroy();
+
+    this.add.image(0, 0, 'settings_bg').setOrigin(0);
+
+    // Заголовок
+    this.add.text(w / 2, 40, 'НАСТРОЙКИ', {
+      fontSize: '36px',
+      fontFamily,
+      color: COLORS.primary,
+      stroke: COLORS.secondary,
+      strokeThickness: 3
+    }).setOrigin(0.5);
+
+    let y = 120;
+
+    // Звук
+    this.createToggle(
+      w / 2, y, 'Звук',
+      gameManager.data.soundEnabled,
+      (value) => {
+        gameManager.data.soundEnabled = value;
+        gameManager.save();
+      }
+    );
+    y += 70;
+
+    // Музыка
+    this.createToggle(
+      w / 2, y, 'Музыка',
+      gameManager.data.musicEnabled,
+      (value) => {
+        gameManager.data.musicEnabled = value;
+        gameManager.save();
+      }
+    );
+    y += 70;
+
+    // Кнопка очистки данных
+    this.createButton(w / 2, y, 'ОЧИСТИТЬ ДАННЫЕ', () => {
+      this.confirmClearData();
+    }, 'danger');
+    y += 70;
+
+    // Кнопка экспорта
+    this.createButton(w / 2, y, 'ЭКСПОРТИРОВАТЬ', () => {
+      this.exportData();
+    });
+
+    // Кнопка назад
+    this.createButton(w / 2, h - 50, 'НАЗАД', () => {
+      this.scene.start('menu');
+    });
+  }
+
+  createToggle(x, y, label, initialValue, callback) {
+    const bg = this.add.rectangle(x, y, 250, 50, 0x1a1a3a)
+      .setStrokeStyle(2, COLORS.primary);
+
+    const text = this.add.text(x - 100, y, label, {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', monospace",
+      color: COLORS.text_primary
+    }).setOrigin(0, 0.5);
+
+    const toggleBg = this.add.rectangle(x + 80, y, 60, 30, initialValue ? 0x00aa00 : 0xaa0000)
+      .setStrokeStyle(2, COLORS.primary)
+      .setInteractive()
+      .on('pointerdown', () => {
+        initialValue = !initialValue;
+        toggleBg.setFillStyle(initialValue ? 0x00aa00 : 0xaa0000);
+        toggleText.setText(initialValue ? 'ВКЛ' : 'ВЫКЛ');
+        callback(initialValue);
+      });
+
+    const toggleText = this.add.text(x + 80, y, initialValue ? 'ВКЛ' : 'ВЫКЛ', {
+      fontSize: '12px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#ffffff'
+    }).setOrigin(0.5);
+
+    return { bg, text, toggleBg, toggleText };
+  }
+
+  createButton(x, y, text, callback, type = 'normal') {
+    const colors = {
+      normal: { bg: '#1a1a3a', text: COLORS.primary },
+      danger: { bg: '#3a1a1a', text: '#ff4444' }
+    };
+
+    const color = colors[type] || colors.normal;
+
+    const btn = this.add.text(x, y, text, {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', monospace",
+      color: color.text,
+      backgroundColor: color.bg,
+      padding: { x: 20, y: 10 },
+      stroke: color.text,
+      strokeThickness: 2
+    })
+      .setOrigin(0.5)
+      .setInteractive()
+      .on('pointerover', function () {
+        this.setStyle({
+          color: '#ffffff',
+          backgroundColor: color.text
+        });
+        this.setScale(1.05);
+      })
+      .on('pointerout', function () {
+        this.setStyle({
+          color: color.text,
+          backgroundColor: color.bg
+        });
+        this.setScale(1);
+      })
+      .on('pointerdown', callback);
+
+    return btn;
+  }
+
+  confirmClearData() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.7)
+      .setDepth(50)
+      .setScrollFactor(0);
+
+    const panel = this.add.rectangle(w / 2, h / 2, 280, 150, 0x0a0a1a, 0.95)
+      .setStrokeStyle(2, COLORS.danger)
+      .setDepth(51)
+      .setScrollFactor(0);
+
+    const text = this.add.text(w / 2, h / 2 - 30, 'Очистить все данные?', {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', monospace",
+      color: COLORS.danger
+    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+
+    const yesBtn = this.add.text(w / 2 - 60, h / 2 + 30, 'ДА', {
+      fontSize: '14px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#00ff00',
+      backgroundColor: '#1a1a3a',
+      padding: { x: 15, y: 5 }
+    })
+      .setInteractive()
+      .setOrigin(0.5)
+      .setDepth(52)
+      .setScrollFactor(0)
+      .on('pointerdown', () => {
+        localStorage.clear();
+        location.reload();
+      });
+
+    const noBtn = this.add.text(w / 2 + 60, h / 2 + 30, 'НЕТ', {
+      fontSize: '14px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#ff0000',
+      backgroundColor: '#1a1a3a',
+      padding: { x: 15, y: 5 }
+    })
+      .setInteractive()
+      .setOrigin(0.5)
+      .setDepth(52)
+      .setScrollFactor(0)
+      .on('pointerdown', () => {
+        overlay.destroy();
+        panel.destroy();
+        text.destroy();
+        yesBtn.destroy();
+        noBtn.destroy();
+      });
+  }
+
+  exportData() {
+    const data = {
+      gameManager: gameManager.data,
+      timestamp: new Date().toISOString()
+    };
+
+    const dataStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skypulse_backup_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+// =========================================================================
+// КОНФИГУРАЦИЯ И ЗАПУСК ИГРЫ
 // =========================================================================
 
 const config = {
@@ -2589,10 +2875,35 @@ const config = {
   width: 390,
   height: 844,
   backgroundColor: '#030712',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  physics: { default: 'arcade', arcade: { gravity: { y:1300 }, debug: false, maxEntities:500 } },
-  render: { pixelArt: false, antialias: true, powerPreference: 'high-performance' },
-  scene: [BootScene, MenuScene, PlayScene, GameOverScene, ShopScene, AchievementsScene, StatsScene]
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    expandParent: true
+  },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 1300 },
+      debug: false,
+      maxEntities: 500
+    }
+  },
+  render: {
+    pixelArt: false,
+    antialias: true,
+    powerPreference: 'high-performance'
+  },
+  scene: [
+    BootScene,
+    MenuScene,
+    PlayScene,
+    GameOverScene,
+    ShopScene,
+    AchievementsScene,
+    StatsScene,
+    SettingsScene
+  ]
 };
 
+// Запуск игры
 new Phaser.Game(config);
