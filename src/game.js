@@ -30,27 +30,22 @@ class BootScene extends Phaser.Scene {
 
     // ========== ИГРОК: НЕОНОВОЕ ТАКСИ ==========
     g.clear();
-    // Основной корпус с неоновым свечением
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
     g.fillStyle(0xff8800);
     g.fillRoundedRect(20, 8, 40, 10, 4);
     g.fillRect(56, 16, 8, 20);
-    // Окна с неоновой подсветкой
     g.fillStyle(0x44aaff);
     g.fillRect(22, 16, 14, 8);
     g.fillRect(40, 16, 14, 8);
-    // Неоновые огни
     g.fillStyle(0x00ffff);
     g.fillCircle(18, 28, 4);
     g.fillStyle(0xffffff);
     g.fillCircle(18, 28, 2);
-    // Фары
     g.fillStyle(0xffff00);
     g.fillRect(40, 30, 6, 4);
     g.fillRect(48, 30, 6, 4);
     g.fillRect(56, 30, 6, 4);
-    // Тени
     g.fillStyle(0x333333, 0.5);
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
@@ -65,14 +60,12 @@ class BootScene extends Phaser.Scene {
       g.clear();
       g.fillStyle(colors[i]);
       g.fillRoundedRect(6, 6, 36, 22, 6);
-      // Неоновые окна
       g.fillStyle(0x00ffff);
       g.fillRect(12, 16, 6, 4);
       g.fillRect(22, 16, 6, 4);
       g.fillStyle(0xffffff);
       g.fillRect(8, 8, 6, 4);
       g.fillRect(20, 8, 6, 4);
-      // Огни
       g.fillStyle(0xffaa00);
       g.fillCircle(12, 24, 3);
       g.fillCircle(28, 24, 3);
@@ -92,7 +85,6 @@ class BootScene extends Phaser.Scene {
       g.fillRoundedRect(0, 0, 100, 30, 12);
       g.fillStyle(color);
       g.fillRoundedRect(0, 370, 100, 30, 12);
-      // Неоновая обводка
       g.lineStyle(3, 0x00ffff, 0.8);
       g.strokeRoundedRect(0, 0, 100, 400, 20);
       g.generateTexture(name, 100, 400);
@@ -115,7 +107,6 @@ class BootScene extends Phaser.Scene {
       g.strokeCircle(16, 16, 6);
       g.fillStyle(0xffffff, 0.4);
       g.fillCircle(10, 10, 4);
-      // Неоновое свечение
       g.lineStyle(2, 0xffffff, 0.3);
       g.strokeCircle(16, 16, 15);
       g.generateTexture(name, 32, 32);
@@ -166,7 +157,6 @@ class BootScene extends Phaser.Scene {
     g.fillCircle(20, 30, 5);
     g.fillCircle(60, 30, 5);
     g.fillCircle(40, 30, 3);
-    // Неоновые линии
     g.lineStyle(2, 0x00ffff, 0.5);
     g.strokeEllipse(40, 30, 70, 20);
     g.generateTexture('bg_ship_1', 90, 50);
@@ -311,7 +301,7 @@ class PlayScene extends Phaser.Scene {
     this.coinsForWagon = 15;
     this.maxWagons = 12;
     this.wagonGap = 28;
-    this.wagonSpring = 0.15; // Увеличена упругость для более живого движения
+    this.wagonSpring = 0.15;
     this.targetPlayerX = 110;
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
@@ -386,7 +376,7 @@ class PlayScene extends Phaser.Scene {
     // Загрузка прогресса
     this.loadProgress();
 
-    // Создание мира с неоновыми эффектами
+    // Создание мира
     this.createBackground();
     this.createPlanets();
     this.createShips();
@@ -453,7 +443,7 @@ class PlayScene extends Phaser.Scene {
     if (this.isPaused || this.countdownActive) return;
 
     // Обновление фона с неоновым мерцанием
-    this.updateStars(delta);
+    this.updateStars(time, delta);
     this.updatePlanets(delta);
     this.updateShips(delta);
     this.updateAsteroids(delta);
@@ -464,7 +454,7 @@ class PlayScene extends Phaser.Scene {
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
     this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
 
-    // Угол наклона с неоновым эффектом
+    // Угол наклона
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
 
@@ -501,13 +491,11 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
     
-    // Градиентный фон
     const gradient = this.add.graphics();
     gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
     gradient.fillRect(0, 0, w, h);
     gradient.setDepth(-30);
     
-    // Неоновые звёзды
     for (let i = 0; i < 200; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
@@ -564,7 +552,7 @@ class PlayScene extends Phaser.Scene {
       ship.setBlendMode(Phaser.BlendModes.ADD);
       this.ships.push({
         sprite: ship,
-        speed: Phaser.Math.Between(3, 10),
+        speed: Phaser.Math.Between(3, 10)
       });
     }
   }
@@ -587,7 +575,7 @@ class PlayScene extends Phaser.Scene {
       asteroid.setBlendMode(Phaser.BlendModes.ADD);
       this.asteroids.push({
         sprite: asteroid,
-        speed: Phaser.Math.Between(4, 14),
+        speed: Phaser.Math.Between(4, 14)
       });
     }
   }
@@ -633,7 +621,6 @@ class PlayScene extends Phaser.Scene {
     const h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
 
-    // Счёт (в центре вверху)
     this.scoreText = this.add.text(w / 2, 30, '0', {
       fontSize: '38px',
       fontFamily,
@@ -643,7 +630,6 @@ class PlayScene extends Phaser.Scene {
       shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 10, fill: true }
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
-    // Рекорд (слева вверху)
     this.bestText = this.add.text(10, 10, `🏆 ${this.best}`, {
       fontSize: '14px',
       fontFamily,
@@ -652,7 +638,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
-    // Кристаллы (справа вверху)
     this.crystalText = this.add.text(w - 10, 10, `💎 0`, {
       fontSize: '14px',
       fontFamily,
@@ -661,7 +646,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
 
-    // Метры (слева внизу)
     this.meterText = this.add.text(10, h - 50, `📏 0 м`, {
       fontSize: '12px',
       fontFamily,
@@ -670,7 +654,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
-    // Бонус (справа, под кристаллами)
     this.bonusText = this.add.text(w - 10, 40, '', {
       fontSize: '12px',
       fontFamily,
@@ -679,7 +662,6 @@ class PlayScene extends Phaser.Scene {
       align: 'right'
     }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
 
-    // Уровень (по центру)
     this.levelText = this.add.text(w / 2, h / 2 - 70, '', {
       fontSize: '28px',
       fontFamily,
@@ -689,7 +671,6 @@ class PlayScene extends Phaser.Scene {
       shadow: { blur: 15, color: '#ff00ff', fill: true }
     }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
 
-    // Счётчик вагонов (справа внизу)
     this.wagonCountText = this.add.text(w - 100, h - 30, `🚃 0/${this.maxWagons}`, {
       fontSize: '12px',
       fontFamily,
@@ -698,7 +679,7 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
-    // Прогресс-бар монет (уменьшен)
+    // Прогресс-бар монет
     this.progressBarBg = this.add.rectangle(w / 2, h - 30, 150, 6, 0x333333).setDepth(9).setScrollFactor(0);
     this.progressBar = this.add.rectangle(w / 2 - 75, h - 30, 0, 4, 0xffaa00).setOrigin(0, 0.5).setDepth(10).setScrollFactor(0);
     this.progressBarText = this.add.text(w / 2, h - 30, `${this.collectedCoins}/${this.coinsForWagon}`, {
@@ -709,11 +690,10 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 1
     }).setOrigin(0.5).setDepth(11).setScrollFactor(0);
 
-    // Сердечки (слева, под рекордом)
+    // Сердечки
     this.heartContainer = this.add.container(10, 30).setDepth(10).setScrollFactor(0);
     this.updateHearts();
 
-    // Интро текст
     this.introText = this.add.text(w / 2, h * 0.40, 'СОБИРАЙ МОНЕТЫ\nЧТОБЫ УДЛИНИТЬ ТАКСИ', {
       fontSize: '12px',
       fontFamily,
@@ -730,7 +710,7 @@ class PlayScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
-    // УМЕНЬШЕННЫЕ КНОПКИ (50x50)
+    // Кнопки
     this.pauseButton = this.add.image(w - 35, h - 35, 'pause_button')
       .setInteractive()
       .setDepth(20)
@@ -1053,7 +1033,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ========== ВАГОНЫ С ЭФФЕКТОМ ШИРИНЫ ==========
+  // ========== ВАГОНЫ ==========
   updateWagons() {
     if (this.wagons.length === 0) return;
     let prev = this.player;
@@ -1868,7 +1848,7 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  updateStars(delta) {
+  updateStars(time, delta) {
     const w = this.scale.width;
     const h = this.scale.height;
     const factor = this.started && !this.dead ? 1 : 0.3;
@@ -1876,8 +1856,10 @@ class PlayScene extends Phaser.Scene {
     
     for (let s of this.stars) {
       s.sprite.x -= s.speed * factor * dt;
-      // Мерцание
-      s.sprite.alpha = 0.5 + Math.sin(time * s.flicker) * 0.3;
+      // Мерцание с использованием time
+      if (s.flicker) {
+        s.sprite.alpha = 0.5 + Math.sin(time * s.flicker) * 0.3;
+      }
       if (s.sprite.x < -10) {
         s.sprite.x = w + Phaser.Math.Between(5, 50);
         s.sprite.y = Phaser.Math.Between(0, h);
