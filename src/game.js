@@ -989,7 +989,99 @@ class BootScene extends Phaser.Scene {
     g.destroy();
   }
 }
+// =========================================================================
+// MENU SCENE – главное меню
+// =========================================================================
 
+class MenuScene extends Phaser.Scene {
+  constructor() {
+    super('menu');
+  }
+
+  create() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
+
+    // Градиентный фон
+    const gradient = this.make.graphics({ x: 0, y: 0, add: false });
+    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
+    gradient.fillRect(0, 0, w, h);
+    gradient.generateTexture('menu_bg', w, h);
+    gradient.destroy();
+    this.add.image(0, 0, 'menu_bg').setOrigin(0);
+
+    // Логотип
+    this.add.text(w / 2, h * 0.15, 'SKYPULSE', {
+      fontSize: '48px',
+      fontFamily,
+      color: '#00ffff',
+      stroke: '#ff00ff',
+      strokeThickness: 6,
+      shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 20, fill: true }
+    }).setOrigin(0.5);
+
+    // Кристаллы
+    this.crystalText = this.add.text(w - 20, 20, `💎 ${gameManager.data.crystals}`, {
+      fontSize: '18px',
+      fontFamily,
+      color: '#ffaa00',
+      stroke: '#ff5500',
+      strokeThickness: 2
+    }).setOrigin(1, 0);
+
+    // Кнопки меню
+    const buttons = [
+      { text: 'ИГРАТЬ', scene: 'tutorial', y: 0.35 },
+      { text: 'МАГАЗИН', scene: 'shop', y: 0.45 },
+      { text: 'ДОСТИЖЕНИЯ', scene: 'achievements', y: 0.55 },
+      { text: 'КВЕСТЫ', scene: 'quests', y: 0.65 },
+      { text: 'СТАТИСТИКА', scene: 'stats', y: 0.75 },
+      { text: 'НАСТРОЙКИ', scene: 'settings', y: 0.85 }
+    ];
+
+    buttons.forEach(btn => {
+      this.createButton(w / 2, h * btn.y, btn.text, () => {
+        if (btn.scene === 'tutorial' && !gameManager.data.tutorialCompleted) {
+          this.scene.start('tutorial');
+        } else if (btn.scene === 'tutorial') {
+          this.scene.start('play');
+        } else {
+          this.scene.start(btn.scene);
+        }
+      });
+    });
+
+    // Версия
+    this.add.text(w / 2, h - 20, 'v1.0.0', {
+      fontSize: '10px',
+      fontFamily,
+      color: '#64748b'
+    }).setOrigin(0.5);
+  }
+
+  createButton(x, y, text, callback) {
+    const btn = this.add.text(x, y, text, {
+      fontSize: '20px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: '#ffffff',
+      backgroundColor: '#1a1a3a',
+      padding: { x: 30, y: 12 },
+      stroke: '#00ffff',
+      strokeThickness: 2
+    }).setOrigin(0.5).setInteractive()
+      .on('pointerover', function() {
+        this.setStyle({ color: '#00ffff', backgroundColor: '#2a2a4a' });
+        this.setScale(1.05);
+      })
+      .on('pointerout', function() {
+        this.setStyle({ color: '#ffffff', backgroundColor: '#1a1a3a' });
+        this.setScale(1);
+      })
+      .on('pointerdown', callback);
+    return btn;
+  }
+}
 // =========================================================================
 // TUTORIAL SCENE
 // =========================================================================
