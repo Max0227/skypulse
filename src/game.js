@@ -57,19 +57,27 @@ const GAME_CONFIG = {
 };
 
 // =========================================================================
-// ГЛОБАЛЬНЫЙ МЕНЕДЖЕР ДАННЫХ
+// ГЛОБАЛЬНЫЙ МЕНЕДЖЕР ДАННЫХ (с валидацией)
 // =========================================================================
 
 class GameManager {
   constructor() {
     this.data = this.loadData();
-    this.bgMusic = null; // будет установлен в BootScene
+    this.bgMusic = null;
   }
 
   loadData() {
     try {
       const saved = localStorage.getItem('skypulse_data');
-      return saved ? JSON.parse(saved) : this.getDefaultData();
+      const data = saved ? JSON.parse(saved) : this.getDefaultData();
+      // Валидация структуры
+      if (!data.upgrades) data.upgrades = {};
+      if (!data.achievements) data.achievements = {};
+      if (!data.stats) data.stats = this.getDefaultData().stats;
+      if (!data.crystals) data.crystals = 0;
+      if (!data.skins) data.skins = ['wagon_default'];
+      if (!data.selectedSkin) data.selectedSkin = 'wagon_default';
+      return data;
     } catch (e) {
       console.error('Failed to load data:', e);
       return this.getDefaultData();
@@ -127,7 +135,20 @@ class GameManager {
 const gameManager = new GameManager();
 
 // =========================================================================
-// BOOT SCENE – создание всех текстур (добавлена кнопка меню)
+// ЛОГГЕР
+// =========================================================================
+
+class GameLogger {
+  static log(message, data = {}) {
+    console.log(`[GAME] ${message}`, data);
+  }
+  static error(message, error) {
+    console.error(`[ERROR] ${message}`, error);
+  }
+}
+
+// =========================================================================
+// BOOT SCENE – создание всех текстур
 // =========================================================================
 
 class BootScene extends Phaser.Scene {
@@ -136,20 +157,29 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем звуки
-    this.load.audio('coin_sound', 'sounds/coin.mp3');
-    this.load.audio('item_sound', 'sounds/item.mp3');
-    this.load.audio('tap_sound', 'sounds/tap.mp3');
-    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
-    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
-    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3'); // или bg_music.mp3
-    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
-    this.load.audio('revive_sound', 'sounds/revive.mp3');
+    // Загружаем звуки с обработкой ошибок (файлы могут отсутствовать)
+    try {
+      this.load.audio('coin_sound', 'sounds/coin.mp3');
+      this.load.audio('item_sound', 'sounds/item.mp3');
+      this.load.audio('tap_sound', 'sounds/tap.mp3');
+      this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+      this.load.audio('level_up_sound', 'sounds/level_up.mp3');
+      this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+      this.load.audio('purchase_sound', 'sounds/purchase.mp3');
+      this.load.audio('revive_sound', 'sounds/revive.mp3');
+    } catch (e) {
+      GameLogger.error('Sound preload error', e);
+    }
   }
 
   create() {
+    // Сначала создаём текстуры, потом музыку и переход
     this.createTextures();
-    gameManager.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
+    try {
+      gameManager.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
+    } catch (e) {
+      GameLogger.warn('Failed to load bg music, continuing without');
+    }
     this.scene.start('menu');
   }
 
@@ -394,6 +424,8 @@ class BootScene extends Phaser.Scene {
     g.generateTexture('station_planet', 96, 96);
 
     g.destroy();
+
+    GameLogger.log('All textures created');
   }
 }
 
@@ -548,7 +580,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс (сохранён оригинальный, добавлены доп. системы и кнопка меню)
+// PLAY SCENE – основной игровой процесс (исправленный)
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -560,13 +592,12 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // Счётчики
+    // ===== Инициализация переменных =====
     this.score = 0;
     this.crystals = gameManager.data.crystals;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
 
-    // Вагоны
     this.wagons = [];
     this.collectedCoins = 0;
     this.coinsForWagon = 15;
@@ -577,7 +608,6 @@ class PlayScene extends Phaser.Scene {
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
 
-    // Состояние
     this.started = false;
     this.dead = false;
     this.level = 0;
@@ -585,18 +615,15 @@ class PlayScene extends Phaser.Scene {
     this.pauseOverlay = null;
     this.pauseTexts = [];
 
-    // Здоровье
     this.maxHeadHP = 3 + (gameManager.data.upgrades.headHP || 0);
     this.headHP = this.maxHeadHP;
 
-    // Сложность
     this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
     this.gapSize = 240;
     this.spawnDelay = 1300;
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
-    // Бонусы
     this.bonusActive = false;
     this.bonusType = null;
     this.bonusTime = 0;
@@ -606,8 +633,7 @@ class PlayScene extends Phaser.Scene {
     this.magnetRange = 220 + (gameManager.data.upgrades.magnetRange || 0) * 30;
     this.lastBonusTime = 0;
 
-    // Улучшения
-    this.upgradeLevels = gameManager.data.upgrades;
+    this.upgradeLevels = { ...gameManager.data.upgrades }; // копия
     this.upgradeCosts = {
       jumpPower: 10, gravity: 15, shieldDuration: 20, magnetRange: 20,
       wagonHP: 25, maxWagons: 30, wagonGap: 30, headHP: 40, revival: 50
@@ -616,7 +642,6 @@ class PlayScene extends Phaser.Scene {
     this.shopVisible = false;
     this.shopElements = [];
 
-    // Группы объектов
     this.pipes = [];
     this.coins = [];
     this.scoreZones = [];
@@ -625,16 +650,11 @@ class PlayScene extends Phaser.Scene {
     this.ships = [];
     this.asteroids = [];
 
-    // Таймеры
-    this.mainTimers = [];
     this.spawnTimer = null;
-
-    // Станция
     this.stationPlanet = null;
     this.stationActive = false;
     this.stationTimer = null;
 
-    // Обратный отсчёт
     this.resumeCountdownTimer = null;
     this.countdownActive = false;
     this.countdownText = null;
@@ -649,6 +669,9 @@ class PlayScene extends Phaser.Scene {
 
     // Загрузка прогресса (уже частично использовано)
     this.loadProgress();
+
+    // Устанавливаем гравитацию после загрузки улучшений
+    this.physics.world.gravity.y = 1300 - this.upgradeLevels.gravity * 50;
 
     // Создание мира
     this.createBackground();
@@ -673,6 +696,19 @@ class PlayScene extends Phaser.Scene {
     this.scale.on('resize', this.onResize, this);
   }
 
+  // Очистка при переходе
+  shutdown() {
+    if (this.spawnTimer) this.spawnTimer.remove();
+    if (this.bonusTimer) this.bonusTimer.remove();
+    if (this.stationTimer) this.stationTimer.remove();
+    if (this.resumeCountdownTimer) this.resumeCountdownTimer.remove();
+    this.coins.forEach(c => c.destroy());
+    this.pipes.forEach(p => p.destroy());
+    this.wagons.forEach(w => w.destroy());
+    if (this.trailEmitter) this.trailEmitter.stop();
+    GameLogger.log('PlayScene shutdown');
+  }
+
   loadProgress() {
     try {
       const saved = localStorage.getItem('skypulse_progress');
@@ -695,9 +731,8 @@ class PlayScene extends Phaser.Scene {
         this.magnetRange = 220 + this.upgradeLevels.magnetRange * 30;
         this.maxHeadHP = 3 + this.upgradeLevels.headHP;
         this.headHP = this.maxHeadHP;
-        this.physics.world.gravity.y = 1300 - this.upgradeLevels.gravity * 50;
       }
-    } catch (e) { console.warn('Failed to load progress', e); }
+    } catch (e) { GameLogger.error('Failed to load progress', e); }
   }
 
   saveProgress() {
@@ -711,6 +746,10 @@ class PlayScene extends Phaser.Scene {
       upgradeLevels: this.upgradeLevels
     };
     localStorage.setItem('skypulse_progress', JSON.stringify(data));
+    // Синхронизируем с глобальным менеджером
+    gameManager.data.crystals = this.crystals;
+    gameManager.data.upgrades = { ...this.upgradeLevels };
+    gameManager.save();
   }
 
   update(time, delta) {
@@ -851,49 +890,63 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-  const h = this.scale.height;
-  this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
-  
-  // Отладка - убедимся, что текстура загружена
-  if (!this.textures.exists('player')) {
-    console.error('Player texture not found!');
+    const h = this.scale.height;
+
+    // Проверка существования текстуры
+    if (!this.textures.exists('player')) {
+      GameLogger.error('Player texture missing, creating fallback');
+      const g = this.add.graphics();
+      g.fillStyle(0xffaa00);
+      g.fillRect(0, 0, 50, 30);
+      g.generateTexture('player_fallback', 50, 30);
+      g.destroy();
+      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player_fallback');
+    } else {
+      this.player = this.physics.add.image(this.targetPlayerX, h / 2, 'player');
+    }
+
+    this.player.setScale(0.9);
+    this.player.setCollideWorldBounds(false);
+    this.player.setMaxVelocity(600, 1000);
+    this.player.body.setCircle(24, 15, 5);
+    this.player.setBlendMode(Phaser.BlendModes.ADD);
+    this.player.body.setMass(10000);
+    this.player.body.setDrag(500, 0);
+    this.player.setDepth(15); // поверх UI
+
+    this.trailEmitter = this.add.particles(0, 0, 'flare', {
+      speed: 40,
+      scale: { start: 0.4, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 200,
+      blendMode: Phaser.BlendModes.ADD,
+      follow: this.player,
+      followOffset: { x: -20, y: 0 },
+      quantity: 4,
+      frequency: 15,
+      tint: [0x00ffff, 0xff00ff, 0xffff00]
+    });
+
+    // Звуки (с защитой)
+    try {
+      this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+      this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+      this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+      this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+      this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+      this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+      this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+    } catch (e) {
+      GameLogger.warn('Sounds not loaded, using dummy');
+      this.coinSound = { play: () => {} };
+      this.itemSound = { play: () => {} };
+      this.tapSound = { play: () => {} };
+      this.wagonSound = { play: () => {} };
+      this.levelUpSound = { play: () => {} };
+      this.purchaseSound = { play: () => {} };
+      this.reviveSound = { play: () => {} };
+    }
   }
-  
-  this.player.setScale(0.9);
-  this.player.setCollideWorldBounds(false);
-  this.player.setMaxVelocity(600, 1000);
-  this.player.body.setCircle(24, 15, 5);
-  this.player.setBlendMode(Phaser.BlendModes.ADD);
-  this.player.body.setMass(10000);
-  this.player.body.setDrag(500, 0);
-  
-  // Убедимся, что игрок видим
-  this.player.setDepth(15);
-  this.player.setVisible(true);
-
-  // Неоновый след
-  this.trailEmitter = this.add.particles(0, 0, 'flare', {
-    speed: 40,
-    scale: { start: 0.4, end: 0 },
-    alpha: { start: 0.8, end: 0 },
-    lifespan: 200,
-    blendMode: Phaser.BlendModes.ADD,
-    follow: this.player,
-    followOffset: { x: -20, y: 0 },
-    quantity: 4,
-    frequency: 15,
-    tint: [0x00ffff, 0xff00ff, 0xffff00]
-  });
-
-  // Звуки
-  this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-  this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-  this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-  this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-  this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-  this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-  this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-}
 
   createUI() {
     const w = this.scale.width;
@@ -958,7 +1011,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
-    // Прогресс-бар монет
     this.progressBarBg = this.add.rectangle(w / 2, h - 30, 150, 6, 0x333333).setDepth(9).setScrollFactor(0);
     this.progressBar = this.add.rectangle(w / 2 - 75, h - 30, 0, 4, 0xffaa00).setOrigin(0, 0.5).setDepth(10).setScrollFactor(0);
     this.progressBarText = this.add.text(w / 2, h - 30, `${this.collectedCoins}/${this.coinsForWagon}`, {
@@ -969,7 +1021,6 @@ class PlayScene extends Phaser.Scene {
       strokeThickness: 1
     }).setOrigin(0.5).setDepth(11).setScrollFactor(0);
 
-    // Сердечки
     this.heartContainer = this.add.container(10, 30).setDepth(10).setScrollFactor(0);
     this.updateHearts();
 
@@ -1007,7 +1058,6 @@ class PlayScene extends Phaser.Scene {
       .on('pointerover', () => this.shopButton.setScale(1.1))
       .on('pointerout', () => this.shopButton.setScale(1));
 
-    // Кнопка меню
     this.menuButton = this.add.image(w - 145, h - 35, 'menu_button')
       .setInteractive()
       .setDepth(20)
@@ -1115,12 +1165,12 @@ class PlayScene extends Phaser.Scene {
   }
 
   playSound(sound, volume = null) {
-    if (!sound) return;
+    if (!sound || !sound.play) return;
     try {
       if (sound.isPlaying) return;
       if (volume !== null) sound.setVolume(volume);
       sound.play();
-    } catch (e) { console.warn('Sound error:', e); }
+    } catch (e) { /* игнорируем */ }
   }
 
   togglePause() {
@@ -1377,7 +1427,7 @@ class PlayScene extends Phaser.Scene {
     wagon.setTint(0x88aaff);
     wagon.setBlendMode(Phaser.BlendModes.ADD);
 
-    this.physics.add.collider(wagon, this.pipes, this.wagonHit, null, this);
+    this.physics.add.collider(wagon, this.pipes, (wagon, pipe) => this.wagonHit(wagon, pipe), null, this);
     this.wagons.push(wagon);
 
     wagon.x = this.scale.width + 50;
@@ -1411,17 +1461,15 @@ class PlayScene extends Phaser.Scene {
   wagonHit(wagon, pipe) {
     let hp = wagon.getData('hp') - 1;
     if (hp <= 0) {
-      let index = this.wagons.indexOf(wagon);
-      if (index !== -1) {
-        wagon.destroy();
-        this.wagons.splice(index, 1);
-        this.targetPlayerX -= this.wagonGap * 0.5;
-        this.targetPlayerX = Math.max(110, this.targetPlayerX);
-        this.cameras.main.shake(100, 0.005);
-        this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
-        this.updateCameraZoom();
-        this.saveProgress();
-      }
+      // Удаляем вагон из массива безопасно
+      this.wagons = this.wagons.filter(w => w !== wagon);
+      wagon.destroy();
+      this.targetPlayerX -= this.wagonGap * 0.5;
+      this.targetPlayerX = Math.max(110, this.targetPlayerX);
+      this.cameras.main.shake(100, 0.005);
+      this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+      this.updateCameraZoom();
+      this.saveProgress();
     } else {
       wagon.setData('hp', hp);
       this.tweens.add({
@@ -1481,6 +1529,7 @@ class PlayScene extends Phaser.Scene {
     coin.setScale(0.01);
     coin.coinType = coinType;
     coin.setBlendMode(Phaser.BlendModes.ADD);
+    coin.collected = false; // защита от двойного сбора
 
     this.tweens.add({
       targets: coin,
@@ -1501,7 +1550,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   collectCoin(coin) {
-    if (!coin.active) return;
+    if (!coin.active || coin.collected) return;
+    coin.collected = true;
     
     let value = 1;
     let bonusType = null;
@@ -1576,6 +1626,7 @@ class PlayScene extends Phaser.Scene {
     
     coin.destroy();
     gameManager.data.crystals = this.crystals;
+    gameManager.data.upgrades = { ...this.upgradeLevels };
     gameManager.save();
     this.saveProgress();
   }
@@ -1803,7 +1854,7 @@ class PlayScene extends Phaser.Scene {
     this.playSound(this.purchaseSound);
     if (this.shopVisible) this.updateShopTexts();
     this.saveProgress();
-    gameManager.data.upgrades = this.upgradeLevels;
+    gameManager.data.upgrades = { ...this.upgradeLevels };
     gameManager.data.crystals = this.crystals;
     gameManager.save();
   }
@@ -2115,8 +2166,8 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.pipes.push(topPipe, bottomPipe);
-    this.physics.add.collider(this.player, topPipe, this.hitPipe, null, this);
-    this.physics.add.collider(this.player, bottomPipe, this.hitPipe, null, this);
+    this.physics.add.collider(this.player, topPipe, (player, pipe) => this.hitPipe(player, pipe), null, this);
+    this.physics.add.collider(this.player, bottomPipe, (player, pipe) => this.hitPipe(player, pipe), null, this);
 
     const zone = this.add.zone(x + 60, h / 2, 12, h);
     this.physics.add.existing(zone);
@@ -2217,7 +2268,6 @@ class PlayScene extends Phaser.Scene {
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
-    // Музыку не останавливаем, пусть играет
 
     if (this.spawnTimer) this.spawnTimer.remove();
     if (this.bonusTimer) this.bonusTimer.remove();
