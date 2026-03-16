@@ -63,6 +63,7 @@ const GAME_CONFIG = {
 class GameManager {
   constructor() {
     this.data = this.loadData();
+    this.bgMusic = null; // будет установлен в BootScene
   }
 
   loadData() {
@@ -126,7 +127,7 @@ class GameManager {
 const gameManager = new GameManager();
 
 // =========================================================================
-// BOOT SCENE – создание всех текстур
+// BOOT SCENE – создание всех текстур и загрузка звуков
 // =========================================================================
 
 class BootScene extends Phaser.Scene {
@@ -148,6 +149,10 @@ class BootScene extends Phaser.Scene {
 
   create() {
     this.createTextures();
+
+    // Создаём фоновую музыку и сохраняем в gameManager
+    gameManager.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
+    
     this.scene.start('menu');
   }
 
@@ -399,7 +404,7 @@ class MenuScene extends Phaser.Scene {
 
     this.add.image(0, 0, 'menu_bg').setOrigin(0);
 
-    // Звёзды
+    // Звёзды (статичные, только для красоты)
     for (let i = 0; i < 100; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
@@ -476,13 +481,9 @@ class MenuScene extends Phaser.Scene {
       color: COLORS.text_muted
     }).setOrigin(0.5);
 
-    // Музыка
-    if (!this.sound.get('bg_music')) {
-      this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
-      this.bgMusic.play();
-    } else {
-      this.bgMusic = this.sound.get('bg_music');
-      if (!this.bgMusic.isPlaying) this.bgMusic.play();
+    // Музыка (используем глобальную)
+    if (gameManager.bgMusic && !gameManager.bgMusic.isPlaying) {
+      gameManager.bgMusic.play();
     }
   }
 
@@ -532,7 +533,7 @@ class MenuScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной геймплей (рабочая версия)
+// PLAY SCENE – основной геймплей (исправленный)
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -544,7 +545,7 @@ class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // ===== Инициализация переменных (из рабочего кода) =====
+    // ===== Инициализация переменных =====
     this.score = 0;
     this.crystals = gameManager.data.crystals;
     this.meters = 0;
@@ -555,7 +556,7 @@ class PlayScene extends Phaser.Scene {
     this.coinsForWagon = 15;
     this.maxWagons = 12 + (gameManager.data.upgrades.maxWagons || 0) * 2;
     this.wagonGap = 28 - (gameManager.data.upgrades.wagonGap || 0) * 2;
-    this.wagonSpring = 0.15;
+    this.wagonSpring = 0.3; // увеличена упругость для лучшего следования
     this.targetPlayerX = 110;
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
@@ -610,7 +611,7 @@ class PlayScene extends Phaser.Scene {
     this.countdownOverlay = null;
     this.countdownPrepareText = null;
 
-    // ===== Дополнительные системы из первого файла =====
+    // ===== Дополнительные системы =====
     this.initAchievements();
     this.initDailyRewards();
     this.initLeaderboard();
@@ -810,7 +811,7 @@ class PlayScene extends Phaser.Scene {
       star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
       star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
       star.setDepth(-25);
-      this.stars.push({ sprite: star, speed: Phaser.Math.Between(3, 20), flicker: Phaser.Math.FloatBetween(0.01, 0.03) });
+      this.stars.push({ sprite: star, speed: Phaser.Math.Between(30, 80), flicker: Phaser.Math.FloatBetween(0.01, 0.03) }); // увеличена скорость
     }
   }
 
@@ -867,6 +868,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setCircle(24, 15, 5);
     this.player.setBlendMode(Phaser.BlendModes.ADD);
     this.player.body.setMass(10000);
+    this.player.body.setDrag(500, 0); // добавим трение по X, чтобы гасить скорость
 
     this.trailEmitter = this.add.particles(0, 0, 'flare', {
       speed: 40,
@@ -881,15 +883,15 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
-    // Звуки
+    // Звуки (используем локальные)
     this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
     this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
     this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
     this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
     this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-    this.bgMusic = this.sound.add('bg_music', { loop: true, volume: 0.4 });
     this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
     this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+    // Музыка глобальная, не создаём новую
   }
 
   createUI() {
@@ -983,7 +985,7 @@ class PlayScene extends Phaser.Scene {
     this.started = true;
     this.introText.setVisible(false);
     this.coinTipsText.setVisible(false);
-    if (this.bgMusic) this.bgMusic.play();
+    // Музыку не запускаем, она уже играет из меню
     this.spawnGate();
     this.scheduleNextSpawn();
     this.checkStationSpawn();
@@ -1310,6 +1312,8 @@ class PlayScene extends Phaser.Scene {
     this.updateHearts();
     this.cameras.main.shake(100,0.003);
     this.playSound(this.tapSound);
+    // Принудительно сбрасываем горизонтальную скорость, чтобы не отбрасывало
+    this.player.body.setVelocityX(0);
     if (this.headHP <= 0) this.handleDeath();
     else { this.player.setTint(0xff8888); this.time.delayedCall(500, ()=>this.player.clearTint()); }
   }
@@ -1347,7 +1351,7 @@ class PlayScene extends Phaser.Scene {
     if (this.dead) return;
     this.dead = true;
     this.trailEmitter.stop();
-    if (this.bgMusic) this.bgMusic.stop();
+    // Музыку не останавливаем, пусть играет дальше или можно остановить, но лучше не трогать
     if (this.spawnTimer) this.spawnTimer.remove();
     if (this.bonusTimer) this.bonusTimer.remove();
     if (this.stationTimer) this.stationTimer.remove();
@@ -1464,7 +1468,7 @@ class GameOverScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// SHOP SCENE (из первого файла, немного упрощена)
+// SHOP SCENE
 // =========================================================================
 
 class ShopScene extends Phaser.Scene {
@@ -1507,7 +1511,7 @@ class ShopScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// ACHIEVEMENTS SCENE (из первого файла)
+// ACHIEVEMENTS SCENE
 // =========================================================================
 
 class AchievementsScene extends Phaser.Scene {
@@ -1540,7 +1544,7 @@ class AchievementsScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// STATS SCENE (из первого файла)
+// STATS SCENE
 // =========================================================================
 
 class StatsScene extends Phaser.Scene {
