@@ -823,9 +823,25 @@ class TutorialScene extends Phaser.Scene {
 class ParticleEffectManager {
   constructor(scene) {
     this.scene = scene;
-    this.maxParticles = 200;
+    this.maxParticles = 100;
     this.activeEmitters = [];
   }
+  cleanup() {
+  this.activeEmitters = this.activeEmitters.filter(e => {
+    if (e && e.alive) {
+      this.particleCount = (this.particleCount || 0) + (e.emitZone?.quantity || 0);
+      return true;
+    }
+    return false;
+  });
+  
+  // ✅ УДАЛЯЕМ СТАРЫЕ ЭФФЕКТЫ ЕСЛИ СЛИШКОМ МНОГО
+  if (this.activeEmitters.length > this.maxParticles / 10) {
+    const toRemove = this.activeEmitters[0];
+    if (toRemove && toRemove.stop) toRemove.stop();
+    this.activeEmitters.shift();
+  }
+}
 
   createCoinCollectEffect(x, y, coinType) {
     this.cleanup();
@@ -1205,19 +1221,82 @@ class AIEnemy {
     this.sprite.setCollideWorldBounds(true);
     this.sprite.body.setAllowGravity(false);
     this.health = this.config.health;
+    this.maxHealth = this.config.health; // ← ДОБАВЬТЕ ЭТО
+    
+    // ← ДОБАВЬТЕ ПОЛОСКУ ЗДОРОВЬЯ
+    this.healthBar = null;
+    this.createHealthBar();
+    
     this.state = 'patrol';
     this.patrolDirection = 1;
     this.patrolTimer = 0;
     this.attackCooldown = 0;
     this.fireCooldown = 0;
 
-    // Добавляем ссылку на объект врага в спрайт для удобства коллизий
     this.sprite.enemyRef = this;
-    if (scene.enemyGroup) {
+
+        if (scene.enemyGroup) {
       scene.enemyGroup.add(this.sprite);
     }
   }
 
+  // ← ДОБАВЬТЕ НОВЫЙ МЕТОД
+  createHealthBar() {
+    const barWidth = 30;
+    const barHeight = 4;
+    const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
+    
+    graphics.fillStyle(0xff0000, 1);
+    graphics.fillRect(0, 0, barWidth, barHeight);
+    graphics.generateTexture('enemy_health_bar', barWidth, barHeight);
+    graphics.destroy();
+    
+    this.healthBar = this.scene.add.image(this.sprite.x, this.sprite.y - 20, 'enemy_health_bar')
+      .setScale(1, 0.5)
+      .setDepth(20);
+  }
+
+  // ← ОБНОВИТЕ МЕТОД takeDamage
+  takeDamage(amount) {
+    this.health -= amount;
+    
+    // ✅ ОБНОВЛЯЕМ ПОЛОСКУ ЗДОРОВЬЯ
+    if (this.healthBar) {
+      const healthPercent = this.health / this.maxHealth;
+      this.healthBar.setScale(healthPercent, 0.5);
+      
+      // Меняем цвет в зависимости от здоровья
+      if (healthPercent > 0.5) {
+        this.healthBar.setTint(0x00ff00);
+      } else if (healthPercent > 0.25) {
+        this.healthBar.setTint(0xffaa00);
+      } else {
+        this.healthBar.setTint(0xff0000);
+      }
+    }
+    
+    if (this.health <= 0) {
+      this.die();
+      return true;
+    }
+    return false;
+  }
+
+  // ← ОБНОВИТЕ МЕТОД die
+  die() {
+    this.scene.crystals += this.config.scoreValue;
+    this.scene.particleManager.createEnemyDeathEffect(this.sprite.x, this.sprite.y);
+    if (this.scene.enemyGroup) {
+      this.scene.enemyGroup.remove(this.sprite);
+    }
+    if (this.healthBar) {
+      this.healthBar.destroy(); // ← ДОБАВЬТЕ
+    }
+    this.sprite.destroy();
+    this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(e => e !== this);
+  }
+
+  // ← ДОБАВЬТЕ ОБНОВЛЕНИЕ ПОЗИЦИИ ПОЛОСКИ
   update(playerPos, time, delta) {
     const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, playerPos.x, playerPos.y);
     if (dist < this.config.attackRange) {
@@ -1231,6 +1310,11 @@ class AIEnemy {
     this.attackCooldown -= delta;
     this.fireCooldown -= delta;
 
+    // ✅ ОБНОВЛЯЕМ ПОЗИЦИЮ ПОЛОСКИ ЗДОРОВЬЯ
+    if (this.healthBar) {
+      this.healthBar.setPosition(this.sprite.x, this.sprite.y - 20);
+    }
+
     switch(this.state) {
       case 'chase':
         this.chase(playerPos);
@@ -1242,49 +1326,6 @@ class AIEnemy {
         this.patrol(delta);
         break;
     }
-  }
-
-  chase(playerPos) {
-    const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, playerPos.x, playerPos.y);
-    this.sprite.setVelocityX(Math.cos(angle) * this.config.speed);
-    this.sprite.setVelocityY(Math.sin(angle) * this.config.speed);
-  }
-
-  attack(playerPos) {
-    if (this.fireCooldown <= 0) {
-      this.scene.fireEnemyBullet(this, playerPos);
-      this.fireCooldown = this.config.fireDelay;
-    }
-    this.chase(playerPos);
-  }
-
-  patrol(delta) {
-    this.patrolTimer += delta;
-    if (this.patrolTimer > 2000) {
-      this.patrolDirection *= -1;
-      this.patrolTimer = 0;
-    }
-    this.sprite.setVelocityX(this.config.speed * this.patrolDirection);
-    this.sprite.setVelocityY(Math.sin(this.patrolTimer * 0.01) * 50);
-  }
-
-  takeDamage(amount) {
-    this.health -= amount;
-    if (this.health <= 0) {
-      this.die();
-      return true;
-    }
-    return false;
-  }
-
-  die() {
-    this.scene.crystals += this.config.scoreValue;
-    this.scene.particleManager.createEnemyDeathEffect(this.sprite.x, this.sprite.y);
-    if (this.scene.enemyGroup) {
-      this.scene.enemyGroup.remove(this.sprite);
-    }
-    this.sprite.destroy();
-    this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(e => e !== this);
   }
 }
 
