@@ -44,7 +44,6 @@ const SHOP_UPGRADES = [
   { key: 'wagonGap', name: 'Дистанция вагонов', icon: '📏', cost: 30, maxLevel: 10 },
   { key: 'headHP', name: 'Макс. здоровье', icon: '❤️', cost: 40, maxLevel: 10 },
   { key: 'revival', name: 'Воскрешение', icon: '🔄', cost: 50, maxLevel: 5 },
-  // Новые улучшения оружия
   { key: 'weaponDamage', name: 'Урон оружия', icon: '💥', cost: 20, maxLevel: 10 },
   { key: 'weaponSpeed', name: 'Скорость пуль', icon: '⚡', cost: 15, maxLevel: 10 },
   { key: 'weaponFireRate', name: 'Скорострельность', icon: '🔫', cost: 25, maxLevel: 10 },
@@ -169,7 +168,7 @@ class GameManager {
 const gameManager = new GameManager();
 
 // =========================================================================
-// МЕНЕДЖЕР ЗВУКОВ (Web Audio API + MP3)
+// МЕНЕДЖЕР ЗВУКОВ
 // =========================================================================
 
 class AudioManager {
@@ -200,7 +199,488 @@ const audioManager = new AudioManager();
 window.audioManager = audioManager;
 
 // =========================================================================
-// МЕНЕДЖЕР ЧАСТИЦ (оптимизированный)
+// BOOT SCENE – создание всех текстур
+// =========================================================================
+
+class BootScene extends Phaser.Scene {
+  constructor() {
+    super('boot');
+  }
+
+  preload() {
+    this.load.audio('coin_sound', 'sounds/coin.mp3');
+    this.load.audio('item_sound', 'sounds/item.mp3');
+    this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
+    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
+    this.load.audio('revive_sound', 'sounds/revive.mp3');
+    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+  }
+
+  create() {
+    this.createTextures();
+    this.scene.start('menu');
+  }
+
+  createTextures() {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+
+    // ИГРОК
+    g.clear();
+    g.fillStyle(0xffaa00);
+    g.fillRoundedRect(12, 12, 56, 32, 8);
+    g.fillStyle(0xff8800);
+    g.fillRoundedRect(20, 8, 40, 10, 4);
+    g.fillRect(56, 16, 8, 20);
+    g.fillStyle(0x44aaff);
+    g.fillRect(22, 16, 14, 8);
+    g.fillRect(40, 16, 14, 8);
+    g.fillStyle(0x00ffff);
+    g.fillCircle(18, 28, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(18, 28, 2);
+    g.fillStyle(0xffff00);
+    g.fillRect(40, 30, 6, 4);
+    g.fillRect(48, 30, 6, 4);
+    g.fillRect(56, 30, 6, 4);
+    g.fillStyle(0x333333, 0.5);
+    g.fillRect(10, 34, 20, 6);
+    g.generateTexture('player', 80, 60);
+
+    // ВАГОНЧИКИ
+    const colors = [
+      0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844,
+      0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66
+    ];
+    for (let i = 0; i < colors.length; i++) {
+      g.clear();
+      g.fillStyle(colors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0x00ffff);
+      g.fillRect(12, 16, 6, 4);
+      g.fillRect(22, 16, 6, 4);
+      g.fillStyle(0xffffff);
+      g.fillRect(8, 8, 6, 4);
+      g.fillRect(20, 8, 6, 4);
+      g.fillStyle(0xffaa00);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.fillStyle(0x000000, 0.2);
+      g.fillRect(6, 26, 36, 2);
+      g.generateTexture(`wagon_${i}`, 48, 34);
+    }
+
+    // ВОРОТА
+    const createGate = (color, light, name) => {
+      g.clear();
+      g.fillStyle(color);
+      g.fillRoundedRect(0, 0, 100, 400, 20);
+      g.fillStyle(light);
+      g.fillRoundedRect(10, 0, 15, 400, 8);
+      g.lineStyle(3, 0x00ffff, 0.8);
+      g.strokeRoundedRect(0, 0, 100, 400, 20);
+      g.generateTexture(name, 100, 400);
+    };
+    createGate(0x0a0a2a, 0x00ffff, 'gate_blue');
+    createGate(0x0a2a0a, 0x00ffaa, 'gate_green');
+    createGate(0x2a2a0a, 0xffff00, 'gate_yellow');
+    createGate(0x2a0a0a, 0xff00aa, 'gate_red');
+    createGate(0x2a0a2a, 0xff00ff, 'gate_purple');
+
+    // МОНЕТКИ
+    const createCoin = (color, lineColor, name) => {
+      g.clear();
+      g.fillStyle(color);
+      g.fillCircle(16, 16, 14);
+      g.lineStyle(4, lineColor);
+      g.strokeCircle(16, 16, 9);
+      g.lineStyle(2, lineColor, 0.5);
+      g.strokeCircle(16, 16, 6);
+      g.fillStyle(0xffffff, 0.4);
+      g.fillCircle(10, 10, 4);
+      g.lineStyle(2, 0xffffff, 0.3);
+      g.strokeCircle(16, 16, 15);
+      g.generateTexture(name, 32, 32);
+    };
+    createCoin(0xffaa00, 0xffdd44, 'coin_gold');
+    createCoin(0xff4444, 0xffaa00, 'coin_red');
+    createCoin(0x4444ff, 0xffffff, 'coin_blue');
+    createCoin(0x44ff44, 0xffffff, 'coin_green');
+    createCoin(0xff44ff, 0xffffff, 'coin_purple');
+
+    // ПЛАНЕТЫ
+    for (let i = 1; i <= 5; i++) {
+      g.clear();
+      const hue = (i * 60) % 360;
+      const color = Phaser.Display.Color.HSLToColor(hue / 360, 0.8, 0.5).color;
+      g.fillStyle(color);
+      g.fillCircle(32, 32, 28);
+      g.fillStyle(0x000000, 0.3);
+      g.fillCircle(20, 20, 6);
+      g.fillStyle(0xffffff, 0.15);
+      g.fillCircle(30, 45, 5);
+      g.generateTexture(`planet_${i}`, 64, 64);
+    }
+
+    // КОРАБЛИ
+    g.clear();
+    g.fillStyle(0x2244aa);
+    g.fillEllipse(40, 30, 70, 20);
+    g.fillStyle(0x00aaff);
+    g.fillEllipse(40, 20, 40, 12);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(20, 30, 5);
+    g.fillCircle(60, 30, 5);
+    g.fillCircle(40, 30, 3);
+    g.lineStyle(2, 0x00ffff, 0.5);
+    g.strokeEllipse(40, 30, 70, 20);
+    g.generateTexture('bg_ship_1', 90, 50);
+
+    g.clear();
+    g.fillStyle(0xaa2222);
+    g.fillRoundedRect(20, 20, 70, 30, 8);
+    g.fillStyle(0xff4444);
+    g.fillTriangle(90, 25, 90, 45, 110, 35);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(35, 35, 5);
+    g.fillCircle(55, 35, 5);
+    g.fillCircle(75, 35, 4);
+    g.lineStyle(2, 0xff00aa, 0.5);
+    g.strokeRoundedRect(20, 20, 70, 30, 8);
+    g.generateTexture('bg_ship_2', 120, 60);
+
+    // ВРАГИ
+    g.clear();
+    g.fillStyle(0x00ffaa);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xffffff);
+    g.fillCircle(10, 10, 3);
+    g.fillCircle(20, 20, 3);
+    g.lineStyle(2, 0xffffff);
+    g.strokeCircle(15, 15, 15);
+    g.generateTexture('enemy_drone', 30, 30);
+
+    g.clear();
+    g.fillStyle(0xff00aa);
+    g.fillRect(5, 5, 30, 30);
+    g.fillStyle(0x00ffff);
+    g.fillRect(10, 10, 10, 10);
+    g.fillRect(20, 20, 10, 10);
+    g.generateTexture('enemy_sentinel', 40, 40);
+
+    g.clear();
+    g.fillStyle(0xcccccc);
+    g.fillRect(8, 8, 24, 24);
+    g.fillStyle(0x000000);
+    g.fillCircle(14, 14, 3);
+    g.fillCircle(26, 14, 3);
+    g.fillRect(16, 22, 8, 4);
+    g.generateTexture('enemy_skeleton', 40, 40);
+
+    // КНОПКА АТАКИ
+    g.clear();
+    g.fillStyle(0xff4444);
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xff0000);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffff00);
+    g.fillTriangle(15, 10, 25, 30, 35, 10);
+    g.fillRect(20, 30, 10, 15);
+    g.generateTexture('attack_button', 50, 50);
+
+    // ЛАЗЕРЫ
+    g.clear();
+    g.fillStyle(0xff4444);
+    g.fillRect(0, 0, 12, 3);
+    g.generateTexture('laser_enemy', 12, 3);
+    g.clear();
+    g.fillStyle(0x00ffff);
+    g.fillRect(0, 0, 12, 3);
+    g.generateTexture('laser_player', 12, 3);
+
+    // ЧАСТИЦЫ
+    g.clear();
+    g.fillStyle(0xffffff);
+    g.fillCircle(2, 2, 2);
+    g.generateTexture('star', 4, 4);
+    
+    g.clear();
+    g.fillStyle(0x00ffff, 0.9);
+    g.fillCircle(4, 4, 4);
+    g.generateTexture('flare', 8, 8);
+    
+    g.clear();
+    g.fillStyle(0xff00ff, 0.8);
+    g.fillCircle(3, 3, 3);
+    g.generateTexture('spark', 6, 6);
+
+    // КНОПКИ
+    g.clear();
+    g.fillStyle(0x1a1a3a, 0.9);
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0x00ffff);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(15, 15, 8, 20);
+    g.fillRect(27, 15, 8, 20);
+    g.generateTexture('pause_button', 50, 50);
+
+    g.clear();
+    g.fillStyle(0xffaa00, 0.9);
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xffaa00);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xcc8800);
+    g.fillRect(15, 8, 20, 5);
+    g.fillStyle(0xffcc00);
+    g.fillRoundedRect(10, 13, 30, 25, 5);
+    g.fillStyle(0xffaa00);
+    g.fillRect(15, 18, 8, 12);
+    g.fillRect(27, 18, 8, 12);
+    g.fillStyle(0xffffaa, 0.5);
+    g.fillCircle(15, 15, 2);
+    g.fillCircle(35, 25, 2);
+    g.generateTexture('shop_button', 50, 50);
+
+    g.clear();
+    g.fillStyle(0xff00ff, 0.9);
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xff00ff);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(15, 15, 8, 8);
+    g.fillRect(27, 15, 8, 8);
+    g.fillRect(15, 27, 20, 8);
+    g.generateTexture('menu_button', 50, 50);
+
+    g.clear();
+    g.fillStyle(0xff4444);
+    g.fillTriangle(8, 6, 16, 18, 24, 6);
+    g.fillStyle(0xff8888);
+    g.fillTriangle(8, 6, 16, 2, 24, 6);
+    g.lineStyle(1, 0xff00ff, 0.5);
+    g.strokeTriangle(8, 6, 16, 18, 24, 6);
+    g.generateTexture('heart', 32, 24);
+
+    g.clear();
+    g.fillStyle(0x220066);
+    g.fillCircle(48, 48, 40);
+    g.fillStyle(0x4400aa);
+    g.fillCircle(48, 48, 30);
+    g.fillStyle(0xffaa00);
+    g.fillCircle(48, 48, 10);
+    g.lineStyle(4, 0x00ffff, 0.8);
+    g.strokeCircle(48, 48, 45);
+    g.generateTexture('station_planet', 96, 96);
+
+    g.destroy();
+  }
+}
+
+// =========================================================================
+// MENU SCENE – главное меню
+// =========================================================================
+
+class MenuScene extends Phaser.Scene {
+  constructor() {
+    super('menu');
+  }
+
+  create() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    const gradient = this.make.graphics({ x: 0, y: 0, add: false });
+    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
+    gradient.fillRect(0, 0, w, h);
+    gradient.generateTexture('menu_bg', w, h);
+    gradient.destroy();
+
+    this.add.image(0, 0, 'menu_bg').setOrigin(0);
+
+    for (let i = 0; i < 100; i++) {
+      const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
+      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
+      star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
+      star.setDepth(-10);
+    }
+
+    const title = this.add.text(w / 2, h * 0.15, 'SKYPULSE', {
+      fontSize: '60px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: COLORS.primary,
+      stroke: COLORS.secondary,
+      strokeThickness: 4,
+      shadow: { offsetX: 0, offsetY: 0, color: COLORS.primary, blur: 20, fill: true }
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: title,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    const stats = gameManager.data.stats;
+    const statsText = this.add.text(w / 2, h * 0.28, 
+      `🏆 ${stats.maxScore} | ⭐ Уровень ${stats.maxLevel} | 🚃 ${stats.maxWagons}`,
+      { fontSize: '14px', fontFamily: "'Space Mono', monospace", color: COLORS.text_secondary, align: 'center' }
+    ).setOrigin(0.5);
+
+    this.createButton(w / 2, h * 0.45, 'ИГРАТЬ', () => {
+      if (!gameManager.data.tutorialCompleted) {
+        this.scene.start('tutorial');
+      } else {
+        this.scene.start('play');
+      }
+    }, 'large');
+
+    this.createButton(w / 2, h * 0.58, 'МАГАЗИН', () => this.scene.start('shop'));
+    this.createButton(w / 2, h * 0.68, 'ДОСТИЖЕНИЯ', () => this.scene.start('achievements'));
+    this.createButton(w / 2, h * 0.78, 'КВЕСТЫ', () => this.scene.start('quests'));
+    this.createButton(w / 2, h * 0.88, 'НАСТРОЙКИ', () => this.scene.start('settings'));
+
+    this.add.text(w / 2, h - 20, 'v2.1.0', {
+      fontSize: '10px',
+      fontFamily: "'Space Mono', monospace",
+      color: COLORS.text_muted
+    }).setOrigin(0.5);
+
+    window.audioManager.playMusic(this, 0.5);
+  }
+
+  createButton(x, y, text, callback, size = 'normal') {
+    const fontSize = size === 'large' ? '24px' : '16px';
+    const padding = size === 'large' ? { x: 40, y: 15 } : { x: 30, y: 10 };
+
+    const btn = this.add.text(x, y, text, {
+      fontSize,
+      fontFamily: "'Orbitron', sans-serif",
+      color: COLORS.primary,
+      backgroundColor: '#1a1a3a',
+      padding,
+      stroke: COLORS.primary,
+      strokeThickness: 2,
+      shadow: { offsetX: 0, offsetY: 0, color: COLORS.primary, blur: 10, fill: true }
+    }).setOrigin(0.5).setInteractive()
+      .on('pointerover', () => {
+        btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
+        btn.setScale(1.05);
+      })
+      .on('pointerout', () => {
+        btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
+        btn.setScale(1);
+      })
+      .on('pointerdown', () => {
+        this.tweens.add({
+          targets: btn,
+          scaleX: 0.95,
+          scaleY: 0.95,
+          duration: 100,
+          yoyo: true,
+          onComplete: callback
+        });
+      });
+    return btn;
+  }
+}
+
+// =========================================================================
+// TUTORIAL SCENE
+// =========================================================================
+
+class TutorialScene extends Phaser.Scene {
+  constructor() {
+    super('tutorial');
+  }
+
+  create() {
+    const w = this.scale.width, h = this.scale.height;
+    this.slideIndex = 0;
+    const slides = [
+      { text: 'Нажимай на экран, чтобы такси подпрыгивало.', icon: '🖐️', bg: 0x0a0a1a },
+      { text: 'Собирай монеты. Каждые 15 монет добавляют вагон.', icon: '🪙', bg: 0x1a0a2a },
+      { text: 'Вагоны увеличивают очки, но их можно потерять.', icon: '🚃', bg: 0x2a1a0a },
+      { text: 'Красные монеты = ускорение, синие = щит.', icon: '🔴🔵', bg: 0x0a1a2a },
+      { text: 'Зелёные = магнит, фиолетовые = замедление.', icon: '🟢🟣', bg: 0x2a0a1a },
+      { text: 'В магазине можно улучшить способности.', icon: '🛒', bg: 0x1a2a0a },
+      { text: 'На уровнях появляются враги – атакуй их кнопкой!', icon: '⚔️', bg: 0x2a2a0a },
+    ];
+
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('tutorial_bg',w,h);
+    gradient.destroy();
+    this.add.image(0,0,'tutorial_bg').setOrigin(0);
+
+    this.textObj = this.add.text(w/2, h/2 - 50, slides[0].text, {
+      fontSize: '20px',
+      fontFamily: "'Orbitron', monospace",
+      color: COLORS.text_primary,
+      align: 'center',
+      wordWrap: { width: w - 60 }
+    }).setOrigin(0.5);
+
+    this.iconObj = this.add.text(w/2, h/2 + 50, slides[0].icon, {
+      fontSize: '60px'
+    }).setOrigin(0.5);
+
+    this.prevBtn = this.createButton(w/2 - 100, h - 80, 'НАЗАД', () => this.prevSlide());
+    this.nextBtn = this.createButton(w/2 + 100, h - 80, 'ДАЛЕЕ', () => this.nextSlide(slides.length));
+    this.skipBtn = this.createButton(w/2, h - 40, 'ПРОПУСТИТЬ', () => {
+      gameManager.data.tutorialCompleted = true;
+      gameManager.save();
+      this.scene.start('play');
+    });
+
+    this.slides = slides;
+  }
+
+  prevSlide() {
+    this.slideIndex = Math.max(0, this.slideIndex - 1);
+    this.updateSlide();
+  }
+
+  nextSlide(total) {
+    if (this.slideIndex === total - 1) {
+      gameManager.data.tutorialCompleted = true;
+      gameManager.save();
+      this.scene.start('play');
+    } else {
+      this.slideIndex++;
+      this.updateSlide();
+    }
+  }
+
+  updateSlide() {
+    this.textObj.setText(this.slides[this.slideIndex].text);
+    this.iconObj.setText(this.slides[this.slideIndex].icon);
+  }
+
+  createButton(x, y, text, callback) {
+    const btn = this.add.text(x, y, text, {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: COLORS.primary,
+      backgroundColor: '#1a1a3a',
+      padding: { x: 15, y: 8 },
+      stroke: COLORS.primary,
+      strokeThickness: 2
+    }).setOrigin(0.5).setInteractive()
+      .on('pointerover', () => btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary }))
+      .on('pointerout', () => btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' }))
+      .on('pointerdown', callback);
+    return btn;
+  }
+}
+
+// =========================================================================
+// МЕНЕДЖЕР ЧАСТИЦ
 // =========================================================================
 
 class ParticleEffectManager {
@@ -380,11 +860,10 @@ class UpgradeSystem {
     this.scene.wagonGap = 28 - (this.upgrades.wagonGap || 0) * 2;
     this.scene.shieldDuration = 5 + (this.upgrades.shieldDuration || 0) * 1.5;
     this.scene.revivals = this.upgrades.revival || 0;
-    // Параметры оружия
     this.scene.weaponDamage = 1 + (this.upgrades.weaponDamage || 0);
     this.scene.weaponBulletSpeed = 400 + (this.upgrades.weaponSpeed || 0) * 20;
     this.scene.weaponFireDelay = Math.max(100, 500 - (this.upgrades.weaponFireRate || 0) * 20);
-    this.scene.weaponCooldown = 0; // для счётчика времени между выстрелами
+    this.scene.weaponCooldown = 0;
   }
 
   applyUpgrade(key) {
@@ -469,7 +948,7 @@ class QuestSystem {
     const quest = this.quests.find(q => q.id === questId);
     if (quest && quest.progress >= quest.target) {
       gameManager.addCrystals(quest.reward);
-      quest.progress = -1; // claimed
+      quest.progress = -1;
       this.saveQuests();
       return true;
     }
@@ -488,7 +967,7 @@ class QuestSystem {
 }
 
 // =========================================================================
-// МЕНЕДЖЕР УРОВНЕЙ (темы)
+// МЕНЕДЖЕР УРОВНЕЙ
 // =========================================================================
 
 const LEVEL_CONFIG = {
@@ -521,7 +1000,7 @@ class LevelManager {
 }
 
 // =========================================================================
-// КЛАСС ВРАГА (ИИ) с возможностью стрельбы
+// КЛАСС ВРАГА
 // =========================================================================
 
 const ENEMY_CONFIG = {
@@ -546,7 +1025,7 @@ class AIEnemy {
     this.patrolDirection = 1;
     this.patrolTimer = 0;
     this.attackCooldown = 0;
-    this.fireCooldown = 0; // для стрельбы
+    this.fireCooldown = 0;
   }
 
   update(playerPos, time, delta) {
@@ -559,7 +1038,6 @@ class AIEnemy {
       this.state = 'patrol';
     }
 
-    // Уменьшаем кулдаун
     this.attackCooldown -= delta;
     this.fireCooldown -= delta;
 
@@ -583,13 +1061,11 @@ class AIEnemy {
   }
 
   attack(playerPos) {
-    // Стреляем, если кулдаун прошёл
     if (this.fireCooldown <= 0) {
       this.scene.fireEnemyBullet(this, playerPos);
       this.fireCooldown = this.config.fireDelay;
     }
-    // Можно также немного двигаться
-    this.chase(playerPos); // или остановиться – на выбор
+    this.chase(playerPos);
   }
 
   patrol(delta) {
@@ -620,7 +1096,7 @@ class AIEnemy {
 }
 
 // =========================================================================
-// МЕНЕДЖЕР ВОЛН ВРАГОВ (улучшенный)
+// МЕНЕДЖЕР ВОЛН ВРАГОВ
 // =========================================================================
 
 const WAVE_CONFIG = {
@@ -656,7 +1132,6 @@ class WaveManager {
   }
 
   update(time, delta, playerPos) {
-    // Враги только с уровня 1
     if (this.scene.level < 1) return;
 
     this.spawnTimer += delta;
@@ -711,7 +1186,7 @@ class WaveManager {
 }
 
 // =========================================================================
-// СИСТЕМА БОЯ (обновлена для работы с пулями)
+// СИСТЕМА БОЯ
 // =========================================================================
 
 class DamageSystem {
@@ -739,7 +1214,6 @@ class DamageSystem {
     }
   }
 
-  // Попадание вражеской пули в игрока
   playerHitByBullet(player, bullet) {
     if (player.shieldActive) {
       this.scene.particleManager.createBonusEffect('shield', bullet.x, bullet.y);
@@ -757,7 +1231,6 @@ class DamageSystem {
     }
   }
 
-  // Попадание пули игрока во врага
   enemyHitByBullet(enemy, bullet) {
     enemy.takeDamage(bullet.damage);
     this.scene.particleManager.createAttackEffect(enemy.sprite.x, enemy.sprite.y);
@@ -783,9 +1256,7 @@ class DamageSystem {
   }
 
   enemyHitByWagon(enemy, wagon) {
-    if (enemy.takeDamage(1)) {
-      // враг уничтожен
-    }
+    if (enemy.takeDamage(1)) {}
   }
 
   enemyAttackPlayer(enemy, playerPos) {
@@ -794,56 +1265,7 @@ class DamageSystem {
 }
 
 // =========================================================================
-// BOOT SCENE – создание всех текстур
-// =========================================================================
-
-class BootScene extends Phaser.Scene {
-  constructor() {
-    super('boot');
-  }
-
-  preload() {
-    // Загружаем звуковые эффекты
-    this.load.audio('coin_sound', 'sounds/coin.mp3');
-    this.load.audio('item_sound', 'sounds/item.mp3');
-    this.load.audio('tap_sound', 'sounds/tap.mp3');
-    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
-    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
-    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
-    this.load.audio('revive_sound', 'sounds/revive.mp3');
-    // Загружаем фоновую музыку
-    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
-  }
-
-  create() {
-    this.createTextures();
-    this.scene.start('menu');
-  }
-
-  createTextures() {
-    const g = this.make.graphics({ x: 0, y: 0, add: false });
-
-    // ... (весь существующий код создания текстур) ...
-    // Добавим текстуры для лазеров
-    g.clear();
-    g.fillStyle(0xff4444);
-    g.fillRect(0, 0, 12, 3);
-    g.generateTexture('laser_enemy', 12, 3);
-    g.clear();
-    g.fillStyle(0x00ffff);
-    g.fillRect(0, 0, 12, 3);
-    g.generateTexture('laser_player', 12, 3);
-
-    // Далее идут остальные текстуры (оставлю как есть, но для краткости не копирую всё)
-    // ... (весь существующий код) ...
-
-    // Завершаем
-    g.destroy();
-  }
-}
-
-// =========================================================================
-// PLAY SCENE – основной игровой процесс (исправленный)
+// PLAY SCENE – основной игровой процесс
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -904,7 +1326,6 @@ class PlayScene extends Phaser.Scene {
     this.jumpPower = this.upgradeSystem.getUpgradeValue('jumpPower');
     this.questSystem = new QuestSystem();
 
-    // Параметры оружия (устанавливаются в UpgradeSystem)
     this.weaponDamage = 1;
     this.weaponBulletSpeed = 400;
     this.weaponFireDelay = 500;
@@ -940,7 +1361,6 @@ class PlayScene extends Phaser.Scene {
     this.damageSystem = new DamageSystem(this);
     this.waveManager = new WaveManager(this, this.levelManager);
 
-    // Группы пуль
     this.playerBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
     this.enemyBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
 
@@ -951,9 +1371,7 @@ class PlayScene extends Phaser.Scene {
     this.createPlayer();
     this.createUI();
 
-    // Обработчик нажатия на экран (для прыжка) – НЕ срабатывает на кнопки
     this.input.on('pointerdown', (pointer) => {
-      // Если клик был по интерактивному объекту (кнопка), игнорируем
       if (pointer.targetObject) return;
       if (this.dead) { this.scene.start('menu'); return; }
       if (!this.started) this.startRun();
@@ -964,7 +1382,6 @@ class PlayScene extends Phaser.Scene {
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
 
-    // Устанавливаем громкость фоновой музыки для игры (тише)
     window.audioManager.playMusic(this, 0.2);
   }
 
@@ -978,7 +1395,6 @@ class PlayScene extends Phaser.Scene {
 
     if (!this.started || this.dead) return;
 
-    // Обновление кулдауна оружия
     if (this.weaponCooldown > 0) {
       this.weaponCooldown -= delta;
     }
@@ -1017,7 +1433,6 @@ class PlayScene extends Phaser.Scene {
     this.waveManager.update(time, delta, this.player);
     this.checkLevelProgression();
 
-    // Обновление пуль: удаление вышедших за экран
     this.playerBullets.getChildren().forEach(b => {
       if (b.x > this.scale.width + 100) b.destroy();
     });
@@ -1026,12 +1441,11 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // ===== МЕТОД АТАКИ (теперь стрельба пулями) =====
+  // ===== МЕТОД АТАКИ =====
   attackEnemies() {
     if (this.weaponCooldown > 0) return;
     this.weaponCooldown = this.weaponFireDelay;
 
-    // Создаём пулю от игрока
     const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
     bullet.setScale(1.5);
     bullet.damage = this.weaponDamage;
@@ -1040,10 +1454,8 @@ class PlayScene extends Phaser.Scene {
     bullet.body.setAllowGravity(false);
     bullet.setDepth(20);
 
-    // Звук выстрела (можно использовать tap или отдельный)
     this.tapSound.play();
 
-    // Небольшая анимация на кнопке
     this.tweens.add({
       targets: this.attackButton,
       scaleX: 0.8,
@@ -1053,14 +1465,12 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  // Стрельба врага
   fireEnemyBullet(enemy, playerPos) {
     const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
     bullet.setScale(1.5);
     bullet.damage = enemy.config.bulletDamage || 1;
     bullet.body.setAllowGravity(false);
 
-    // Направление на игрока
     const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
     const speed = enemy.config.bulletSpeed;
     bullet.setVelocityX(Math.cos(angle) * speed);
@@ -1202,7 +1612,6 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
-    // Звуки
     this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
     this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
     this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
@@ -1210,7 +1619,6 @@ class PlayScene extends Phaser.Scene {
     this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
     this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
     this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-    // Для удара используем tap (или item, как вам удобнее)
     this.hitSound = this.tapSound;
   }
        
@@ -1293,9 +1701,7 @@ class PlayScene extends Phaser.Scene {
     this.createGameOverBox();
     this.updateProgressBar();
 
-    // Добавляем коллизии пуль
     this.physics.add.overlap(this.playerBullets, this.waveManager.enemies.map(e => e.sprite), (bullet, enemySprite) => {
-      // Находим объект врага по спрайту
       const enemy = this.waveManager.enemies.find(e => e.sprite === enemySprite);
       if (enemy) {
         this.damageSystem.enemyHitByBullet(enemy, bullet);
@@ -1306,9 +1712,7 @@ class PlayScene extends Phaser.Scene {
       this.damageSystem.playerHitByBullet(player, bullet);
     }, null, this);
 
-    // Также пули врагов могут попадать в вагоны
     this.physics.add.overlap(this.enemyBullets, this.wagons, (bullet, wagon) => {
-      // Повреждаем вагон
       let hp = wagon.getData('hp') - 1;
       if (hp <= 0) {
         this.wagons = this.wagons.filter(w => w !== wagon);
@@ -1983,7 +2387,6 @@ class PlayScene extends Phaser.Scene {
       { key:'wagonGap', name:'Дистанция вагонов', icon:'📏' },
       { key:'headHP', name:'Макс. здоровье', icon:'❤️' },
       { key:'revival', name:'Воскрешение', icon:'🔄' },
-      // Новые улучшения оружия
       { key:'weaponDamage', name:'Урон оружия', icon:'💥' },
       { key:'weaponSpeed', name:'Скорость пуль', icon:'⚡' },
       { key:'weaponFireRate', name:'Скорострельность', icon:'🔫' },
@@ -2546,32 +2949,6 @@ class AchievementsScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// STATS SCENE
-// =========================================================================
-
-class StatsScene extends Phaser.Scene {
-  constructor() { super('stats'); }
-  create() {
-    const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0,y:0,add:false });
-    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
-    gradient.fillRect(0,0,w,h);
-    gradient.generateTexture('stats_bg',w,h);
-    gradient.destroy();
-    this.add.image(0,0,'stats_bg').setOrigin(0);
-    this.add.text(w/2,30,'СТАТИСТИКА', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
-    const stats = gameManager.data.stats;
-    const text = `\nИгр сыграно: ${stats.totalGames}\nЛучший счёт: ${stats.maxScore}\nЛучший уровень: ${stats.maxLevel}\nМакс. вагонов: ${stats.maxWagons}\nВсего кристаллов: ${gameManager.data.crystals}\n`;
-    this.add.text(w/2, h/2, text, { fontSize:'18px', fontFamily:"'Space Mono', monospace", color:COLORS.text_primary, align:'center', lineSpacing:10 }).setOrigin(0.5);
-    this.createButton(w/2, h-40, 'НАЗАД', ()=>this.scene.start('menu'));
-  }
-  createButton(x,y,t,c) {
-    const btn = this.add.text(x,y,t, { fontSize:'16px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:20,y:8}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
-    return btn;
-  }
-}
-
-// =========================================================================
 // SETTINGS SCENE
 // =========================================================================
 
@@ -2656,7 +3033,6 @@ const config = {
     GameOverScene,
     ShopScene,
     AchievementsScene,
-    StatsScene,
     QuestsScene,
     SettingsScene
   ]
