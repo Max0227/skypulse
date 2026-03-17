@@ -27,7 +27,11 @@ const DIFFICULTY_CURVE = {
   15: { speed: 440, gap: 190, spawnDelay: 1000, coinChance: 0.55 },
   20: { speed: 500, gap: 180, spawnDelay: 900, coinChance: 0.50 },
   25: { speed: 560, gap: 170, spawnDelay: 800, coinChance: 0.45 },
-  30: { speed: 620, gap: 160, spawnDelay: 700, coinChance: 0.40 }
+  30: { speed: 620, gap: 160, spawnDelay: 700, coinChance: 0.40 },
+  35: { speed: 680, gap: 150, spawnDelay: 600, coinChance: 0.35 },
+  40: { speed: 750, gap: 140, spawnDelay: 500, coinChance: 0.30 },
+  45: { speed: 820, gap: 130, spawnDelay: 400, coinChance: 0.25 },
+  50: { speed: 900, gap: 120, spawnDelay: 300, coinChance: 0.20 }
 };
 
 const SHOP_UPGRADES = [
@@ -347,6 +351,23 @@ class ParticleEffectManager {
     } catch (e) {}
   }
 
+  createAttackEffect(x, y) {
+    this.cleanup();
+    try {
+      const emitter = this.scene.add.particles(x, y, 'spark', {
+        speed: { min: 150, max: 250 },
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 300,
+        quantity: 20,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: 0xff0000
+      });
+      emitter.explode(20);
+      this.activeEmitters.push(emitter);
+    } catch (e) {}
+  }
+
   cleanup() {
     this.activeEmitters = this.activeEmitters.filter(e => e && e.alive);
     if (this.activeEmitters.length > this.maxParticles) {
@@ -608,7 +629,7 @@ class AIEnemy {
 }
 
 // =========================================================================
-// МЕНЕДЖЕР ВОЛН ВРАГОВ
+// МЕНЕДЖЕР ВОЛН ВРАГОВ (улучшенный)
 // =========================================================================
 
 const WAVE_CONFIG = {
@@ -616,14 +637,20 @@ const WAVE_CONFIG = {
     { wave: 0, count: 1, type: 'drone', positions: null },
     { wave: 1, count: 2, type: 'drone', positions: null },
     { wave: 2, count: 3, type: 'drone', positions: null },
+    { wave: 3, count: 2, type: 'sentinel', positions: null },
+    { wave: 4, count: 3, type: 'sentinel', positions: null },
   ],
   cyberpunk: [
     { wave: 0, count: 2, type: 'sentinel', positions: null },
     { wave: 1, count: 3, type: 'sentinel', positions: null },
+    { wave: 2, count: 2, type: 'drone', positions: null },
+    { wave: 3, count: 4, type: 'sentinel', positions: null },
   ],
   dungeon: [
     { wave: 0, count: 2, type: 'skeleton', positions: null },
-    { wave: 1, count: 4, type: 'skeleton', positions: null },
+    { wave: 1, count: 3, type: 'skeleton', positions: null },
+    { wave: 2, count: 4, type: 'skeleton', positions: null },
+    { wave: 3, count: 5, type: 'skeleton', positions: null },
   ]
 };
 
@@ -638,8 +665,12 @@ class WaveManager {
   }
 
   update(time, delta, playerPos) {
+    // Враги только с уровня 1
+    if (this.scene.level < 1) return;
+
     this.spawnTimer += delta;
     if (this.spawnTimer > 5000 && this.enemies.length === 0 && this.currentWave < this.waveConfig.length) {
+      this.showWaveWarning(this.currentWave);
       this.spawnWave(this.currentWave);
       this.currentWave++;
       this.spawnTimer = 0;
@@ -659,6 +690,25 @@ class WaveManager {
       const enemy = new AIEnemy(this.scene, x, y, config.type);
       this.enemies.push(enemy);
     }
+  }
+
+  showWaveWarning(waveIndex) {
+    const scene = this.scene;
+    const w = scene.scale.width;
+    const h = scene.scale.height;
+    const warning = scene.add.text(w/2, h/2, `⚠️ ВОЛНА ${waveIndex + 1}`, {
+      fontSize: '32px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#ff4444',
+      stroke: '#ff0000',
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+    scene.tweens.add({
+      targets: warning,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => warning.destroy()
+    });
   }
 
   reset() {
@@ -911,6 +961,17 @@ class BootScene extends Phaser.Scene {
     g.fillRect(16, 22, 8, 4);
     g.generateTexture('enemy_skeleton', 40, 40);
 
+    // КНОПКА АТАКИ
+    g.clear();
+    g.fillStyle(0xff4444);
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xff0000);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffff00);
+    g.fillTriangle(15, 10, 25, 30, 35, 10);
+    g.fillRect(20, 30, 10, 15);
+    g.generateTexture('attack_button', 50, 50);
+
     // ЧАСТИЦЫ
     g.clear();
     g.fillStyle(0xffffff);
@@ -989,6 +1050,7 @@ class BootScene extends Phaser.Scene {
     g.destroy();
   }
 }
+
 // =========================================================================
 // MENU SCENE – главное меню
 // =========================================================================
@@ -1001,87 +1063,120 @@ class MenuScene extends Phaser.Scene {
   create() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
 
-    // Градиентный фон
+    // Фон с градиентом
     const gradient = this.make.graphics({ x: 0, y: 0, add: false });
     gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
     gradient.fillRect(0, 0, w, h);
     gradient.generateTexture('menu_bg', w, h);
     gradient.destroy();
+
     this.add.image(0, 0, 'menu_bg').setOrigin(0);
 
-    // Логотип
-    this.add.text(w / 2, h * 0.15, 'SKYPULSE', {
-      fontSize: '48px',
-      fontFamily,
-      color: '#00ffff',
-      stroke: '#ff00ff',
-      strokeThickness: 6,
-      shadow: { offsetX: 0, offsetY: 0, color: '#00ffff', blur: 20, fill: true }
+    // Звёзды
+    for (let i = 0; i < 100; i++) {
+      const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
+      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
+      star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
+      star.setDepth(-10);
+    }
+
+    // Заголовок
+    const title = this.add.text(w / 2, h * 0.15, 'SKYPULSE', {
+      fontSize: '60px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: COLORS.primary,
+      stroke: COLORS.secondary,
+      strokeThickness: 4,
+      shadow: { offsetX: 0, offsetY: 0, color: COLORS.primary, blur: 20, fill: true }
     }).setOrigin(0.5);
 
-    // Кристаллы
-    this.crystalText = this.add.text(w - 20, 20, `💎 ${gameManager.data.crystals}`, {
-      fontSize: '18px',
-      fontFamily,
-      color: '#ffaa00',
-      stroke: '#ff5500',
-      strokeThickness: 2
-    }).setOrigin(1, 0);
-
-    // Кнопки меню
-    const buttons = [
-      { text: 'ИГРАТЬ', scene: 'tutorial', y: 0.35 },
-      { text: 'МАГАЗИН', scene: 'shop', y: 0.45 },
-      { text: 'ДОСТИЖЕНИЯ', scene: 'achievements', y: 0.55 },
-      { text: 'КВЕСТЫ', scene: 'quests', y: 0.65 },
-      { text: 'СТАТИСТИКА', scene: 'stats', y: 0.75 },
-      { text: 'НАСТРОЙКИ', scene: 'settings', y: 0.85 }
-    ];
-
-    buttons.forEach(btn => {
-      this.createButton(w / 2, h * btn.y, btn.text, () => {
-        if (btn.scene === 'tutorial' && !gameManager.data.tutorialCompleted) {
-          this.scene.start('tutorial');
-        } else if (btn.scene === 'tutorial') {
-          this.scene.start('play');
-        } else {
-          this.scene.start(btn.scene);
-        }
-      });
+    this.tweens.add({
+      targets: title,
+      scaleX: 1.05,
+      scaleY: 1.05,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
 
+    // Статистика
+    const stats = gameManager.data.stats;
+    const statsText = this.add.text(w / 2, h * 0.28, 
+      `🏆 ${stats.maxScore} | ⭐ Уровень ${stats.maxLevel} | 🚃 ${stats.maxWagons}`,
+      { fontSize: '14px', fontFamily: "'Space Mono', monospace", color: COLORS.text_secondary, align: 'center' }
+    ).setOrigin(0.5);
+
+    // Кнопка "Играть"
+    this.createButton(w / 2, h * 0.45, 'ИГРАТЬ', () => {
+      if (!gameManager.data.tutorialCompleted) {
+        this.scene.start('tutorial');
+      } else {
+        this.scene.start('play');
+      }
+    }, 'large');
+
+    // Кнопка "Магазин"
+    this.createButton(w / 2, h * 0.58, 'МАГАЗИН', () => this.scene.start('shop'));
+
+    // Кнопка "Достижения"
+    this.createButton(w / 2, h * 0.68, 'ДОСТИЖЕНИЯ', () => this.scene.start('achievements'));
+
+    // Кнопка "Квесты"
+    this.createButton(w / 2, h * 0.78, 'КВЕСТЫ', () => this.scene.start('quests'));
+
+    // Кнопка "Настройки"
+    this.createButton(w / 2, h * 0.88, 'НАСТРОЙКИ', () => this.scene.start('settings'));
+
     // Версия
-    this.add.text(w / 2, h - 20, 'v1.0.0', {
+    this.add.text(w / 2, h - 20, 'v2.1.0', {
       fontSize: '10px',
-      fontFamily,
-      color: '#64748b'
+      fontFamily: "'Space Mono', monospace",
+      color: COLORS.text_muted
     }).setOrigin(0.5);
+
+    if (window.audioManager) {
+      window.audioManager.playMusic(this);
+    }
   }
 
-  createButton(x, y, text, callback) {
+  createButton(x, y, text, callback, size = 'normal') {
+    const fontSize = size === 'large' ? '24px' : '16px';
+    const padding = size === 'large' ? { x: 40, y: 15 } : { x: 30, y: 10 };
+
     const btn = this.add.text(x, y, text, {
-      fontSize: '20px',
+      fontSize,
       fontFamily: "'Orbitron', sans-serif",
-      color: '#ffffff',
+      color: COLORS.primary,
       backgroundColor: '#1a1a3a',
-      padding: { x: 30, y: 12 },
-      stroke: '#00ffff',
-      strokeThickness: 2
+      padding,
+      stroke: COLORS.primary,
+      strokeThickness: 2,
+      shadow: { offsetX: 0, offsetY: 0, color: COLORS.primary, blur: 10, fill: true }
     }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: '#00ffff', backgroundColor: '#2a2a4a' });
-        this.setScale(1.05);
+      .on('pointerover', () => {
+        btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
+        btn.setScale(1.05);
       })
-      .on('pointerout', function() {
-        this.setStyle({ color: '#ffffff', backgroundColor: '#1a1a3a' });
-        this.setScale(1);
+      .on('pointerout', () => {
+        btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
+        btn.setScale(1);
       })
-      .on('pointerdown', callback);
+      .on('pointerdown', () => {
+        this.tweens.add({
+          targets: btn,
+          scaleX: 0.95,
+          scaleY: 0.95,
+          duration: 100,
+          yoyo: true,
+          onComplete: callback
+        });
+      });
     return btn;
   }
 }
+
 // =========================================================================
 // TUTORIAL SCENE
 // =========================================================================
@@ -1095,13 +1190,13 @@ class TutorialScene extends Phaser.Scene {
     const w = this.scale.width, h = this.scale.height;
     this.slideIndex = 0;
     const slides = [
-      { text: 'Нажимай на экран, чтобы такси подпрыгивало.', icon: '🖐️' },
-      { text: 'Собирай монеты. Каждые 15 монет добавляют вагон.', icon: '🪙' },
-      { text: 'Вагоны увеличивают очки, но их можно потерять.', icon: '🚃' },
-      { text: 'Красные монеты = ускорение, синие = щит.', icon: '🔴🔵' },
-      { text: 'Зелёные = магнит, фиолетовые = замедление.', icon: '🟢🟣' },
-      { text: 'В магазине можно улучшить способности.', icon: '🛒' },
-      { text: 'На уровнях появляются враги – уничтожай их!', icon: '👾' },
+      { text: 'Нажимай на экран, чтобы такси подпрыгивало.', icon: '🖐️', bg: 0x0a0a1a },
+      { text: 'Собирай монеты. Каждые 15 монет добавляют вагон.', icon: '🪙', bg: 0x1a0a2a },
+      { text: 'Вагоны увеличивают очки, но их можно потерять.', icon: '🚃', bg: 0x2a1a0a },
+      { text: 'Красные монеты = ускорение, синие = щит.', icon: '🔴🔵', bg: 0x0a1a2a },
+      { text: 'Зелёные = магнит, фиолетовые = замедление.', icon: '🟢🟣', bg: 0x2a0a1a },
+      { text: 'В магазине можно улучшить способности.', icon: '🛒', bg: 0x1a2a0a },
+      { text: 'На уровнях появляются враги – атакуй их кнопкой!', icon: '⚔️', bg: 0x2a2a0a },
     ];
 
     const gradient = this.make.graphics({ x:0, y:0, add:false });
@@ -1173,7 +1268,7 @@ class TutorialScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс (с уровнями, врагами и волнами)
+// PLAY SCENE – основной игровой процесс (исправленный)
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -1205,6 +1300,9 @@ class PlayScene extends Phaser.Scene {
     this.isPaused = false;
     this.pauseOverlay = null;
     this.pauseTexts = [];
+    this.spawnTimerPaused = null;
+    this.bonusTimerPaused = null;
+    this.stationTimerPaused = null;
 
     this.maxHeadHP = 3;
     this.headHP = 3;
@@ -1257,7 +1355,6 @@ class PlayScene extends Phaser.Scene {
     this.initLeaderboard();
     this.initStats();
 
-    // Новые системы
     this.levelManager = new LevelManager(this);
     this.damageSystem = new DamageSystem(this);
     this.waveManager = new WaveManager(this, this.levelManager);
@@ -1323,6 +1420,41 @@ class PlayScene extends Phaser.Scene {
     this.checkAchievements();
     this.waveManager.update(time, delta, this.player);
     this.checkLevelProgression();
+  }
+
+  // ===== МЕТОД АТАКИ =====
+  attackEnemies() {
+    const enemies = this.waveManager.enemies;
+    let hit = false;
+    for (let enemy of enemies) {
+      const dist = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y,
+        enemy.sprite.x, enemy.sprite.y
+      );
+      if (dist < 150) {
+        enemy.takeDamage(1);
+        this.tweens.add({
+          targets: enemy.sprite,
+          alpha: 0.5,
+          duration: 100,
+          yoyo: true,
+          repeat: 2
+        });
+        window.audioManager.play('hit');
+        this.particleManager.createAttackEffect(enemy.sprite.x, enemy.sprite.y);
+        this.cameras.main.shake(100, 0.003);
+        hit = true;
+      }
+    }
+    if (hit) {
+      this.tweens.add({
+        targets: this.attackButton,
+        scaleX: 0.8,
+        scaleY: 0.8,
+        duration: 100,
+        yoyo: true
+      });
+    }
   }
 
   checkLevelProgression() {
@@ -1529,6 +1661,12 @@ class PlayScene extends Phaser.Scene {
       .on('pointerover', () => this.menuButton.setScale(1.1))
       .on('pointerout', () => this.menuButton.setScale(1));
 
+    this.attackButton = this.add.image(50, h - 35, 'attack_button')
+      .setInteractive().setDepth(20).setScrollFactor(0)
+      .on('pointerdown', () => this.attackEnemies())
+      .on('pointerover', () => this.attackButton.setScale(1.1))
+      .on('pointerout', () => this.attackButton.setScale(1));
+
     this.createGameOverBox();
     this.updateProgressBar();
   }
@@ -1601,22 +1739,49 @@ class PlayScene extends Phaser.Scene {
 
   togglePause() {
     this.isPaused = !this.isPaused;
+    
     if (this.isPaused) {
       this.physics.pause();
+      this.spawnTimerPaused = this.spawnTimer;
+      this.bonusTimerPaused = this.bonusTimer;
+      this.stationTimerPaused = this.stationTimer;
       if (this.spawnTimer) this.spawnTimer.paused = true;
       if (this.bonusTimer) this.bonusTimer.paused = true;
       if (this.stationTimer) this.stationTimer.paused = true;
-      this.pauseOverlay = this.add.rectangle(this.scale.width/2, this.scale.height/2, this.scale.width, this.scale.height, 0x000000, 0.7).setDepth(25).setScrollFactor(0);
-      const pauseText = this.add.text(this.scale.width/2, this.scale.height/2-40, '⏸️ ПАУЗА', { fontSize:'40px', fontFamily:"'Orbitron', monospace", color:'#ffffff', stroke:'#00ffff', strokeThickness:4 }).setOrigin(0.5).setDepth(26).setScrollFactor(0);
-      const tipText = this.add.text(this.scale.width/2, this.scale.height/2+30, 'Нажми на кнопку паузы, чтобы продолжить', { fontSize:'12px', fontFamily:"'Orbitron', monospace", color:'#cccccc' }).setOrigin(0.5).setDepth(26).setScrollFactor(0);
+      
+      this.pauseOverlay = this.add.rectangle(
+        this.scale.width/2, this.scale.height/2,
+        this.scale.width, this.scale.height,
+        0x000000, 0.7
+      ).setDepth(25).setScrollFactor(0);
+
+      const pauseText = this.add.text(
+        this.scale.width/2, this.scale.height/2-40,
+        '⏸️ ПАУЗА',
+        { fontSize:'40px', fontFamily:"'Orbitron', monospace", color:'#ffffff', stroke:'#00ffff', strokeThickness:4 }
+      ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
+
+      const tipText = this.add.text(
+        this.scale.width/2, this.scale.height/2+30,
+        'Нажми на кнопку паузы, чтобы продолжить',
+        { fontSize:'12px', fontFamily:"'Orbitron', monospace", color:'#cccccc' }
+      ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
+
       this.pauseTexts = [pauseText, tipText];
     } else {
       this.physics.resume();
-      if (this.spawnTimer) this.spawnTimer.paused = false;
-      if (this.bonusTimer) this.bonusTimer.paused = false;
-      if (this.stationTimer) this.stationTimer.paused = false;
-      if (this.pauseOverlay) { this.pauseOverlay.destroy(); this.pauseOverlay = null; }
-      if (this.pauseTexts) { this.pauseTexts.forEach(t=>t.destroy()); this.pauseTexts = []; }
+      if (this.spawnTimerPaused) this.spawnTimerPaused.paused = false;
+      if (this.bonusTimerPaused) this.bonusTimerPaused.paused = false;
+      if (this.stationTimerPaused) this.stationTimerPaused.paused = false;
+      
+      if (this.pauseOverlay) {
+        this.pauseOverlay.destroy();
+        this.pauseOverlay = null;
+      }
+      if (this.pauseTexts) {
+        this.pauseTexts.forEach(t => t.destroy());
+        this.pauseTexts = [];
+      }
       this.hideShop();
     }
   }
@@ -2554,6 +2719,7 @@ class PlayScene extends Phaser.Scene {
     if (this.pauseButton) this.pauseButton.setPosition(w-35, h-35);
     if (this.shopButton) this.shopButton.setPosition(w-90, h-35);
     if (this.menuButton) this.menuButton.setPosition(w-145, h-35);
+    if (this.attackButton) this.attackButton.setPosition(50, h-35);
     if (this.progressBarBg) {
       this.progressBarBg.setPosition(w/2, h-30);
       this.progressBar.setPosition(w/2-75, h-30);
@@ -2622,49 +2788,19 @@ class GameOverScene extends Phaser.Scene {
   init(data) { this.resultData = data; }
   create() {
     const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('gameover_bg', w, h);
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('gameover_bg',w,h);
     gradient.destroy();
-    this.add.image(0, 0, 'gameover_bg').setOrigin(0);
-    this.add.text(w/2, h*0.15, 'ИГРА ОКОНЧЕНА', {
-      fontSize: '40px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.danger,
-      stroke: COLORS.secondary,
-      strokeThickness: 3,
-      align: 'center'
-    }).setOrigin(0.5);
+    this.add.image(0,0,'gameover_bg').setOrigin(0);
+    this.add.text(w/2, h*0.15, 'ИГРА ОКОНЧЕНА', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.danger, stroke:COLORS.secondary, strokeThickness:3, align:'center' }).setOrigin(0.5);
     const stats = `\n🎯 Счёт: ${this.resultData.score}\n⭐ Уровень: ${this.resultData.level}\n🚃 Вагонов: ${this.resultData.wagons}\n💎 Кристаллов: ${this.resultData.crystals}\n`;
-    this.add.text(w/2, h*0.40, stats, {
-      fontSize: '18px',
-      fontFamily: "'Space Mono', monospace",
-      color: COLORS.text_primary,
-      align: 'center',
-      lineSpacing: 10
-    }).setOrigin(0.5);
+    this.add.text(w/2, h*0.40, stats, { fontSize:'18px', fontFamily:"'Space Mono', monospace", color:COLORS.text_primary, align:'center', lineSpacing:10 }).setOrigin(0.5);
     this.createButton(w/2, h*0.65, 'ГЛАВНОЕ МЕНЮ', () => this.scene.start('menu'));
   }
-  createButton(x, y, text, callback) {
-    const btn = this.add.text(x, y, text, {
-      fontSize: '18px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      backgroundColor: '#1a1a3a',
-      padding: { x:30, y:10 },
-      stroke: COLORS.primary,
-      strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function() {
-        this.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
+  createButton(x,y,t,c) {
+    const btn = this.add.text(x,y,t, { fontSize:'18px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:30,y:10}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
     return btn;
   }
 }
@@ -2677,26 +2813,14 @@ class ShopScene extends Phaser.Scene {
   constructor() { super('shop'); }
   create() {
     const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('shop_bg', w, h);
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('shop_bg',w,h);
     gradient.destroy();
-    this.add.image(0, 0, 'shop_bg').setOrigin(0);
-    this.add.text(w/2, 30, 'МАГАЗИН', {
-      fontSize: '40px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      stroke: COLORS.secondary,
-      strokeThickness: 3
-    }).setOrigin(0.5);
-    this.add.text(w/2, 80, `💎 ${gameManager.data.crystals}`, {
-      fontSize: '20px',
-      fontFamily: "'Space Mono', monospace",
-      color: COLORS.accent,
-      stroke: '#0f172a',
-      strokeThickness: 2
-    }).setOrigin(0.5);
+    this.add.image(0,0,'shop_bg').setOrigin(0);
+    this.add.text(w/2,30,'МАГАЗИН', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
+    this.add.text(w/2,80,`💎 ${gameManager.data.crystals}`, { fontSize:'20px', fontFamily:"'Space Mono', monospace", color:COLORS.accent, stroke:'#0f172a', strokeThickness:2 }).setOrigin(0.5);
 
     let y = 130;
     for (let up of SHOP_UPGRADES) {
@@ -2704,55 +2828,23 @@ class ShopScene extends Phaser.Scene {
       const cost = Math.floor(up.cost * Math.pow(1.15, level));
       const canAfford = gameManager.data.crystals >= cost && level < up.maxLevel;
       const bg = this.add.rectangle(w/2, y, w-20, 50, 0x1a1a3a).setStrokeStyle(2, canAfford ? COLORS.primary : COLORS.text_muted);
-      this.add.text(20, y-15, `${up.icon} ${up.name}`, {
-        fontSize: '14px',
-        fontFamily: "'Orbitron', sans-serif",
-        color: COLORS.text_primary
-      }).setOrigin(0, 0.5);
-      this.add.text(20, y+10, `Уровень: ${level}/${up.maxLevel}`, {
-        fontSize: '10px',
-        fontFamily: "'Space Mono', monospace",
-        color: COLORS.text_secondary
-      }).setOrigin(0, 0.5);
-      this.add.text(w-20, y, `${cost} 💎`, {
-        fontSize: '14px',
-        fontFamily: "'Space Mono', monospace",
-        color: canAfford ? COLORS.accent : COLORS.text_muted
-      }).setOrigin(1, 0.5);
+      this.add.text(20, y-15, `${up.icon} ${up.name}`, { fontSize:'14px', fontFamily:"'Orbitron', sans-serif", color:COLORS.text_primary }).setOrigin(0,0.5);
+      this.add.text(20, y+10, `Уровень: ${level}/${up.maxLevel}`, { fontSize:'10px', fontFamily:"'Space Mono', monospace", color:COLORS.text_secondary }).setOrigin(0,0.5);
+      this.add.text(w-20, y, `${cost} 💎`, { fontSize:'14px', fontFamily:"'Space Mono', monospace", color:canAfford?COLORS.accent:COLORS.text_muted }).setOrigin(1,0.5);
       if (canAfford) {
-        bg.setInteractive()
-          .on('pointerover', () => bg.setFillStyle(0x2a2a4a))
-          .on('pointerout', () => bg.setFillStyle(0x1a1a3a))
-          .on('pointerdown', () => {
-            gameManager.data.crystals -= cost;
-            gameManager.data.upgrades[up.key] = (gameManager.data.upgrades[up.key] || 0) + 1;
-            gameManager.save();
-            this.scene.restart();
-          });
+        bg.setInteractive().on('pointerover',()=>bg.setFillStyle(0x2a2a4a)).on('pointerout',()=>bg.setFillStyle(0x1a1a3a)).on('pointerdown',()=>{
+          gameManager.data.crystals -= cost;
+          gameManager.data.upgrades[up.key] = (gameManager.data.upgrades[up.key] || 0) + 1;
+          gameManager.save();
+          this.scene.restart();
+        });
       }
       y += 60;
     }
-    this.createButton(w/2, h-40, 'НАЗАД', () => this.scene.start('menu'));
+    this.createButton(w/2, h-40, 'НАЗАД', ()=>this.scene.start('menu'));
   }
-  createButton(x, y, text, callback) {
-    const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      backgroundColor: '#1a1a3a',
-      padding: { x:20, y:8 },
-      stroke: COLORS.primary,
-      strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function() {
-        this.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
+  createButton(x,y,t,c) {
+    const btn = this.add.text(x,y,t, { fontSize:'16px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:20,y:8}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
     return btn;
   }
 }
@@ -2765,59 +2857,27 @@ class AchievementsScene extends Phaser.Scene {
   constructor() { super('achievements'); }
   create() {
     const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('achievements_bg', w, h);
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('achievements_bg',w,h);
     gradient.destroy();
-    this.add.image(0, 0, 'achievements_bg').setOrigin(0);
-    this.add.text(w/2, 30, 'ДОСТИЖЕНИЯ', {
-      fontSize: '40px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      stroke: COLORS.secondary,
-      strokeThickness: 3
-    }).setOrigin(0.5);
+    this.add.image(0,0,'achievements_bg').setOrigin(0);
+    this.add.text(w/2,30,'ДОСТИЖЕНИЯ', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
     let y = 100;
     for (let key in ACHIEVEMENTS) {
-      if (!ACHIEVEMENTS.hasOwnProperty(key)) continue;
       const ach = ACHIEVEMENTS[key];
       const unlocked = gameManager.data.achievements[key] !== undefined;
       const color = unlocked ? COLORS.accent : COLORS.text_muted;
       const bg = this.add.rectangle(w/2, y, w-40, 40, 0x1a1a3a).setStrokeStyle(2, color);
-      this.add.text(20, y-10, `${ach.icon} ${ach.name}`, {
-        fontSize: '14px',
-        fontFamily: "'Orbitron', sans-serif",
-        color: color
-      }).setOrigin(0, 0.5);
-      this.add.text(w-20, y-10, `+${ach.reward} 💎`, {
-        fontSize: '12px',
-        fontFamily: "'Space Mono', monospace",
-        color: color
-      }).setOrigin(1, 0.5);
+      this.add.text(20, y-10, `${ach.icon} ${ach.name}`, { fontSize:'14px', fontFamily:"'Orbitron', sans-serif", color:color }).setOrigin(0,0.5);
+      this.add.text(w-20, y-10, `+${ach.reward} 💎`, { fontSize:'12px', fontFamily:"'Space Mono', monospace", color:color }).setOrigin(1,0.5);
       y += 50;
     }
-    this.createButton(w/2, h-40, 'НАЗАД', () => this.scene.start('menu'));
+    this.createButton(w/2, h-40, 'НАЗАД', ()=>this.scene.start('menu'));
   }
-  createButton(x, y, text, callback) {
-    const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      backgroundColor: '#1a1a3a',
-      padding: { x:20, y:8 },
-      stroke: COLORS.primary,
-      strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function() {
-        this.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
+  createButton(x,y,t,c) {
+    const btn = this.add.text(x,y,t, { fontSize:'16px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:20,y:8}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
     return btn;
   }
 }
@@ -2830,49 +2890,20 @@ class StatsScene extends Phaser.Scene {
   constructor() { super('stats'); }
   create() {
     const w = this.scale.width, h = this.scale.height;
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('stats_bg', w, h);
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('stats_bg',w,h);
     gradient.destroy();
-    this.add.image(0, 0, 'stats_bg').setOrigin(0);
-    this.add.text(w/2, 30, 'СТАТИСТИКА', {
-      fontSize: '40px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      stroke: COLORS.secondary,
-      strokeThickness: 3
-    }).setOrigin(0.5);
+    this.add.image(0,0,'stats_bg').setOrigin(0);
+    this.add.text(w/2,30,'СТАТИСТИКА', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
     const stats = gameManager.data.stats;
     const text = `\nИгр сыграно: ${stats.totalGames}\nЛучший счёт: ${stats.maxScore}\nЛучший уровень: ${stats.maxLevel}\nМакс. вагонов: ${stats.maxWagons}\nВсего кристаллов: ${gameManager.data.crystals}\n`;
-    this.add.text(w/2, h/2, text, {
-      fontSize: '18px',
-      fontFamily: "'Space Mono', monospace",
-      color: COLORS.text_primary,
-      align: 'center',
-      lineSpacing: 10
-    }).setOrigin(0.5);
-    this.createButton(w/2, h-40, 'НАЗАД', () => this.scene.start('menu'));
+    this.add.text(w/2, h/2, text, { fontSize:'18px', fontFamily:"'Space Mono', monospace", color:COLORS.text_primary, align:'center', lineSpacing:10 }).setOrigin(0.5);
+    this.createButton(w/2, h-40, 'НАЗАД', ()=>this.scene.start('menu'));
   }
-  createButton(x, y, text, callback) {
-    const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary,
-      backgroundColor: '#1a1a3a',
-      padding: { x:20, y:8 },
-      stroke: COLORS.primary,
-      strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function() {
-        this.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
+  createButton(x,y,t,c) {
+    const btn = this.add.text(x,y,t, { fontSize:'16px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, backgroundColor:'#1a1a3a', padding:{x:20,y:8}, stroke:COLORS.primary, strokeThickness:2 }).setOrigin(0.5).setInteractive().on('pointerover',function(){this.setStyle({color:COLORS.text_primary, backgroundColor:COLORS.primary}); this.setScale(1.05);}).on('pointerout',function(){this.setStyle({color:COLORS.primary, backgroundColor:'#1a1a3a'}); this.setScale(1);}).on('pointerdown',c);
     return btn;
   }
 }
@@ -2886,19 +2917,13 @@ class SettingsScene extends Phaser.Scene {
   create() {
     const w = this.scale.width, h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-    gradient.fillRect(0, 0, w, h);
-    gradient.generateTexture('settings_bg', w, h);
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
+    gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
+    gradient.fillRect(0,0,w,h);
+    gradient.generateTexture('settings_bg',w,h);
     gradient.destroy();
-    this.add.image(0, 0, 'settings_bg').setOrigin(0);
-    this.add.text(w/2, 40, 'НАСТРОЙКИ', {
-      fontSize: '36px',
-      fontFamily,
-      color: COLORS.primary,
-      stroke: COLORS.secondary,
-      strokeThickness: 3
-    }).setOrigin(0.5);
+    this.add.image(0,0,'settings_bg').setOrigin(0);
+    this.add.text(w/2,40,'НАСТРОЙКИ', { fontSize:'36px', fontFamily, color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
 
     let y = 120;
     this.createToggle(w/2, y, 'Звук', gameManager.data.soundEnabled, (v) => { gameManager.data.soundEnabled = v; gameManager.save(); }); y+=70;
@@ -2908,77 +2933,36 @@ class SettingsScene extends Phaser.Scene {
     this.createButton(w/2, y, 'ЭКСПОРТИРОВАТЬ', () => this.exportData());
     this.createButton(w/2, h-50, 'НАЗАД', () => this.scene.start('menu'));
   }
-  createToggle(x, y, label, init, cb) {
-    const bg = this.add.rectangle(x, y, 250, 50, 0x1a1a3a).setStrokeStyle(2, COLORS.primary);
-    this.add.text(x-100, y, label, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: COLORS.text_primary
-    }).setOrigin(0, 0.5);
-    const toggleBg = this.add.rectangle(x+80, y, 60, 30, init ? 0x00aa00 : 0xaa0000).setStrokeStyle(2, COLORS.primary).setInteractive()
-      .on('pointerdown', () => {
-        init = !init;
-        toggleBg.setFillStyle(init ? 0x00aa00 : 0xaa0000);
-        toggleText.setText(init ? 'ВКЛ' : 'ВЫКЛ');
-        cb(init);
-      });
-    const toggleText = this.add.text(x+80, y, init ? 'ВКЛ' : 'ВЫКЛ', {
-      fontSize: '12px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#ffffff'
-    }).setOrigin(0.5);
+  createToggle(x,y,label,init,cb) {
+    const bg = this.add.rectangle(x,y,250,50,0x1a1a3a).setStrokeStyle(2,COLORS.primary);
+    this.add.text(x-100,y,label,{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:COLORS.text_primary }).setOrigin(0,0.5);
+    const toggleBg = this.add.rectangle(x+80,y,60,30,init?0x00aa00:0xaa0000).setStrokeStyle(2,COLORS.primary).setInteractive().on('pointerdown',()=>{
+      init = !init;
+      toggleBg.setFillStyle(init?0x00aa00:0xaa0000);
+      toggleText.setText(init?'ВКЛ':'ВЫКЛ');
+      cb(init);
+    });
+    const toggleText = this.add.text(x+80,y,init?'ВКЛ':'ВЫКЛ',{ fontSize:'12px', fontFamily:"'Orbitron', monospace", color:'#ffffff' }).setOrigin(0.5);
   }
-  createButton(x, y, text, callback, type = 'normal') {
-    const colors = { normal: { bg: '#1a1a3a', text: COLORS.primary }, danger: { bg: '#3a1a1a', text: '#ff4444' } };
+  createButton(x,y,t,c,type='normal') {
+    const colors = { normal:{bg:'#1a1a3a',text:COLORS.primary}, danger:{bg:'#3a1a1a',text:'#ff4444'} };
     const col = colors[type];
-    const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: col.text,
-      backgroundColor: col.bg,
-      padding: { x:20, y:10 },
-      stroke: col.text,
-      strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', function() {
-        this.setStyle({ color: '#ffffff', backgroundColor: col.text });
-        this.setScale(1.05);
-      })
-      .on('pointerout', function() {
-        this.setStyle({ color: col.text, backgroundColor: col.bg });
-        this.setScale(1);
-      })
-      .on('pointerdown', callback);
+    const btn = this.add.text(x,y,t,{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:col.text, backgroundColor:col.bg, padding:{x:20,y:10}, stroke:col.text, strokeThickness:2 }).setOrigin(0.5).setInteractive()
+      .on('pointerover',function(){this.setStyle({color:'#ffffff',backgroundColor:col.text}); this.setScale(1.05);})
+      .on('pointerout',function(){this.setStyle({color:col.text,backgroundColor:col.bg}); this.setScale(1);})
+      .on('pointerdown',c);
   }
   confirmClearData() {
-    const w = this.scale.width, h = this.scale.height;
-    const ov = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7).setDepth(50).setScrollFactor(0);
-    const pn = this.add.rectangle(w/2, h/2, 280, 150, 0x0a0a1a, 0.95).setStrokeStyle(2, COLORS.danger).setDepth(51).setScrollFactor(0);
-    const tx = this.add.text(w/2, h/2-30, 'Очистить все данные?', {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
-      color: COLORS.danger
-    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
-    const yes = this.add.text(w/2-60, h/2+30, 'ДА', {
-      fontSize: '14px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#00ff00',
-      backgroundColor: '#1a1a3a',
-      padding: { x:15, y:5 }
-    }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0)
-      .on('pointerdown', () => { localStorage.clear(); location.reload(); });
-    const no = this.add.text(w/2+60, h/2+30, 'НЕТ', {
-      fontSize: '14px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#ff0000',
-      backgroundColor: '#1a1a3a',
-      padding: { x:15, y:5 }
-    }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0)
-      .on('pointerdown', () => { ov.destroy(); pn.destroy(); tx.destroy(); yes.destroy(); no.destroy(); });
+    const w=this.scale.width,h=this.scale.height;
+    const ov=this.add.rectangle(w/2,h/2,w,h,0x000000,0.7).setDepth(50).setScrollFactor(0);
+    const pn=this.add.rectangle(w/2,h/2,280,150,0x0a0a1a,0.95).setStrokeStyle(2,COLORS.danger).setDepth(51).setScrollFactor(0);
+    const tx=this.add.text(w/2,h/2-30,'Очистить все данные?',{ fontSize:'16px', fontFamily:"'Orbitron', monospace", color:COLORS.danger }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+    const yes=this.add.text(w/2-60,h/2+30,'ДА',{ fontSize:'14px', fontFamily:"'Orbitron', monospace", color:'#00ff00', backgroundColor:'#1a1a3a', padding:{x:15,y:5} }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0).on('pointerdown',()=>{ localStorage.clear(); location.reload(); });
+    const no=this.add.text(w/2+60,h/2+30,'НЕТ',{ fontSize:'14px', fontFamily:"'Orbitron', monospace", color:'#ff0000', backgroundColor:'#1a1a3a', padding:{x:15,y:5} }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0).on('pointerdown',()=>{ ov.destroy(); pn.destroy(); tx.destroy(); yes.destroy(); no.destroy(); });
   }
   exportData() {
     const data = { gameManager: gameManager.data, timestamp: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data,null,2)], { type:'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
