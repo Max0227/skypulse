@@ -167,10 +167,12 @@ class AudioManager {
         this.music = null;
     }
 
-    playMusic(scene) {
+    playMusic(scene, volume = 0.4) {
         if (!gameManager.data.musicEnabled) return;
         if (!this.music) {
-            this.music = scene.sound.add('bg_music', { loop: true, volume: 0.4 });
+            this.music = scene.sound.add('bg_music', { loop: true, volume: volume });
+        } else {
+            this.music.setVolume(volume);
         }
         if (!this.music.isPlaying) {
             this.music.play();
@@ -183,6 +185,10 @@ class AudioManager {
         }
     }
 }
+
+// Создаём глобальный экземпляр
+const audioManager = new AudioManager();
+window.audioManager = audioManager;
 
 // =========================================================================
 // МЕНЕДЖЕР ЧАСТИЦ (оптимизированный)
@@ -697,7 +703,7 @@ class DamageSystem {
     player.headHP -= enemy.config.damage;
     this.scene.updateHearts();
     this.scene.cameras.main.shake(150, 0.005);
-    this.hitSound.play();
+    this.scene.hitSound.play(); // исправлено
     if (gameManager.data.vibrationEnabled && window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
@@ -746,7 +752,7 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    // Загружаем ваши звуковые эффекты
+    // Загружаем звуковые эффекты
     this.load.audio('coin_sound', 'sounds/coin.mp3');
     this.load.audio('item_sound', 'sounds/item.mp3');
     this.load.audio('tap_sound', 'sounds/tap.mp3');
@@ -756,7 +762,7 @@ class BootScene extends Phaser.Scene {
     this.load.audio('revive_sound', 'sounds/revive.mp3');
     // Загружаем фоновую музыку
     this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
-}
+  }
 
   create() {
     this.createTextures();
@@ -1093,9 +1099,8 @@ class MenuScene extends Phaser.Scene {
       color: COLORS.text_muted
     }).setOrigin(0.5);
 
-    if (window.audioManager) {
-      window.audioManager.playMusic(this);
-    }
+    // Запускаем музыку с громкостью 0.5
+    window.audioManager.playMusic(this, 0.5);
   }
 
   createButton(x, y, text, callback, size = 'normal') {
@@ -1156,7 +1161,7 @@ class TutorialScene extends Phaser.Scene {
       { text: 'На уровнях появляются враги – атакуй их кнопкой!', icon: '⚔️', bg: 0x2a2a0a },
     ];
 
-    const gradient = this.make.graphics({ x:0, y:0, add:false });
+    const gradient = this.make.graphics({ x:0,y:0,add:false });
     gradient.fillGradientStyle(0x030712,0x030712,0x0a0a1a,0x0a0a1a,1);
     gradient.fillRect(0,0,w,h);
     gradient.generateTexture('tutorial_bg',w,h);
@@ -1332,6 +1337,9 @@ class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, w, h);
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
+
+    // Устанавливаем громкость фоновой музыки для игры (тише)
+    window.audioManager.playMusic(this, 0.2);
   }
 
   update(time, delta) {
@@ -1397,7 +1405,7 @@ class PlayScene extends Phaser.Scene {
           yoyo: true,
           repeat: 2
         });
-        window.audioManager.play('hit');
+        this.hitSound.play(); // исправлено
         this.particleManager.createAttackEffect(enemy.sprite.x, enemy.sprite.y);
         this.cameras.main.shake(100, 0.003);
         hit = true;
@@ -1546,16 +1554,17 @@ class PlayScene extends Phaser.Scene {
       frequency: 15,
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
+
     // Звуки
-this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-// Для удара используем tap (или item, как вам удобнее)
-this.hitSound = this.tapSound; // или this.itemSound
+    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+    this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+    this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+    // Для удара используем tap (или item, как вам удобнее)
+    this.hitSound = this.tapSound; // или this.itemSound
   }
        
   createUI() {
@@ -1700,7 +1709,7 @@ this.hitSound = this.tapSound; // или this.itemSound
     this.player.body.setVelocityY(-this.jumpPower);
     this.player.setScale(0.95);
     this.tweens.add({ targets: this.player, scaleX: 0.9, scaleY: 0.9, duration: 150, ease: 'Quad.out' });
-    wthis.tapSound.play();
+    this.tapSound.play(); // исправлено (было wthis)
     try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch {}
   }
 
@@ -1786,7 +1795,7 @@ this.hitSound = this.tapSound; // или this.itemSound
       this.updateDifficulty();
       this.targetPlayerX = Math.min(this.maxTargetX, 110 + this.level * 3);
       this.levelText.setText(`УРОВЕНЬ ${this.level + 1}`).setVisible(true).setAlpha(1);
-      window.audioManager.play('levelup');
+      this.levelUpSound.play(); // исправлено
       this.createLevelUpEffect();
       this.tweens.add({ targets: this.levelText, alpha: 0, duration: 2000, ease: 'Power2' });
       this.addRandomPlanet();
@@ -1910,14 +1919,14 @@ this.hitSound = this.tapSound; // или this.itemSound
       this.targetPlayerX -= this.wagonGap * 0.5;
       this.targetPlayerX = Math.max(110, this.targetPlayerX);
       this.cameras.main.shake(150,0.008);
-      window.audioManager.play('hit');
+      this.hitSound.play(); // исправлено
       this.showNotification('Вагон потерян!', 1000, '#ff4444');
     } else {
       wagon.setData('hp', hp);
       this.tweens.add({ targets: wagon, alpha:0.5, duration:100, yoyo:true, repeat:2 });
       const healthPercent = hp / wagon.getData('maxHP');
       if (healthPercent < 0.5) wagon.setTint(0xff8888);
-      window.audioManager.play('hit',0.2);
+      this.hitSound.play(); // исправлено
     }
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
     this.updateCameraZoom();
@@ -2177,7 +2186,7 @@ this.hitSound = this.tapSound; // или this.itemSound
       this.headHP--;
       this.updateHearts();
       this.cameras.main.shake(100,0.003);
-      window.audioManager.play('hit',0.2);
+      this.hitSound.play(); // исправлено
       this.player.body.setVelocityX(0);
       if (this.headHP <= 0) {
         this.handleDeath();
