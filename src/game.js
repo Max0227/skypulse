@@ -1953,24 +1953,33 @@ class PlayScene extends Phaser.Scene {
 
   // ===== МЕТОД АТАКИ =====
   attackEnemies() {
+  // Проверяем кулдаун
   if (this.weaponCooldown > 0) return;
+  
   this.weaponCooldown = this.weaponFireDelay;
-
-  const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
+  
+  // Создаём пулю
+  const bullet = this.playerBullets.create(
+    this.player.x + 30, 
+    this.player.y, 
+    'laser_player'
+  );
+  
+  // Настройки пули
   bullet.setScale(1.5);
   bullet.damage = this.weaponDamage;
-  
-  // ✅ КРИТИЧНО: Отключаем гравитацию СРАЗУ
-  bullet.body.setAllowGravity(false);
-  bullet.body.setGravityY(0);
-  
-  // Только горизонтальное движение
   bullet.setVelocityX(this.weaponBulletSpeed);
   bullet.setVelocityY(0);
+  
+  // ВАЖНО: отключаем гравитацию для пуль
+  bullet.body.setAllowGravity(false);
+  bullet.body.setGravityY(0);
   bullet.setDepth(20);
-
-  this.tapSound.play();
-
+  
+  // Звук выстрела
+  this.playSound('tap_sound', 0.3);
+  
+  // Анимация кнопки
   this.tweens.add({
     targets: this.attackButton,
     scaleX: 0.8,
@@ -1978,7 +1987,31 @@ class PlayScene extends Phaser.Scene {
     duration: 100,
     yoyo: true
   });
+  
+  // Эффект частиц
+  this.particleManager.createAttackEffect(
+    this.player.x + 30, 
+    this.player.y
+  );
 }
+
+// НОВЫЙ МЕТОД: воспроизведение звуков
+playSound(key, volume = 0.5) {
+  if (!gameManager.data.soundEnabled) return;
+  
+  try {
+    if (!this.sounds) this.sounds = {};
+    
+    if (!this.sounds[key]) {
+      this.sounds[key] = this.sound.add(key, { volume });
+    }
+    
+    this.sounds[key].play();
+  } catch (e) {
+    console.warn('Sound error:', e);
+  }
+}
+
 firePlayerBullet(targetX, targetY) {
     const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
     bullet.setScale(1.5);
