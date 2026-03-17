@@ -163,66 +163,25 @@ const gameManager = new GameManager();
 // =========================================================================
 
 class AudioManager {
-  constructor() {
-    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    this.sounds = {};
-    this.masterGain = this.audioContext.createGain();
-    this.masterGain.connect(this.audioContext.destination);
-    this.music = null;
-  }
-
-  createSound(name, frequency, duration, type = 'sine') {
-    this.sounds[name] = { frequency, duration, type };
-  }
-
-  play(name, volume = 0.3) {
-    if (!gameManager.data.soundEnabled) return;
-    const sound = this.sounds[name];
-    if (!sound) return;
-
-    try {
-      const osc = this.audioContext.createOscillator();
-      const gain = this.audioContext.createGain();
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.frequency.value = sound.frequency;
-      osc.type = sound.type;
-      gain.gain.setValueAtTime(volume, this.audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + sound.duration);
-      osc.start(this.audioContext.currentTime);
-      osc.stop(this.audioContext.currentTime + sound.duration);
-    } catch (e) {
-      console.error('Audio error:', e);
+    constructor() {
+        this.music = null;
     }
-  }
 
-  loadMusic(scene) {
-    try {
-      scene.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
-    } catch (e) {
-      console.log('Music file not found, using fallback');
+    playMusic(scene) {
+        if (!gameManager.data.musicEnabled) return;
+        if (!this.music) {
+            this.music = scene.sound.add('bg_music', { loop: true, volume: 0.4 });
+        }
+        if (!this.music.isPlaying) {
+            this.music.play();
+        }
     }
-  }
 
-  playMusic(scene) {
-    if (!gameManager.data.musicEnabled) return;
-    try {
-      if (!this.music && scene.sound.get('bg_music')) {
-        this.music = scene.sound.add('bg_music', { loop: true, volume: 0.4 });
-      }
-      if (this.music && !this.music.isPlaying) {
-        this.music.play();
-      }
-    } catch (e) {
-      console.log('Music playback error:', e);
+    stopMusic() {
+        if (this.music && this.music.isPlaying) {
+            this.music.stop();
+        }
     }
-  }
-
-  stopMusic() {
-    if (this.music && this.music.isPlaying) {
-      this.music.stop();
-    }
-  }
 }
 
 // =========================================================================
@@ -738,7 +697,7 @@ class DamageSystem {
     player.headHP -= enemy.config.damage;
     this.scene.updateHearts();
     this.scene.cameras.main.shake(150, 0.005);
-    window.audioManager.play('hit');
+    this.hitSound.play();
     if (gameManager.data.vibrationEnabled && window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
     }
@@ -787,19 +746,17 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    if (!window.audioManager) {
-      window.audioManager = new AudioManager();
-      window.audioManager.createSound('coin', 800, 0.1);
-      window.audioManager.createSound('item', 1200, 0.15);
-      window.audioManager.createSound('tap', 600, 0.05);
-      window.audioManager.createSound('wagon', 400, 0.2);
-      window.audioManager.createSound('levelup', 1600, 0.3);
-      window.audioManager.createSound('purchase', 700, 0.2);
-      window.audioManager.createSound('revive', 500, 0.3);
-      window.audioManager.createSound('hit', 300, 0.2);
-    }
-    window.audioManager.loadMusic(this);
-  }
+    // Загружаем ваши звуковые эффекты
+    this.load.audio('coin_sound', 'sounds/coin.mp3');
+    this.load.audio('item_sound', 'sounds/item.mp3');
+    this.load.audio('tap_sound', 'sounds/tap.mp3');
+    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
+    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
+    this.load.audio('revive_sound', 'sounds/revive.mp3');
+    // Загружаем фоновую музыку
+    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+}
 
   create() {
     this.createTextures();
@@ -1589,8 +1546,18 @@ class PlayScene extends Phaser.Scene {
       frequency: 15,
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
+    // Звуки
+this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
+this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
+this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
+this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
+this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
+this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
+this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
+// Для удара используем tap (или item, как вам удобнее)
+this.hitSound = this.tapSound; // или this.itemSound
   }
-
+       
   createUI() {
     const w = this.scale.width, h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
@@ -1733,7 +1700,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setVelocityY(-this.jumpPower);
     this.player.setScale(0.95);
     this.tweens.add({ targets: this.player, scaleX: 0.9, scaleY: 0.9, duration: 150, ease: 'Quad.out' });
-    window.audioManager.play('tap');
+    wthis.tapSound.play();
     try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.(); } catch {}
   }
 
@@ -1928,7 +1895,7 @@ class PlayScene extends Phaser.Scene {
     wagon.x = this.scale.width + 50;
     wagon.y = this.player.y;
     this.tweens.add({ targets: wagon, x: spawnX, duration:500, ease:'Sine.easeOut' });
-    window.audioManager.play('wagon');
+    this.wagonSound.play();
     this.particleManager.createWagonSpawnEffect(wagon);
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
     this.updateCameraZoom();
@@ -2014,14 +1981,14 @@ class PlayScene extends Phaser.Scene {
     if (bonusType) {
       if (this.bonusActive && this.bonusType === bonusType) {
         this.bonusTime += 2;
-        window.audioManager.play('item');
+        this.itemSound.play();
       } else {
         this.activateBonus(bonusType);
       }
       this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.coinType);
       if (bonusType === 'shield') this.questSystem.updateProgress('shield', 1);
     } else {
-      window.audioManager.play('coin');
+      this.coinSound.play();
       this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
     }
 
@@ -2245,7 +2212,7 @@ class PlayScene extends Phaser.Scene {
       this.headHP = this.maxHeadHP;
       this.updateHearts();
       this.cameras.main.flash(300,100,255,100,false);
-      window.audioManager.play('revive');
+      this.reviveSound.play();
       this.showNotification('ВОСКРЕШЕНИЕ!', 2000, '#00ffff');
       gameManager.data.upgrades = this.upgradeSystem.upgrades;
       gameManager.save();
@@ -2394,7 +2361,7 @@ class PlayScene extends Phaser.Scene {
     this.crystals -= cost;
     this.crystalText.setText(`💎 ${this.crystals}`);
     this.upgradeSystem.applyUpgrade(key);
-    window.audioManager.play('purchase');
+    this.purchaseSound.play();
     this.showNotification('Улучшение куплено!', 1500, '#00ff00');
     if (this.shopVisible) {
       this.hideShop();
@@ -2568,7 +2535,7 @@ class PlayScene extends Phaser.Scene {
     const rewardText = this.add.text(0, 10, `+${reward} 💎`, { fontSize:'12px', fontFamily, color:'#00ff00', stroke:'#00aa00', strokeThickness:1 }).setOrigin(0.5);
     notification.add([bg, title, rewardText]);
     this.tweens.add({ targets: notification, y: 80, duration: 3000, ease: 'Sine.easeInOut', onComplete: () => notification.destroy() });
-    window.audioManager.play('levelup');
+    this.levelUpSound.play();
   }
 
   initDailyRewards() {
