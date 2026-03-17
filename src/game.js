@@ -1893,48 +1893,52 @@ class PlayScene extends Phaser.Scene {
 
   // ===== МЕТОД АТАКИ =====
   attackEnemies() {
-    if (this.weaponCooldown > 0) return;
-    this.weaponCooldown = this.weaponFireDelay;
+  if (this.weaponCooldown > 0) return;
+  this.weaponCooldown = this.weaponFireDelay;
 
-    // Создаём пулю от игрока
-    const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
-    bullet.setScale(1.5);
-    bullet.damage = this.weaponDamage;
-    bullet.setVelocityX(this.weaponBulletSpeed);
-    bullet.setVelocityY(0);
-    bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0); // принудительно отключаем гравитацию
-    bullet.setDepth(20);
+  const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
+  bullet.setScale(1.5);
+  bullet.damage = this.weaponDamage;
+  
+  // ✅ КРИТИЧНО: Отключаем гравитацию СРАЗУ
+  bullet.body.setAllowGravity(false);
+  bullet.body.setGravityY(0);
+  
+  // Только горизонтальное движение
+  bullet.setVelocityX(this.weaponBulletSpeed);
+  bullet.setVelocityY(0);
+  bullet.setDepth(20);
 
-    // Звук выстрела
-    this.tapSound.play();
+  this.tapSound.play();
 
-    // Небольшая анимация на кнопке
-    this.tweens.add({
-      targets: this.attackButton,
-      scaleX: 0.8,
-      scaleY: 0.8,
-      duration: 100,
-      yoyo: true
-    });
-  }
+  this.tweens.add({
+    targets: this.attackButton,
+    scaleX: 0.8,
+    scaleY: 0.8,
+    duration: 100,
+    yoyo: true
+  });
+}
+
 
   // Стрельба врага
   fireEnemyBullet(enemy, playerPos) {
-    const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
-    bullet.setScale(1.5);
-    bullet.damage = enemy.config.bulletDamage || 1;
-    bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0); // принудительно отключаем гравитацию
+  const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
+  bullet.setScale(1.5);
+  bullet.damage = enemy.config.bulletDamage || 1;
+  
+  // ✅ ПРАВИЛЬНО: Отключаем гравитацию ДО установки скорости
+  bullet.body.setAllowGravity(false);
+  
+  // Направление на игрока
+  const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
+  const speed = enemy.config.bulletSpeed;
+  bullet.setVelocityX(Math.cos(angle) * speed);
+  bullet.setVelocityY(Math.sin(angle) * speed);
 
-    // Направление на игрока
-    const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
-    const speed = enemy.config.bulletSpeed;
-    bullet.setVelocityX(Math.cos(angle) * speed);
-    bullet.setVelocityY(Math.sin(angle) * speed);
+  bullet.setDepth(20);
+}
 
-    bullet.setDepth(20);
-  }
 
   // ===== НОВЫЕ МЕТОДЫ ДЛЯ СИСТЕМ =====
 
@@ -2320,13 +2324,16 @@ class PlayScene extends Phaser.Scene {
 
     this.createGameOverBox();
 
-    // Коллизии пуль с врагами (используем группу enemyGroup)
-    this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
-      const enemy = enemySprite.enemyRef;
-      if (enemy) {
-        this.damageSystem.enemyHitByBullet(enemy, bullet);
-      }
-    }, null, this);
+    // ✅ ПРАВИЛЬНО: Проверяем коллизию с каждым врагом
+this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
+  if (!bullet.active || !enemySprite.active) return;
+  
+  const enemy = enemySprite.enemyRef;
+  if (enemy && enemy.health > 0) {
+    this.damageSystem.enemyHitByBullet(enemy, bullet);
+  }
+}, null, this);
+
 
     this.physics.add.overlap(this.enemyBullets, this.player, (bullet, player) => {
       this.damageSystem.playerHitByBullet(player, bullet);
