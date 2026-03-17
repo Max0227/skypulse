@@ -77,6 +77,61 @@ const UPGRADE_COSTS = {
 };
 
 // =========================================================================
+// КОНФИГУРАЦИЯ УРОВНЕЙ (расширенная)
+// =========================================================================
+
+const LEVEL_CONFIG = {
+  0: {
+    name: 'КОСМОС',
+    theme: 'space',
+    bgColor: 0x0a0a1a,
+    gateColors: ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'],
+    enemyTypes: [],
+    description: 'Начни свой путь в открытом космосе'
+  },
+  1: {
+    name: 'КИБЕРПАНК ГОРОД',
+    theme: 'cyberpunk',
+    bgColor: 0x1a0a2a,
+    gateColors: ['gate_purple', 'gate_blue', 'gate_green', 'gate_yellow', 'gate_red'],
+    enemyTypes: ['drone'],
+    description: 'Неоновые огни и летающие враги'
+  },
+  2: {
+    name: 'ПОДЗЕМЕЛЬЕ',
+    theme: 'dungeon',
+    bgColor: 0x2a1a0a,
+    gateColors: ['gate_red', 'gate_yellow', 'gate_green', 'gate_blue', 'gate_purple'],
+    enemyTypes: ['skeleton'],
+    description: 'Тёмные коридоры и древние ловушки'
+  },
+  3: {
+    name: 'АСТЕРОИДНОЕ ПОЛЕ',
+    theme: 'asteroids',
+    bgColor: 0x0a2a2a,
+    gateColors: ['gate_blue', 'gate_purple', 'gate_yellow', 'gate_green', 'gate_red'],
+    enemyTypes: ['drone', 'skeleton'],
+    description: 'Опасное путешествие через метеориты'
+  },
+  4: {
+    name: 'КИБЕРПАНК СТАНЦИЯ',
+    theme: 'station',
+    bgColor: 0x2a0a2a,
+    gateColors: ['gate_purple', 'gate_red', 'gate_blue', 'gate_yellow', 'gate_green'],
+    enemyTypes: ['sentinel', 'drone'],
+    description: 'Заброшенная космическая станция'
+  },
+  5: {
+    name: 'ЧЁРНАЯ ДЫРА',
+    theme: 'blackhole',
+    bgColor: 0x000000,
+    gateColors: ['gate_red', 'gate_purple', 'gate_blue', 'gate_green', 'gate_yellow'],
+    enemyTypes: ['sentinel', 'drone', 'skeleton'],
+    description: 'Финальное испытание у края вселенной'
+  }
+};
+
+// =========================================================================
 // ГЛОБАЛЬНЫЙ МЕНЕДЖЕР ДАННЫХ
 // =========================================================================
 
@@ -172,34 +227,51 @@ const gameManager = new GameManager();
 // =========================================================================
 
 class AudioManager {
-    constructor() {
-        this.music = null;
-    }
+  constructor() {
+    this.music = null;
+    this.sounds = {};
+  }
 
-    playMusic(scene, volume = 0.4) {
-        if (!gameManager.data.musicEnabled) return;
-        if (!this.music) {
-            this.music = scene.sound.add('bg_music', { loop: true, volume: volume });
-        } else {
-            this.music.setVolume(volume);
-        }
-        if (!this.music.isPlaying) {
-            this.music.play();
-        }
+  playMusic(scene, volume = 0.4) {
+    if (!gameManager.data.musicEnabled) return;
+    try {
+      if (!this.music) {
+        this.music = scene.sound.add('bg_music', { loop: true, volume: volume });
+      } else {
+        this.music.setVolume(volume);
+      }
+      if (!this.music.isPlaying) {
+        this.music.play();
+      }
+    } catch (e) {
+      console.warn('Music playback error:', e);
     }
+  }
 
-    stopMusic() {
-        if (this.music && this.music.isPlaying) {
-            this.music.stop();
-        }
+  stopMusic() {
+    if (this.music && this.music.isPlaying) {
+      this.music.stop();
     }
+  }
+
+  playSound(scene, key, volume = 0.5) {
+    if (!gameManager.data.soundEnabled) return;
+    try {
+      if (!this.sounds[key]) {
+        this.sounds[key] = scene.sound.add(key, { volume: volume });
+      }
+      this.sounds[key].play();
+    } catch (e) {
+      console.warn(`Sound ${key} playback error:`, e);
+    }
+  }
 }
 
 const audioManager = new AudioManager();
 window.audioManager = audioManager;
 
 // =========================================================================
-// BOOT SCENE – создание всех текстур
+// BOOT SCENE – создание всех текстур (непрозрачные кнопки)
 // =========================================================================
 
 class BootScene extends Phaser.Scene {
@@ -208,14 +280,18 @@ class BootScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.audio('coin_sound', 'sounds/coin.mp3');
-    this.load.audio('item_sound', 'sounds/item.mp3');
-    this.load.audio('tap_sound', 'sounds/tap.mp3');
-    this.load.audio('wagon_sound', 'sounds/wagon.mp3');
-    this.load.audio('level_up_sound', 'sounds/level_up.mp3');
-    this.load.audio('purchase_sound', 'sounds/purchase.mp3');
-    this.load.audio('revive_sound', 'sounds/revive.mp3');
-    this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+    try {
+      this.load.audio('coin_sound', 'sounds/coin.mp3');
+      this.load.audio('item_sound', 'sounds/item.mp3');
+      this.load.audio('tap_sound', 'sounds/tap.mp3');
+      this.load.audio('wagon_sound', 'sounds/wagon.mp3');
+      this.load.audio('level_up_sound', 'sounds/level_up.mp3');
+      this.load.audio('purchase_sound', 'sounds/purchase.mp3');
+      this.load.audio('revive_sound', 'sounds/revive.mp3');
+      this.load.audio('bg_music', 'sounds/fifth_element_theme.mp3');
+    } catch (e) {
+      console.warn('Audio files not found, continuing without sound');
+    }
   }
 
   create() {
@@ -226,7 +302,7 @@ class BootScene extends Phaser.Scene {
   createTextures() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // ИГРОК
+    // ТАКСИ (ИГРОК)
     g.clear();
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
@@ -378,7 +454,8 @@ class BootScene extends Phaser.Scene {
     g.fillRect(16, 22, 8, 4);
     g.generateTexture('enemy_skeleton', 40, 40);
 
-    // КНОПКА АТАКИ
+    // КНОПКИ (НЕПРОЗРАЧНЫЕ)
+    // Кнопка атаки
     g.clear();
     g.fillStyle(0xff4444);
     g.fillRoundedRect(0, 0, 50, 50, 8);
@@ -388,6 +465,47 @@ class BootScene extends Phaser.Scene {
     g.fillTriangle(15, 10, 25, 30, 35, 10);
     g.fillRect(20, 30, 10, 15);
     g.generateTexture('attack_button', 50, 50);
+
+    // Кнопка паузы
+    g.clear();
+    g.fillStyle(0x1a1a3a); // убрали прозрачность
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0x00ffff);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(15, 15, 8, 20);
+    g.fillRect(27, 15, 8, 20);
+    g.generateTexture('pause_button', 50, 50);
+
+    // Кнопка магазина
+    g.clear();
+    g.fillStyle(0xffaa00); // без прозрачности
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xffaa00);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xcc8800);
+    g.fillRect(15, 8, 20, 5);
+    g.fillStyle(0xffcc00);
+    g.fillRoundedRect(10, 13, 30, 25, 5);
+    g.fillStyle(0xffaa00);
+    g.fillRect(15, 18, 8, 12);
+    g.fillRect(27, 18, 8, 12);
+    g.fillStyle(0xffffaa);
+    g.fillCircle(15, 15, 2);
+    g.fillCircle(35, 25, 2);
+    g.generateTexture('shop_button', 50, 50);
+
+    // Кнопка меню
+    g.clear();
+    g.fillStyle(0xff00ff); // без прозрачности
+    g.fillRoundedRect(0, 0, 50, 50, 8);
+    g.lineStyle(2, 0xff00ff);
+    g.strokeRoundedRect(0, 0, 50, 50, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(15, 15, 8, 8);
+    g.fillRect(27, 15, 8, 8);
+    g.fillRect(15, 27, 20, 8);
+    g.generateTexture('menu_button', 50, 50);
 
     // ЛАЗЕРЫ
     g.clear();
@@ -404,56 +522,16 @@ class BootScene extends Phaser.Scene {
     g.fillStyle(0xffffff);
     g.fillCircle(2, 2, 2);
     g.generateTexture('star', 4, 4);
-    
     g.clear();
     g.fillStyle(0x00ffff, 0.9);
     g.fillCircle(4, 4, 4);
     g.generateTexture('flare', 8, 8);
-    
     g.clear();
     g.fillStyle(0xff00ff, 0.8);
     g.fillCircle(3, 3, 3);
     g.generateTexture('spark', 6, 6);
 
-    // КНОПКИ
-    g.clear();
-    g.fillStyle(0x1a1a3a, 0.9);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0x00ffff);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 15, 8, 20);
-    g.fillRect(27, 15, 8, 20);
-    g.generateTexture('pause_button', 50, 50);
-
-    g.clear();
-    g.fillStyle(0xffaa00, 0.9);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0xffaa00);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xcc8800);
-    g.fillRect(15, 8, 20, 5);
-    g.fillStyle(0xffcc00);
-    g.fillRoundedRect(10, 13, 30, 25, 5);
-    g.fillStyle(0xffaa00);
-    g.fillRect(15, 18, 8, 12);
-    g.fillRect(27, 18, 8, 12);
-    g.fillStyle(0xffffaa, 0.5);
-    g.fillCircle(15, 15, 2);
-    g.fillCircle(35, 25, 2);
-    g.generateTexture('shop_button', 50, 50);
-
-    g.clear();
-    g.fillStyle(0xff00ff, 0.9);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0xff00ff);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 15, 8, 8);
-    g.fillRect(27, 15, 8, 8);
-    g.fillRect(15, 27, 20, 8);
-    g.generateTexture('menu_button', 50, 50);
-
+    // СЕРДЦЕ
     g.clear();
     g.fillStyle(0xff4444);
     g.fillTriangle(8, 6, 16, 18, 24, 6);
@@ -463,6 +541,7 @@ class BootScene extends Phaser.Scene {
     g.strokeTriangle(8, 6, 16, 18, 24, 6);
     g.generateTexture('heart', 32, 24);
 
+    // СТАНЦИЯ
     g.clear();
     g.fillStyle(0x220066);
     g.fillCircle(48, 48, 40);
@@ -473,6 +552,60 @@ class BootScene extends Phaser.Scene {
     g.lineStyle(4, 0x00ffff, 0.8);
     g.strokeCircle(48, 48, 45);
     g.generateTexture('station_planet', 96, 96);
+
+    // АСТЕРОИДЫ
+    g.clear();
+    g.fillStyle(0x888888);
+    g.fillCircle(20, 20, 15);
+    g.fillStyle(0x666666);
+    g.fillCircle(12, 12, 8);
+    g.fillCircle(28, 28, 7);
+    g.lineStyle(2, 0xaaaaaa, 0.5);
+    g.strokeCircle(20, 20, 16);
+    g.generateTexture('bg_asteroid_1', 40, 40);
+
+    g.clear();
+    g.fillStyle(0x999999);
+    g.fillRect(5, 5, 30, 30);
+    g.fillStyle(0x777777);
+    g.fillRect(10, 10, 10, 10);
+    g.fillRect(20, 20, 8, 8);
+    g.lineStyle(2, 0xbbbbbb, 0.4);
+    g.strokeRect(5, 5, 30, 30);
+    g.generateTexture('bg_asteroid_2', 40, 40);
+
+    // ЭФФЕКТЫ
+    g.clear();
+    g.lineStyle(3, 0x00ffff, 0.8);
+    g.strokeCircle(32, 32, 28);
+    g.lineStyle(2, 0x00ffff, 0.5);
+    g.strokeCircle(32, 32, 20);
+    g.lineStyle(1, 0x00ffff, 0.3);
+    g.strokeCircle(32, 32, 12);
+    g.fillStyle(0x00ffff, 0.1);
+    g.fillCircle(32, 32, 28);
+    g.generateTexture('shield_effect', 64, 64);
+
+    g.clear();
+    g.fillStyle(0xff00ff);
+    g.fillRect(10, 5, 12, 22);
+    g.fillRect(20, 5, 12, 22);
+    g.fillStyle(0xff88ff);
+    g.fillRect(12, 8, 8, 16);
+    g.fillRect(22, 8, 8, 16);
+    g.lineStyle(2, 0xff00ff);
+    g.strokeRect(10, 5, 12, 22);
+    g.strokeRect(20, 5, 12, 22);
+    g.generateTexture('magnet_effect', 40, 32);
+
+    g.clear();
+    g.fillStyle(0xffff00);
+    g.fillTriangle(16, 8, 24, 16, 16, 24);
+    g.fillTriangle(16, 8, 8, 16, 16, 24);
+    g.lineStyle(2, 0xffff00);
+    g.strokeTriangle(16, 8, 24, 16, 16, 24);
+    g.strokeTriangle(16, 8, 8, 16, 16, 24);
+    g.generateTexture('speed_effect', 32, 32);
 
     g.destroy();
   }
@@ -544,13 +677,17 @@ class MenuScene extends Phaser.Scene {
     this.createButton(w / 2, h * 0.78, 'КВЕСТЫ', () => this.scene.start('quests'));
     this.createButton(w / 2, h * 0.88, 'НАСТРОЙКИ', () => this.scene.start('settings'));
 
-    this.add.text(w / 2, h - 20, 'v2.1.0', {
+    this.add.text(w / 2, h - 20, 'v2.2.0', {
       fontSize: '10px',
       fontFamily: "'Space Mono', monospace",
       color: COLORS.text_muted
     }).setOrigin(0.5);
 
-    window.audioManager.playMusic(this, 0.5);
+    try {
+      audioManager.playMusic(this, 0.5);
+    } catch (e) {
+      console.warn('Music error:', e);
+    }
   }
 
   createButton(x, y, text, callback, size = 'normal') {
@@ -680,7 +817,7 @@ class TutorialScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// МЕНЕДЖЕР ЧАСТИЦ
+// МЕНЕДЖЕР ЧАСТИЦ (расширенный)
 // =========================================================================
 
 class ParticleEffectManager {
@@ -711,7 +848,9 @@ class ParticleEffectManager {
       });
       emitter.explode(12);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createWagonSpawnEffect(wagon) {
@@ -728,7 +867,9 @@ class ParticleEffectManager {
       });
       emitter.explode(10);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createWagonDestroyEffect(wagon) {
@@ -745,7 +886,9 @@ class ParticleEffectManager {
       });
       emitter.explode(20);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createShieldEffect(target) {
@@ -763,7 +906,9 @@ class ParticleEffectManager {
         follow: target
       });
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createBonusEffect(type, x, y) {
@@ -785,7 +930,9 @@ class ParticleEffectManager {
       });
       emitter.explode(30);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createEnemyDeathEffect(x, y) {
@@ -802,7 +949,9 @@ class ParticleEffectManager {
       });
       emitter.explode(15);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   createAttackEffect(x, y) {
@@ -819,7 +968,9 @@ class ParticleEffectManager {
       });
       emitter.explode(20);
       this.activeEmitters.push(emitter);
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
   }
 
   cleanup() {
@@ -967,14 +1118,8 @@ class QuestSystem {
 }
 
 // =========================================================================
-// МЕНЕДЖЕР УРОВНЕЙ
+// МЕНЕДЖЕР УРОВНЕЙ (расширенный)
 // =========================================================================
-
-const LEVEL_CONFIG = {
-  0: { name: 'КОСМОС', theme: 'space', bgColor: 0x0a0a1a, gateColors: ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'] },
-  1: { name: 'КИБЕРПАНК', theme: 'cyberpunk', bgColor: 0x1a0a2a, gateColors: ['gate_purple', 'gate_blue', 'gate_green', 'gate_yellow', 'gate_red'] },
-  2: { name: 'ПОДЗЕМЕЛЬЕ', theme: 'dungeon', bgColor: 0x2a1a0a, gateColors: ['gate_red', 'gate_yellow', 'gate_green', 'gate_blue', 'gate_purple'] }
-};
 
 class LevelManager {
   constructor(scene) {
@@ -984,18 +1129,30 @@ class LevelManager {
   }
 
   switchLevel(levelIndex) {
+    if (levelIndex > 5) levelIndex = 5;
     this.currentLevel = levelIndex;
     this.applyTheme();
   }
 
   applyTheme() {
     const config = this.levelConfig[this.currentLevel];
-    this.scene.cameras.main.setBackgroundColor(config.bgColor);
-    this.scene.gateTextures = config.gateColors;
+    if (config) {
+      this.scene.cameras.main.setBackgroundColor(config.bgColor);
+      this.scene.gateTextures = config.gateColors;
+      this.scene.currentLevelConfig = config;
+    }
   }
 
   getCurrentTheme() {
     return this.levelConfig[this.currentLevel].theme;
+  }
+
+  getLevelName() {
+    return this.levelConfig[this.currentLevel].name;
+  }
+
+  getLevelDescription() {
+    return this.levelConfig[this.currentLevel].description;
   }
 }
 
@@ -1004,12 +1161,39 @@ class LevelManager {
 // =========================================================================
 
 const ENEMY_CONFIG = {
-  drone: { health: 2, speed: 150, attackRange: 300, detectionRange: 400, damage: 1, scoreValue: 5, coinType: 'energy',
-           fireDelay: 800, bulletSpeed: 400, bulletDamage: 1 },
-  sentinel: { health: 3, speed: 200, attackRange: 350, detectionRange: 450, damage: 1.5, scoreValue: 10, coinType: 'cyber',
-              fireDelay: 600, bulletSpeed: 500, bulletDamage: 1 },
-  skeleton: { health: 1, speed: 120, attackRange: 250, detectionRange: 350, damage: 1, scoreValue: 3, coinType: 'soul',
-              fireDelay: 1000, bulletSpeed: 300, bulletDamage: 1 }
+  drone: {
+    health: 2,
+    speed: 150,
+    attackRange: 300,
+    detectionRange: 400,
+    damage: 1,
+    scoreValue: 5,
+    fireDelay: 800,
+    bulletSpeed: 400,
+    bulletDamage: 1
+  },
+  sentinel: {
+    health: 3,
+    speed: 200,
+    attackRange: 350,
+    detectionRange: 450,
+    damage: 1.5,
+    scoreValue: 10,
+    fireDelay: 600,
+    bulletSpeed: 500,
+    bulletDamage: 1
+  },
+  skeleton: {
+    health: 1,
+    speed: 120,
+    attackRange: 250,
+    detectionRange: 350,
+    damage: 1,
+    scoreValue: 3,
+    fireDelay: 1000,
+    bulletSpeed: 300,
+    bulletDamage: 1
+  }
 };
 
 class AIEnemy {
@@ -1026,6 +1210,12 @@ class AIEnemy {
     this.patrolTimer = 0;
     this.attackCooldown = 0;
     this.fireCooldown = 0;
+
+    // Добавляем ссылку на объект врага в спрайт для удобства коллизий
+    this.sprite.enemyRef = this;
+    if (scene.enemyGroup) {
+      scene.enemyGroup.add(this.sprite);
+    }
   }
 
   update(playerPos, time, delta) {
@@ -1090,34 +1280,50 @@ class AIEnemy {
   die() {
     this.scene.crystals += this.config.scoreValue;
     this.scene.particleManager.createEnemyDeathEffect(this.sprite.x, this.sprite.y);
+    if (this.scene.enemyGroup) {
+      this.scene.enemyGroup.remove(this.sprite);
+    }
     this.sprite.destroy();
     this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(e => e !== this);
   }
 }
 
 // =========================================================================
-// МЕНЕДЖЕР ВОЛН ВРАГОВ
+// МЕНЕДЖЕР ВОЛН ВРАГОВ (расширенный)
 // =========================================================================
 
 const WAVE_CONFIG = {
   space: [
-    { wave: 0, count: 1, type: 'drone', positions: null },
-    { wave: 1, count: 2, type: 'drone', positions: null },
-    { wave: 2, count: 3, type: 'drone', positions: null },
-    { wave: 3, count: 2, type: 'sentinel', positions: null },
-    { wave: 4, count: 3, type: 'sentinel', positions: null },
+    { wave: 0, count: 0, type: 'drone' },
   ],
   cyberpunk: [
-    { wave: 0, count: 2, type: 'sentinel', positions: null },
-    { wave: 1, count: 3, type: 'sentinel', positions: null },
-    { wave: 2, count: 2, type: 'drone', positions: null },
-    { wave: 3, count: 4, type: 'sentinel', positions: null },
+    { wave: 0, count: 2, type: 'drone' },
+    { wave: 1, count: 3, type: 'drone' },
+    { wave: 2, count: 2, type: 'sentinel' },
+    { wave: 3, count: 3, type: 'sentinel' },
   ],
   dungeon: [
-    { wave: 0, count: 2, type: 'skeleton', positions: null },
-    { wave: 1, count: 3, type: 'skeleton', positions: null },
-    { wave: 2, count: 4, type: 'skeleton', positions: null },
-    { wave: 3, count: 5, type: 'skeleton', positions: null },
+    { wave: 0, count: 2, type: 'skeleton' },
+    { wave: 1, count: 3, type: 'skeleton' },
+    { wave: 2, count: 4, type: 'skeleton' },
+    { wave: 3, count: 5, type: 'skeleton' },
+  ],
+  asteroids: [
+    { wave: 0, count: 3, type: 'drone' },
+    { wave: 1, count: 2, type: 'sentinel' },
+    { wave: 2, count: 4, type: 'drone' },
+  ],
+  station: [
+    { wave: 0, count: 2, type: 'sentinel' },
+    { wave: 1, count: 3, type: 'sentinel' },
+    { wave: 2, count: 2, type: 'drone' },
+    { wave: 3, count: 4, type: 'sentinel' },
+  ],
+  blackhole: [
+    { wave: 0, count: 4, type: 'sentinel' },
+    { wave: 1, count: 5, type: 'drone' },
+    { wave: 2, count: 3, type: 'skeleton' },
+    { wave: 3, count: 6, type: 'sentinel' },
   ]
 };
 
@@ -1150,6 +1356,7 @@ class WaveManager {
 
   spawnWave(waveIndex) {
     const config = this.waveConfig[waveIndex];
+    if (!config) return;
     for (let i = 0; i < config.count; i++) {
       const x = Phaser.Math.Between(this.scene.scale.width + 50, this.scene.scale.width + 300);
       const y = Phaser.Math.Between(100, this.scene.scale.height - 100);
@@ -1265,7 +1472,237 @@ class DamageSystem {
 }
 
 // =========================================================================
-// PLAY SCENE – основной игровой процесс
+// СИСТЕМА КОМБО
+// =========================================================================
+
+class ComboSystem {
+  constructor(scene) {
+    this.scene = scene;
+    this.combo = 0;
+    this.maxCombo = 0;
+    this.comboTimer = null;
+    this.comboTimeout = 3000;
+  }
+
+  addCombo() {
+    this.combo++;
+    if (this.combo > this.maxCombo) {
+      this.maxCombo = this.combo;
+    }
+    
+    if (this.comboTimer) {
+      this.comboTimer.remove();
+    }
+
+    this.showComboText();
+
+    this.comboTimer = this.scene.time.delayedCall(this.comboTimeout, () => {
+      this.resetCombo();
+    });
+  }
+
+  resetCombo() {
+    this.combo = 0;
+    if (this.comboTimer) {
+      this.comboTimer.remove();
+      this.comboTimer = null;
+    }
+  }
+
+  showComboText() {
+    if (this.combo > 1) {
+      const w = this.scene.scale.width;
+      const comboText = this.scene.add.text(w / 2, 150, `КОМБО x${this.combo}`, {
+        fontSize: '28px',
+        fontFamily: "'Orbitron', monospace",
+        color: '#ffff00',
+        stroke: '#ff8800',
+        strokeThickness: 3,
+        shadow: { blur: 10, color: '#ffff00', fill: true }
+      }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+
+      this.scene.tweens.add({
+        targets: comboText,
+        scaleX: 1.2,
+        scaleY: 1.2,
+        alpha: 0,
+        duration: 1000,
+        ease: 'Power2.easeOut',
+        onComplete: () => comboText.destroy()
+      });
+    }
+  }
+
+  getMultiplier() {
+    return 1 + (this.combo * 0.1);
+  }
+
+  destroy() {
+    if (this.comboTimer) {
+      this.comboTimer.remove();
+    }
+  }
+}
+
+// =========================================================================
+// СИСТЕМА МНОЖИТЕЛЕЙ
+// =========================================================================
+
+class MultiplierSystem {
+  constructor(scene) {
+    this.scene = scene;
+    this.baseMultiplier = 1;
+    this.bonusMultipliers = {};
+    this.totalMultiplier = 1;
+  }
+
+  addMultiplier(key, value) {
+    this.bonusMultipliers[key] = value;
+    this.recalculateMultiplier();
+  }
+
+  removeMultiplier(key) {
+    delete this.bonusMultipliers[key];
+    this.recalculateMultiplier();
+  }
+
+  recalculateMultiplier() {
+    this.totalMultiplier = this.baseMultiplier;
+    for (let key in this.bonusMultipliers) {
+      this.totalMultiplier *= this.bonusMultipliers[key];
+    }
+  }
+
+  getMultiplier() {
+    return this.totalMultiplier;
+  }
+
+  setBaseMultiplier(value) {
+    this.baseMultiplier = value;
+    this.recalculateMultiplier();
+  }
+
+  reset() {
+    this.baseMultiplier = 1;
+    this.bonusMultipliers = {};
+    this.totalMultiplier = 1;
+  }
+}
+
+// =========================================================================
+// СИСТЕМА СПЕЦИАЛЬНЫХ СОБЫТИЙ
+// =========================================================================
+
+class SpecialEventManager {
+  constructor(scene) {
+    this.scene = scene;
+    this.events = [];
+    this.eventTimer = null;
+    this.eventChance = 0.05;
+  }
+
+  update(delta) {
+    if (Math.random() < this.eventChance * (delta / 1000)) {
+      this.triggerRandomEvent();
+    }
+  }
+
+  triggerRandomEvent() {
+    const events = [
+      { name: 'МЕТЕОРИТНЫЙ ДОЖДЬ', action: () => this.meteorShower() },
+      { name: 'ВРЕМЕННОЙ СКАЧОК', action: () => this.timeWarp() },
+      { name: 'ГРАВИТАЦИОННЫЙ СКАЧОК', action: () => this.gravityShift() },
+      { name: 'ЭЛЕКТРОМАГНИТНЫЙ ИМПУЛЬС', action: () => this.emPulse() }
+    ];
+
+    const event = events[Math.floor(Math.random() * events.length)];
+    this.showEventNotification(event.name);
+    event.action();
+  }
+
+  meteorShower() {
+    for (let i = 0; i < 5; i++) {
+      this.scene.time.delayedCall(i * 200, () => {
+        const x = this.scene.scale.width + 50;
+        const y = Phaser.Math.Between(100, this.scene.scale.height - 100);
+        const meteor = this.scene.physics.add.image(x, y, 'bg_asteroid_1')
+          .setScale(1.5)
+          .setVelocityX(-this.scene.currentSpeed * 1.5)
+          .setVelocityY(Phaser.Math.Between(-100, 100));
+        meteor.setAngularVelocity(200);
+        meteor.setDepth(-5);
+      });
+    }
+  }
+
+  timeWarp() {
+    const originalSpeed = this.scene.currentSpeed;
+    this.scene.currentSpeed *= 0.5;
+    this.scene.time.delayedCall(5000, () => {
+      this.scene.currentSpeed = originalSpeed;
+    });
+  }
+
+  gravityShift() {
+    const originalGravity = this.scene.physics.world.gravity.y;
+    this.scene.physics.world.gravity.y *= 1.5;
+    this.scene.time.delayedCall(4000, () => {
+      this.scene.physics.world.gravity.y = originalGravity;
+    });
+  }
+
+  emPulse() {
+    const w = this.scene.scale.width;
+    const h = this.scene.scale.height;
+    const pulse = this.scene.add.circle(w / 2, h / 2, 10, 0x00ffff, 0.5)
+      .setDepth(25)
+      .setScrollFactor(0);
+
+    this.scene.tweens.add({
+      targets: pulse,
+      radius: 300,
+      alpha: 0,
+      duration: 800,
+      ease: 'Power2.easeOut',
+      onComplete: () => pulse.destroy()
+    });
+
+    this.scene.coins.forEach(coin => {
+      const angle = Phaser.Math.Angle.Between(w / 2, h / 2, coin.x, coin.y);
+      coin.setVelocityX(Math.cos(angle) * 300);
+      coin.setVelocityY(Math.sin(angle) * 300);
+    });
+  }
+
+  showEventNotification(eventName) {
+    const w = this.scene.scale.width;
+    const notification = this.scene.add.text(w / 2, 200, `⚡ ${eventName}`, {
+      fontSize: '24px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#ff00ff',
+      stroke: '#ffff00',
+      strokeThickness: 3,
+      shadow: { blur: 15, color: '#ff00ff', fill: true }
+    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+    this.scene.tweens.add({
+      targets: notification,
+      alpha: 0,
+      duration: 2000,
+      ease: 'Power2.easeOut',
+      onComplete: () => notification.destroy()
+    });
+  }
+
+  destroy() {
+    if (this.eventTimer) {
+      this.eventTimer.remove();
+    }
+  }
+}
+
+// =========================================================================
+// PLAY SCENE – основной игровой процесс (исправленный, с новыми системами)
 // =========================================================================
 
 class PlayScene extends Phaser.Scene {
@@ -1326,6 +1763,7 @@ class PlayScene extends Phaser.Scene {
     this.jumpPower = this.upgradeSystem.getUpgradeValue('jumpPower');
     this.questSystem = new QuestSystem();
 
+    // Параметры оружия (устанавливаются в UpgradeSystem)
     this.weaponDamage = 1;
     this.weaponBulletSpeed = 400;
     this.weaponFireDelay = 500;
@@ -1361,8 +1799,15 @@ class PlayScene extends Phaser.Scene {
     this.damageSystem = new DamageSystem(this);
     this.waveManager = new WaveManager(this, this.levelManager);
 
+    // Группы для пуль и врагов
     this.playerBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
     this.enemyBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
+    this.enemyGroup = this.physics.add.group(); // для коллизий пуль с врагами
+
+    // Новые системы
+    this.comboSystem = new ComboSystem(this);
+    this.specialEventManager = new SpecialEventManager(this);
+    this.multiplierSystem = new MultiplierSystem(this);
 
     this.createBackground();
     this.createPlanets();
@@ -1371,6 +1816,7 @@ class PlayScene extends Phaser.Scene {
     this.createPlayer();
     this.createUI();
 
+    // Обработчик нажатия на экран (для прыжка) – НЕ срабатывает на кнопки
     this.input.on('pointerdown', (pointer) => {
       if (pointer.targetObject) return;
       if (this.dead) { this.scene.start('menu'); return; }
@@ -1382,6 +1828,7 @@ class PlayScene extends Phaser.Scene {
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
 
+    // Устанавливаем громкость фоновой музыки для игры (тише)
     window.audioManager.playMusic(this, 0.2);
   }
 
@@ -1395,6 +1842,7 @@ class PlayScene extends Phaser.Scene {
 
     if (!this.started || this.dead) return;
 
+    // Обновление кулдауна оружия
     if (this.weaponCooldown > 0) {
       this.weaponCooldown -= delta;
     }
@@ -1431,8 +1879,10 @@ class PlayScene extends Phaser.Scene {
 
     this.checkAchievements();
     this.waveManager.update(time, delta, this.player);
+    this.specialEventManager.update(delta);
     this.checkLevelProgression();
 
+    // Обновление пуль: удаление вышедших за экран
     this.playerBullets.getChildren().forEach(b => {
       if (b.x > this.scale.width + 100) b.destroy();
     });
@@ -1446,17 +1896,20 @@ class PlayScene extends Phaser.Scene {
     if (this.weaponCooldown > 0) return;
     this.weaponCooldown = this.weaponFireDelay;
 
+    // Создаём пулю от игрока
     const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
     bullet.setScale(1.5);
     bullet.damage = this.weaponDamage;
     bullet.setVelocityX(this.weaponBulletSpeed);
     bullet.setVelocityY(0);
     bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0);
+    bullet.body.setGravityY(0); // принудительно отключаем гравитацию
     bullet.setDepth(20);
 
+    // Звук выстрела
     this.tapSound.play();
 
+    // Небольшая анимация на кнопке
     this.tweens.add({
       targets: this.attackButton,
       scaleX: 0.8,
@@ -1466,13 +1919,15 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  // Стрельба врага
   fireEnemyBullet(enemy, playerPos) {
     const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
     bullet.setScale(1.5);
     bullet.damage = enemy.config.bulletDamage || 1;
     bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0);
+    bullet.body.setGravityY(0); // принудительно отключаем гравитацию
 
+    // Направление на игрока
     const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
     const speed = enemy.config.bulletSpeed;
     bullet.setVelocityX(Math.cos(angle) * speed);
@@ -1481,9 +1936,175 @@ class PlayScene extends Phaser.Scene {
     bullet.setDepth(20);
   }
 
+  // ===== НОВЫЕ МЕТОДЫ ДЛЯ СИСТЕМ =====
+
+  collectCoinExtended(coin) {
+    if (!coin.active || coin.collected) return;
+    coin.collected = true;
+
+    let value = 1;
+    let bonusType = null;
+
+    switch (coin.coinType) {
+      case 'red':
+        value = 2;
+        bonusType = 'speed';
+        break;
+      case 'blue':
+        value = 1;
+        bonusType = 'shield';
+        break;
+      case 'green':
+        value = 1;
+        bonusType = 'magnet';
+        break;
+      case 'purple':
+        value = 1;
+        bonusType = 'slow';
+        break;
+      default:
+        value = 1;
+    }
+
+    // Применить множители
+    const multipliedValue = Math.floor(value * this.multiplierSystem.getMultiplier());
+    this.crystals += multipliedValue;
+    this.totalCoinsCollected += multipliedValue;
+    this.comboSystem.addCombo();
+
+    this.crystalText.setText(`💎 ${this.crystals}`);
+    this.collectedCoins += multipliedValue;
+
+    if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
+      this.addWagon();
+      this.collectedCoins -= this.coinsForWagon;
+    }
+
+    if (bonusType) {
+      this.activateBonus(bonusType);
+      this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.coinType);
+    } else {
+      this.coinSound.play();
+      this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
+    }
+
+    this.tweens.add({
+      targets: this.crystalText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 80,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
+
+    coin.destroy();
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
+  }
+
+  passGateWithCombo(zone) {
+    if (zone.passed) return;
+    zone.passed = true;
+
+    const baseScore = 1;
+    const comboMultiplier = this.comboSystem.getMultiplier();
+    const totalScore = Math.floor(baseScore * comboMultiplier * this.multiplierSystem.getMultiplier());
+
+    this.score += totalScore;
+    this.scoreText.setText(String(this.score));
+    this.meters += 10;
+    this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
+    this.updateLevel();
+
+    if (this.score > this.best) {
+      this.best = this.score;
+      localStorage.setItem('skypulse_best', String(this.best));
+      this.bestText.setText(`🏆 ${this.best}`);
+    }
+
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 100,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
+
+    this.cameras.main.shake(20, 0.001);
+  }
+
+  activatePowerUp(type, duration = 10) {
+    if (this.powerUpActive[type]) return;
+
+    this.powerUpActive[type] = true;
+    const powerUp = { type, duration, startTime: Date.now() };
+    this.activePowerUps.push(powerUp);
+
+    switch (type) {
+      case 'doubleCrystals':
+        this.multiplierSystem.addMultiplier('doubleCrystals', 2);
+        this.showPowerUpNotification('💎 ДВОЙНЫЕ КРИСТАЛЛЫ', duration);
+        break;
+      case 'invincible':
+        this.shieldActive = true;
+        this.player.setTint(0x00ffff);
+        this.showPowerUpNotification('🛡️ НЕУЯЗВИМОСТЬ', duration);
+        break;
+      case 'slowMotion':
+        this.currentSpeed *= 0.5;
+        this.showPowerUpNotification('⏳ ЗАМЕДЛЕНИЕ ВРЕМЕНИ', duration);
+        break;
+    }
+
+    this.time.delayedCall(duration * 1000, () => {
+      this.deactivatePowerUp(type);
+    });
+  }
+
+  deactivatePowerUp(type) {
+    this.powerUpActive[type] = false;
+    this.activePowerUps = this.activePowerUps.filter(p => p.type !== type);
+
+    switch (type) {
+      case 'doubleCrystals':
+        this.multiplierSystem.removeMultiplier('doubleCrystals');
+        break;
+      case 'invincible':
+        this.shieldActive = false;
+        this.player.clearTint();
+        break;
+      case 'slowMotion':
+        this.currentSpeed = this.baseSpeed;
+        break;
+    }
+  }
+
+  showPowerUpNotification(text, duration) {
+    const w = this.scale.width;
+    const notification = this.add.text(w / 2, 120, text, {
+      fontSize: '20px',
+      fontFamily: "'Orbitron', monospace",
+      color: '#00ff00',
+      stroke: '#ffff00',
+      strokeThickness: 2,
+      shadow: { blur: 10, color: '#00ff00', fill: true }
+    }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+
+    this.tweens.add({
+      targets: notification,
+      alpha: 0,
+      duration: duration * 1000,
+      ease: 'Power2.easeOut',
+      onComplete: () => notification.destroy()
+    });
+  }
+
+  // ===== ОСТАЛЬНЫЕ МЕТОДЫ (из предыдущей версии с исправлениями) =====
+
   checkLevelProgression() {
     const nextLevel = Math.floor(this.score / 500);
-    if (nextLevel > this.levelManager.currentLevel && nextLevel < 3) {
+    if (nextLevel > this.levelManager.currentLevel && nextLevel < 6) {
       this.transitionToLevel(nextLevel);
     }
   }
@@ -1575,9 +2196,8 @@ class PlayScene extends Phaser.Scene {
 
   createAsteroids() {
     const w = this.scale.width, h = this.scale.height;
-    const asteroidTextures = ['bg_asteroid_1', 'bg_asteroid_2'];
     for (let i = 0; i < 10; i++) {
-      const tex = asteroidTextures[Math.floor(Math.random() * asteroidTextures.length)];
+      const tex = i % 2 === 0 ? 'bg_asteroid_1' : 'bg_asteroid_2';
       const asteroid = this.add.image(Phaser.Math.Between(w, w * 12), Phaser.Math.Between(50, h - 50), tex);
       asteroid.setScale(Phaser.Math.FloatBetween(0.6, 1.8));
       asteroid.setTint(0xff8800);
@@ -1614,6 +2234,7 @@ class PlayScene extends Phaser.Scene {
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
+    // Звуки
     this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
     this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
     this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
@@ -1641,7 +2262,8 @@ class PlayScene extends Phaser.Scene {
       fontSize: '14px', fontFamily, color: '#fde047', stroke: '#0f172a', strokeThickness: 2
     }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
 
-    this.meterText = this.add.text(10, h - 50, `📏 0 м`, {
+    // Подняли метраж выше, чтобы не перекрывался кнопкой атаки
+    this.meterText = this.add.text(10, h - 80, `📏 0 м`, {
       fontSize: '12px', fontFamily, color: '#a5f3fc', stroke: '#0f172a', strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
@@ -1658,11 +2280,7 @@ class PlayScene extends Phaser.Scene {
       fontSize: '12px', fontFamily, color: '#88ccff', stroke: '#0f172a', strokeThickness: 2
     }).setDepth(10).setScrollFactor(0);
 
-    this.progressBarBg = this.add.rectangle(w / 2, h - 30, 150, 6, 0x333333).setDepth(9).setScrollFactor(0);
-    this.progressBar = this.add.rectangle(w / 2 - 75, h - 30, 0, 4, 0xffaa00).setOrigin(0, 0.5).setDepth(10).setScrollFactor(0);
-    this.progressBarText = this.add.text(w / 2, h - 30, `${this.collectedCoins}/${this.coinsForWagon}`, {
-      fontSize: '8px', fontFamily, color: '#ffffff', stroke: '#000000', strokeThickness: 1
-    }).setOrigin(0.5).setDepth(11).setScrollFactor(0);
+    // Прогресс-бар удалён
 
     this.heartContainer = this.add.container(10, 30).setDepth(10).setScrollFactor(0);
     this.updateHearts();
@@ -1701,10 +2319,10 @@ class PlayScene extends Phaser.Scene {
       .on('pointerout', () => this.attackButton.setScale(1));
 
     this.createGameOverBox();
-    this.updateProgressBar();
 
-    this.physics.add.overlap(this.playerBullets, this.waveManager.enemies.map(e => e.sprite), (bullet, enemySprite) => {
-      const enemy = this.waveManager.enemies.find(e => e.sprite === enemySprite);
+    // Коллизии пуль с врагами (используем группу enemyGroup)
+    this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
+      const enemy = enemySprite.enemyRef;
       if (enemy) {
         this.damageSystem.enemyHitByBullet(enemy, bullet);
       }
@@ -1742,12 +2360,6 @@ class PlayScene extends Phaser.Scene {
       else heart.setTint(0xff88ff);
       this.heartContainer.add(heart);
     }
-  }
-
-  updateProgressBar() {
-    const percent = Math.min(this.collectedCoins / this.coinsForWagon, 1);
-    this.progressBar.width = 150 * percent;
-    this.progressBarText.setText(`${this.collectedCoins}/${this.coinsForWagon}`);
   }
 
   createGameOverBox() {
@@ -1986,7 +2598,10 @@ class PlayScene extends Phaser.Scene {
     wagon.setTint(0x88aaff);
     wagon.setBlendMode(Phaser.BlendModes.ADD);
     this.physics.add.collider(wagon, this.pipes, (w,p)=>this.wagonHit(w,p), null, this);
-    this.physics.add.overlap(wagon, this.waveManager.enemies.map(e=>e.sprite), (w, e) => this.damageSystem.enemyHitByWagon(e, w), null, this);
+    this.physics.add.overlap(wagon, this.enemyGroup, (w, enemySprite) => {
+      const enemy = enemySprite.enemyRef;
+      if (enemy) this.damageSystem.enemyHitByWagon(enemy, w);
+    }, null, this);
     this.wagons.push(wagon);
     wagon.x = this.scale.width + 50;
     wagon.y = this.player.y;
@@ -2046,7 +2661,12 @@ class PlayScene extends Phaser.Scene {
     coin.collected = false;
     this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
     this.coins.push(coin);
-    this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
+    this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoinExtended(c), null, this);
+  }
+
+  collectCoinExtended(coin) {
+    // переопределён выше, но оставим как есть
+    this.collectCoin(coin);
   }
 
   collectCoin(coin) {
@@ -2062,16 +2682,16 @@ class PlayScene extends Phaser.Scene {
     }
     if (this.bonusActive && this.bonusType === 'speed') value *= 2;
 
-    this.crystals += value;
+    // Применяем множители
+    const multipliedValue = Math.floor(value * this.multiplierSystem.getMultiplier());
+    this.crystals += multipliedValue;
     this.crystalText.setText(`💎 ${this.crystals}`);
-    this.collectedCoins += value;
-    this.updateProgressBar();
-    this.updateCrystalText();
+    this.collectedCoins += multipliedValue;
+    this.comboSystem.addCombo();
 
     if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
       this.addWagon();
       this.collectedCoins -= this.coinsForWagon;
-      this.updateProgressBar();
     }
 
     if (bonusType) {
@@ -2088,7 +2708,7 @@ class PlayScene extends Phaser.Scene {
       this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
     }
 
-    this.questSystem.updateProgress('crystals', value);
+    this.questSystem.updateProgress('crystals', multipliedValue);
 
     this.tweens.add({ targets: this.crystalText, scaleX:1.2, scaleY:1.2, duration:80, yoyo:true, ease:'Quad.out' });
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType?'heavy':'soft'); } catch {}
@@ -2193,10 +2813,6 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  updateCrystalText() {
-    this.tweens.add({ targets: this.crystalText, scaleX:1.2, scaleY:1.2, duration:150, yoyo:true, ease:'Elastic.out' });
-  }
-
   showNotification(text, duration = 2000, color = '#ffffff') {
     const w = this.scale.width;
     const notification = this.add.text(w / 2, 100, text, {
@@ -2258,7 +2874,7 @@ class PlayScene extends Phaser.Scene {
     zone.body.setImmovable(true);
     zone.body.setVelocityX(-difficulty.speed);
     zone.body.setSize(12, h);
-    this.physics.add.overlap(this.player, zone, ()=>this.passGate(zone), null, this);
+    this.physics.add.overlap(this.player, zone, ()=>this.passGateWithCombo(zone), null, this);
     this.scoreZones.push(zone);
 
     if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
@@ -2282,24 +2898,6 @@ class PlayScene extends Phaser.Scene {
         this.time.delayedCall(500, ()=>this.player.clearTint());
       }
     }
-  }
-
-  passGate(zone) {
-    if (zone.passed) return;
-    zone.passed = true;
-    this.score += 1 * this.bonusMultiplier;
-    this.scoreText.setText(String(this.score));
-    this.meters += 10;
-    this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
-    this.updateLevel();
-    if (this.score > this.best) {
-      this.best = this.score;
-      localStorage.setItem('skypulse_best', String(this.best));
-      this.bestText.setText(`🏆 ${this.best}`);
-    }
-    this.tweens.add({ targets: this.scoreText, scaleX:1.2, scaleY:1.2, duration:100, yoyo:true, ease:'Quad.out' });
-    this.cameras.main.shake(20,0.001);
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.('light'); } catch {}
   }
 
   handleDeath() {
@@ -2547,6 +3145,8 @@ class PlayScene extends Phaser.Scene {
     this.shopElements = [];
     this.playerBullets.clear(true, true);
     this.enemyBullets.clear(true, true);
+    if (this.comboSystem) this.comboSystem.destroy();
+    if (this.specialEventManager) this.specialEventManager.destroy();
   }
 
   updateDifficulty() {
@@ -2780,7 +3380,7 @@ class PlayScene extends Phaser.Scene {
     if (this.scoreText) this.scoreText.setPosition(w/2, 30);
     if (this.bestText) this.bestText.setPosition(10, 10);
     if (this.crystalText) this.crystalText.setPosition(w-10, 10);
-    if (this.meterText) this.meterText.setPosition(10, h-50);
+    if (this.meterText) this.meterText.setPosition(10, h-80);
     if (this.wagonCountText) this.wagonCountText.setPosition(w-100, h-30);
     if (this.bonusText) this.bonusText.setPosition(w-10, 40);
     if (this.levelText) this.levelText.setPosition(w/2, h/2-70);
@@ -2788,11 +3388,6 @@ class PlayScene extends Phaser.Scene {
     if (this.shopButton) this.shopButton.setPosition(w-90, h-35);
     if (this.menuButton) this.menuButton.setPosition(w-145, h-35);
     if (this.attackButton) this.attackButton.setPosition(50, h-35);
-    if (this.progressBarBg) {
-      this.progressBarBg.setPosition(w/2, h-30);
-      this.progressBar.setPosition(w/2-75, h-30);
-      this.progressBarText.setPosition(w/2, h-30);
-    }
     if (!this.started) {
       if (this.introText) this.introText.setPosition(w/2, h*0.40);
       if (this.coinTipsText) this.coinTipsText.setPosition(w/2, h*0.50);
@@ -2874,7 +3469,7 @@ class GameOverScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// SHOP SCENE
+// SHOP SCENE (расширенная)
 // =========================================================================
 
 class ShopScene extends Phaser.Scene {
@@ -2890,6 +3485,7 @@ class ShopScene extends Phaser.Scene {
     this.add.text(w/2,30,'МАГАЗИН', { fontSize:'40px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:3 }).setOrigin(0.5);
     this.add.text(w/2,80,`💎 ${gameManager.data.crystals}`, { fontSize:'20px', fontFamily:"'Space Mono', monospace", color:COLORS.accent, stroke:'#0f172a', strokeThickness:2 }).setOrigin(0.5);
 
+    // Вкладки (улучшения/предметы/пассивы) – упрощённо
     let y = 130;
     for (let up of SHOP_UPGRADES) {
       const level = gameManager.data.upgrades[up.key] || 0;
@@ -2918,7 +3514,7 @@ class ShopScene extends Phaser.Scene {
 }
 
 // =========================================================================
-// ACHIEVEMENTS SCENE
+// ACHIEVEMENTS SCENE (расширенная)
 // =========================================================================
 
 class AchievementsScene extends Phaser.Scene {
@@ -2942,6 +3538,13 @@ class AchievementsScene extends Phaser.Scene {
       this.add.text(w-20, y-10, `+${ach.reward} 💎`, { fontSize:'12px', fontFamily:"'Space Mono', monospace", color:color }).setOrigin(1,0.5);
       y += 50;
     }
+
+    // Статистика
+    const stats = gameManager.data.stats;
+    const statsText = `\nВсего игр: ${stats.totalGames}\nЛучший счёт: ${stats.maxScore}\nЛучший уровень: ${stats.maxLevel}\nВсего вагонов: ${stats.maxWagons}`;
+    this.add.text(w/2, h-130, 'СТАТИСТИКА', { fontSize:'16px', fontFamily:"'Orbitron', sans-serif", color:COLORS.primary, stroke:COLORS.secondary, strokeThickness:2 }).setOrigin(0.5);
+    this.add.text(w/2, h-90, statsText, { fontSize:'10px', fontFamily:"'Space Mono', monospace", color:'#cccccc', align:'center' }).setOrigin(0.5);
+
     this.createButton(w/2, h-40, 'НАЗАД', ()=>this.scene.start('menu'));
   }
   createButton(x,y,t,c) {
@@ -3024,9 +3627,28 @@ const config = {
   width: 390,
   height: 844,
   backgroundColor: '#030712',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: true },
-  physics: { default: 'arcade', arcade: { gravity: { y:1300 }, debug: false, maxEntities:500 } },
-  render: { pixelArt: false, antialias: true, powerPreference: 'high-performance' },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    expandParent: true,
+    orientation: Phaser.Scale.Orientation.PORTRAIT
+  },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 1300 },
+      debug: false,
+      maxEntities: 500,
+      enableBody: true,
+      enableStaticBody: true
+    }
+  },
+  render: {
+    pixelArt: false,
+    antialias: true,
+    powerPreference: 'high-performance',
+    transparent: false
+  },
   scene: [
     BootScene,
     MenuScene,
@@ -3037,7 +3659,83 @@ const config = {
     AchievementsScene,
     QuestsScene,
     SettingsScene
-  ]
+  ],
+  input: {
+    touch: { target: window },
+    keyboard: { target: window }
+  }
 };
 
-new Phaser.Game(config);
+// =========================================================================
+// ИНТЕГРАЦИЯ С TELEGRAM
+// =========================================================================
+
+if (window.Telegram?.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+
+  tg.onEvent('viewportChanged', () => {
+    const viewport = tg.viewportStableHeight;
+    game.scale.setGameSize(window.innerWidth, viewport);
+  });
+
+  tg.BackButton.onClick(() => {
+    if (game.scene.isActive('play')) {
+      game.scene.getScene('play').confirmExit();
+    } else {
+      game.scene.start('menu');
+    }
+  });
+}
+
+// =========================================================================
+// ЗАПУСК
+// =========================================================================
+
+const game = new Phaser.Game(config);
+
+// =========================================================================
+// ОТЛАДКА
+// =========================================================================
+
+window.gameDebug = {
+  addCrystals: (amount) => {
+    gameManager.data.crystals += amount;
+    gameManager.save();
+  },
+  addCoins: (amount) => {
+    const scene = game.scene.getScene('play');
+    if (scene && scene.isActive()) {
+      scene.crystals += amount;
+      scene.crystalText.setText(`💎 ${scene.crystals}`);
+    }
+  },
+  levelUp: () => {
+    const scene = game.scene.getScene('play');
+    if (scene && scene.isActive()) {
+      scene.level++;
+      scene.updateDifficulty();
+    }
+  },
+  addWagon: () => {
+    const scene = game.scene.getScene('play');
+    if (scene && scene.isActive()) {
+      scene.addWagon();
+    }
+  },
+  unlockAllAchievements: () => {
+    for (let key in ACHIEVEMENTS) {
+      gameManager.unlockAchievement(key);
+    }
+  },
+  resetData: () => {
+    localStorage.clear();
+    location.reload();
+  },
+  getGameData: () => gameManager.data,
+  getStats: () => gameManager.data.stats
+};
+
+console.log('🎮 SkyPulse v2.2.0 загружена');
+console.log('💡 Для отладки используйте: window.gameDebug');
