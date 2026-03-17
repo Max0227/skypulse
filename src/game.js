@@ -1452,6 +1452,7 @@ class PlayScene extends Phaser.Scene {
     bullet.setVelocityX(this.weaponBulletSpeed);
     bullet.setVelocityY(0);
     bullet.body.setAllowGravity(false);
+    bullet.body.setGravityY(0);
     bullet.setDepth(20);
 
     this.tapSound.play();
@@ -1470,6 +1471,7 @@ class PlayScene extends Phaser.Scene {
     bullet.setScale(1.5);
     bullet.damage = enemy.config.bulletDamage || 1;
     bullet.body.setAllowGravity(false);
+    bullet.body.setGravityY(0);
 
     const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
     const speed = enemy.config.bulletSpeed;
