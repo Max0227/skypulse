@@ -1480,10 +1480,14 @@ class DamageSystem {
   }
 
   enemyHitByBullet(enemy, bullet) {
-    enemy.takeDamage(bullet.damage);
+    if (enemy.takeDamage(bullet.damage)) {
+        this.scene.crystals += enemy.config.scoreValue;
+        this.scene.crystalText.setText('Crystals: ' + this.scene.crystals);
+    }
     this.scene.particleManager.createAttackEffect(enemy.sprite.x, enemy.sprite.y);
     bullet.destroy();
-  }
+}
+
 
   wagonHitByEnemy(wagon, enemy) {
     let hp = wagon.getData('hp') - 1;
@@ -1839,6 +1843,10 @@ class PlayScene extends Phaser.Scene {
     this.levelManager = new LevelManager(this);
     this.damageSystem = new DamageSystem(this);
     this.waveManager = new WaveManager(this, this.levelManager);
+    this.levelManager = new LevelManager(this);
+    this.waveManager = new WaveManager(this, this.levelManager);
+    this.damageSystem = new DamageSystem(this);
+
 
     // Группы для пуль и врагов
     this.playerBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
@@ -1887,6 +1895,15 @@ class PlayScene extends Phaser.Scene {
     if (this.weaponCooldown > 0) {
       this.weaponCooldown -= delta;
     }
+   if (this.level >= 1 && this.waveManager.enemies.length > 0) {
+    if (this.weaponCooldown <= 0) {
+        const closestEnemy = this.waveManager.enemies[0];
+        if (closestEnemy && closestEnemy.sprite) {
+            this.firePlayerBullet(closestEnemy.sprite.x, closestEnemy.sprite.y);
+            this.weaponCooldown = this.weaponFireDelay;
+        }
+    }
+}
 
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
     this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
@@ -1919,7 +1936,9 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.checkAchievements();
+    if (this.level >= 1) {
     this.waveManager.update(time, delta, this.player);
+}
     this.specialEventManager.update(delta);
     this.checkLevelProgression();
 
@@ -1960,24 +1979,37 @@ class PlayScene extends Phaser.Scene {
     yoyo: true
   });
 }
+firePlayerBullet(targetX, targetY) {
+    const bullet = this.playerBullets.create(this.player.x + 30, this.player.y, 'laser_player');
+    bullet.setScale(1.5);
+    bullet.damage = this.weaponDamage;
+    
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetX, targetY);
+    const speed = this.weaponBulletSpeed;
+    
+    bullet.body.setAllowGravity(false);
+    bullet.body.setGravityY(0);
+    bullet.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    bullet.setDepth(20);
+    
+    this.tapSound.play();
+}
 
 
   // Стрельба врага
   fireEnemyBullet(enemy, playerPos) {
-  const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
-  bullet.setScale(1.5);
-  bullet.damage = enemy.config.bulletDamage || 1;
-  
-  // ✅ ПРАВИЛЬНО: Отключаем гравитацию ДО установки скорости
-  bullet.body.setAllowGravity(false);
-  
-  // Направление на игрока
-  const angle = Phaser.Math.Angle.Between(bullet.x, bullet.y, playerPos.x, playerPos.y);
-  const speed = enemy.config.bulletSpeed;
-  bullet.setVelocityX(Math.cos(angle) * speed);
-  bullet.setVelocityY(Math.sin(angle) * speed);
-
-  bullet.setDepth(20);
+    const bullet = this.enemyBullets.create(enemy.sprite.x - 20, enemy.sprite.y, 'laser_enemy');
+    bullet.setScale(1.5);
+    bullet.damage = enemy.config.bulletDamage || 1;
+    bullet.body.setAllowGravity(false);
+    bullet.body.setGravityY(0);
+    bullet.body.setVelocity(0, 0);
+    
+    const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, playerPos.x, playerPos.y);
+    const speed = enemy.config.bulletSpeed || 400;
+    
+    bullet.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+    bullet.setDepth(20);
 }
 
 
