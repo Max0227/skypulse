@@ -532,11 +532,9 @@ export class PlayScene extends Phaser.Scene {
 flap() {
   if (!this.player || !this.player.body || this.dead) return;
   
-  // Прыжок
   this.player.body.setVelocityY(-this.jumpPower);
-  
-  // Анимация сжатия
   this.player.setScale(0.95);
+  
   this.tweens.add({ 
     targets: this.player, 
     scaleX: 0.9, 
@@ -545,9 +543,14 @@ flap() {
     ease: 'Quad.out' 
   });
   
-  // Звук (с проверкой)
   try { 
     if (this.tapSound) this.tapSound.play(); 
+  } catch (e) {}
+  
+  try { 
+    if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) {
+      window.Telegram.WebApp.HapticFeedback.selectionChanged();
+    }
   } catch (e) {}
   
   // Вибрация для Telegram
@@ -2944,132 +2947,139 @@ flap() {
     this.stationPlanet = null;
   }
 
-  // В методе spawnCoin() - исправленный вызов overlap
-spawnCoin(x, y) {
-  if (Math.random() > 0.9) return;
-  
-  let coinType = 'gold', texture = 'coin_gold';
-  const r = Math.random();
-  
-  if (this.level >= 1 && r < 0.15) { 
-    coinType = 'red'; 
-    texture = 'coin_red'; 
-  } else if (this.level >= 2 && r < 0.28) { 
-    coinType = 'blue'; 
-    texture = 'coin_blue'; 
-  } else if (this.level >= 3 && r < 0.40) { 
-    coinType = 'green'; 
-    texture = 'coin_green'; 
-  } else if (this.level >= 4 && r < 0.50) { 
-    coinType = 'purple'; 
-    texture = 'coin_purple'; 
-  }
-  
-  const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-    .setImmovable(true)
-    .setVelocityX(-this.currentSpeed)
-    .setAngularVelocity(200);
-  
-  coin.body.setAllowGravity(false);
-  coin.body.setGravityY(0);
-  coin.body.velocity.y = 0;
-  
-  coin.setScale(0.01);
-  coin.coinType = coinType;
-  coin.setBlendMode(Phaser.BlendModes.ADD);
-  coin.collected = false;
-  
-  this.tweens.add({ 
-    targets: coin, 
-    scaleX: 1, 
-    scaleY: 1, 
-    duration: 300, 
-    ease: 'Back.out' 
-  });
-  
-  this.coins.push(coin);
-  this.coinGroup.add(coin);
-  
-  // ВАЖНО: используем collectCoin, а не collectCoinExtended
-  this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
-}
+  spawnCoin(x, y) {
+      if (Math.random() > 0.9) return;
+      let coinType = 'gold', texture = 'coin_gold';
+      const r = Math.random();
+      if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
+      else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
+      else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
+      else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
+      const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
+        .setImmovable(true)
+        .setVelocityX(-this.currentSpeed)
+        .setAngularVelocity(200);
+      coin.body.setAllowGravity(false);
+      coin.setScale(0.01);
+      coin.coinType = coinType;
+      coin.setBlendMode(Phaser.BlendModes.ADD);
+      coin.collected = false;
+      this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
+      this.coins.push(coin);
+      this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoinExtended(c), null, this);
+    }
 
-// Метод collectCoin (убедитесь, что он есть)
-collectCoin(coin) {
-  if (!coin || !coin.active || coin.collected) return;
-  coin.collected = true;
-  
-  let value = 1;
-  let bonusType = null;
-  
-  switch (coin.coinType) {
-    case 'red':
-      value = 2;
-      bonusType = 'speed';
-      break;
-    case 'blue':
-      value = 1;
-      bonusType = 'shield';
-      break;
-    case 'green':
-      value = 1;
-      bonusType = 'magnet';
-      break;
-    case 'purple':
-      value = 1;
-      bonusType = 'slow';
-      break;
-    default:
-      value = 1;
-  }
-  
-  if (this.bonusActive && this.bonusType === 'speed') value *= 2;
-  if (this.player?.doubleCrystals) value *= 2;
-  
-  const multipliedValue = Math.floor(value * (this.comboSystem?.getMultiplier() || 1));
-  this.crystals += multipliedValue;
-  
-  if (this.crystalText) {
-    this.crystalText.setText(`💎 ${this.crystals}`);
-  }
-  
-  this.collectedCoins += multipliedValue;
-  
-  if (this.comboSystem) {
-    this.comboSystem.add();
-  }
-  
-  if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
-    this.addWagon();
-    this.collectedCoins -= this.coinsForWagon;
-  }
-  
-  if (bonusType) {
-    this.activateBonus(bonusType);
-    this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.coinType);
-  } else {
-    try { if (this.coinSound) this.coinSound.play(); } catch (e) {}
-    this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
-  }
-  
-  if (this.crystalText) {
-    this.tweens.add({
-      targets: this.crystalText,
-      scaleX: 1.2,
-      scaleY: 1.2,
-      duration: 80,
-      yoyo: true,
-      ease: 'Quad.out'
+  completeLevel() {
+    let stars = 1;
+    if (this.score >= (this.worldConfig?.goalScore || 500) * 1.5) stars = 2;
+    if (this.score >= (this.worldConfig?.goalScore || 500) * 2) stars = 3;
+    if (this.headHP === this.maxHeadHP) stars = Math.min(3, stars + 1);
+
+    if (gameManager.setLevelStars) {
+      gameManager.setLevelStars(this.world, this.level, stars);
+    }
+
+    if (this.level < 9 && gameManager.unlockLevel) {
+      gameManager.unlockLevel(this.world, this.level + 1);
+    }
+    if (this.level === 9 && this.world < 4 && gameManager.data) {
+      const worlds = gameManager.data.unlockedWorlds || [];
+      if (!worlds.includes(this.world + 1)) {
+        worlds.push(this.world + 1);
+        if (gameManager.save) gameManager.save();
+      }
+    }
+
+    if (gameManager.updateStats) {
+      gameManager.updateStats(
+        this.score,
+        this.level + 1,
+        this.wagons.length,
+        this.comboSystem?.maxCombo || 0,
+        this.collectedCoins,
+        0,
+        Math.floor(this.meters)
+      );
+    }
+
+    this.scene.start('levelComplete', {
+      world: this.world,
+      level: this.level,
+      score: this.score,
+      stars: stars,
+      coins: this.collectedCoins,
+      wagons: this.wagons.length,
+      newUnlock: this.level < 9
     });
   }
-  
-  coin.destroy();
-  
-  if (gameManager.data) {
-    gameManager.data.crystals = this.crystals;
-    gameManager.save();
+
+  handleDeath() {
+    if (this.upgradeSystem && this.upgradeSystem.upgrades && this.upgradeSystem.upgrades.revival > 0 && !this.dead) {
+      this.upgradeSystem.upgrades.revival--;
+      this.headHP = this.maxHeadHP;
+      this.updateHearts();
+      this.cameras.main.flash(300, 100, 255, 100, false);
+      try { if (this.reviveSound) this.reviveSound.play(); } catch (e) {}
+      this.showNotification('ВОСКРЕШЕНИЕ!', 2000, '#00ffff');
+      if (gameManager.data) {
+        gameManager.data.upgrades = this.upgradeSystem.upgrades;
+        gameManager.save();
+      }
+      return;
+    }
+    if (this.dead) return;
+    this.dead = true;
+    if (this.trailEmitter) this.trailEmitter.stop();
+    if (this.spawnTimer) this.spawnTimer.remove();
+    if (this.bonusTimer) this.bonusTimer.remove();
+    if (this.stationTimer) this.stationTimer.remove();
+
+    this.physics.pause();
+    this.cameras.main.shake(300, 0.005);
+    this.cameras.main.flash(300, 255, 100, 100, false);
+    if (this.player) {
+      this.player.setTint(0xff0000).setAngle(90);
+    }
+
+    const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
+      speed: 250,
+      scale: { start: 1.2, end: 0 },
+      lifespan: 600,
+      quantity: 50,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: [0xff0000, 0xff8800, 0xff00ff]
+    });
+    emitter.explode(50);
+
+    this.updateLeaderboard();
+    this.updateStats();
+    this.showGameOver();
+
+    if (window.Telegram?.WebApp) {
+      const data = JSON.stringify({ score: this.score, level: this.level + 1, meters: Math.floor(this.meters) });
+      window.Telegram.WebApp.sendData(data);
+    }
+    try { if (window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); } catch (e) {}
   }
-}
+
+  showGameOver() {
+    if (!this.gameOverBox) this.createGameOverBox();
+    if (this.gameOverSubtitle) {
+      this.gameOverSubtitle.setText(
+        `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
+      );
+    }
+    this.gameOverBox.setVisible(true);
+    this.gameOverBox.setScale(0.9).setAlpha(0);
+    this.tweens.add({
+      targets: this.gameOverBox,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 400,
+      ease: 'Back.out'
+    });
+  }
 
   initAchievements() {
     this.achievements = { ...ACHIEVEMENTS };
