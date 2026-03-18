@@ -901,7 +901,6 @@ flap() {
     this.updateMultiplier();
     this.checkWaveAchievements();
     this.createComboEffect();
-    this.updateComboCounter();
     this.checkNewRecords();
     this.checkQuests();
     this.updateRealTimeStats();
@@ -2228,276 +2227,7 @@ flap() {
     }
   }
 
-    /**
-   * Метод для создания эффекта комбо - УЛУЧШЕННАЯ ВЕРСИЯ
-   */
-  createComboEffect() {
-    if (!this.comboSystem) return;
-    
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const combo = this.comboSystem.combo || 0;
-
-    if (combo > 1 && combo % 5 === 0) {
-      // Определяем цвет и размер в зависимости от комбо
-      let color, strokeColor, fontSize, glowColor;
-      
-      if (combo >= 20) {
-        color = '#ff00ff'; // Фиолетовый для x20+
-        strokeColor = '#ff88ff';
-        glowColor = 0xff00ff;
-        fontSize = '48px';
-      } else if (combo >= 15) {
-        color = '#ff5500'; // Оранжевый для x15+
-        strokeColor = '#ffaa00';
-        glowColor = 0xff5500;
-        fontSize = '44px';
-      } else if (combo >= 10) {
-        color = '#ff0000'; // Красный для x10+
-        strokeColor = '#ff8800';
-        glowColor = 0xff0000;
-        fontSize = '40px';
-      } else if (combo >= 5) {
-        color = '#ffff00'; // Желтый для x5+
-        strokeColor = '#ff8800';
-        glowColor = 0xffff00;
-        fontSize = '36px';
-      } else {
-        color = '#ffff00';
-        strokeColor = '#ff8800';
-        glowColor = 0xffff00;
-        fontSize = '32px';
-      }
-
-      // Создаем основной текст
-      const text = this.add.text(w / 2, h / 2 - 100, `x${combo}!`, {
-        fontSize: fontSize,
-        fontFamily: "'Orbitron', 'Audiowide', monospace",
-        color: color,
-        stroke: strokeColor,
-        strokeThickness: 6,
-        shadow: { blur: 20, color: color, fill: true }
-      }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
-
-      // Добавляем подпись "КОМБО" сверху
-      const comboLabel = this.add.text(w / 2, h / 2 - 140, 'КОМБО', {
-        fontSize: '24px',
-        fontFamily: "'Orbitron', monospace",
-        color: '#ffffff',
-        stroke: strokeColor,
-        strokeThickness: 3,
-        shadow: { blur: 15, color: color, fill: true }
-      }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
-
-      // Создаем взрыв частиц
-      const particles = this.add.particles(w / 2, h / 2 - 100, 'flare', {
-        speed: { min: 200, max: 400 },
-        scale: { start: 1.5, end: 0 },
-        alpha: { start: 1, end: 0 },
-        lifespan: 800,
-        quantity: 30,
-        blendMode: Phaser.BlendModes.ADD,
-        tint: [glowColor, 0xffffff, 0xffaa00]
-      });
-
-      particles.explode(30);
-
-      // Эффект пульсации камеры (более сильный для больших комбо)
-      const shakeIntensity = Math.min(0.005 + combo * 0.0005, 0.015);
-      this.cameras.main.shake(300, shakeIntensity);
-      
-      // Эффект вспышки
-      this.cameras.main.flash(200, 100, 100, 100, false);
-
-      // Анимация для текста
-      this.tweens.add({
-        targets: [text, comboLabel],
-        y: '-=80',
-        alpha: 0,
-        duration: 1800,
-        ease: 'Power2.easeOut',
-        onComplete: () => {
-          text.destroy();
-          comboLabel.destroy();
-        }
-      });
-
-      // Добавляем маленькие цифры, разлетающиеся в стороны
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 80;
-        const smallText = this.add.text(
-          w / 2 + Math.cos(angle) * 30,
-          h / 2 - 100 + Math.sin(angle) * 30,
-          `+${combo}`,
-          {
-            fontSize: '16px',
-            fontFamily: "'Orbitron', monospace",
-            color: color,
-            stroke: strokeColor,
-            strokeThickness: 2
-          }
-        ).setOrigin(0.5).setDepth(49).setScrollFactor(0);
-
-        this.tweens.add({
-          targets: smallText,
-          x: w / 2 + Math.cos(angle) * distance,
-          y: h / 2 - 100 + Math.sin(angle) * distance,
-          alpha: 0,
-          duration: 1000,
-          ease: 'Power2.easeOut',
-          onComplete: () => smallText.destroy()
-        });
-      }
-
-      // Звуковой эффект (разные звуки для разных комбо)
-      try {
-        if (combo >= 20) {
-          if (this.cache.audio.has('epic_combo_sound')) {
-            const sound = this.sound.add('epic_combo_sound', { volume: 0.7 });
-            sound.play();
-          }
-        } else if (combo >= 10) {
-          if (this.cache.audio.has('big_combo_sound')) {
-            const sound = this.sound.add('big_combo_sound', { volume: 0.6 });
-            sound.play();
-          }
-        } else if (this.levelUpSound) {
-          this.levelUpSound.play();
-        }
-      } catch (e) {}
-
-      // Вибрация для Telegram (разная интенсивность)
-      try {
-        if (window.Telegram?.WebApp?.HapticFeedback) {
-          if (combo >= 20) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
-          } else if (combo >= 10) {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-          } else {
-            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-          }
-        }
-      } catch (e) {}
-
-      // Добавляем эффект "ряби" на экране для больших комбо
-      if (combo >= 15) {
-        this.createComboRippleEffect(w / 2, h / 2 - 100, glowColor);
-      }
-
-      // Обновляем счетчик комбо в UI с анимацией
-      if (this.comboSystem.comboText) {
-        this.tweens.add({
-          targets: this.comboSystem.comboText,
-          scaleX: 1.5,
-          scaleY: 1.5,
-          duration: 200,
-          yoyo: true,
-          repeat: 1,
-          ease: 'Back.out'
-        });
-      }
-    }
-  }
-
-  /**
-   * Создание эффекта ряби для больших комбо
-   */
-  createComboRippleEffect(x, y, color) {
-    const ripple = this.add.graphics();
-    ripple.setDepth(45);
-    ripple.setScrollFactor(0);
-    
-    let radius = 20;
-    const maxRadius = 200;
-    
-    const rippleTween = this.tweens.add({
-      targets: { radius: radius },
-      radius: maxRadius,
-      duration: 1000,
-      ease: 'Sine.easeOut',
-      onUpdate: (tween) => {
-        const value = tween.getValue();
-        ripple.clear();
-        ripple.lineStyle(3, color, 0.5 - (value / maxRadius) * 0.5);
-        ripple.strokeCircle(x, y, value);
-      },
-      onComplete: () => {
-        ripple.destroy();
-      }
-    });
-    
-    // Вторая рябь с задержкой
-    this.time.delayedCall(200, () => {
-      const ripple2 = this.add.graphics();
-      ripple2.setDepth(45);
-      ripple2.setScrollFactor(0);
-      
-      this.tweens.add({
-        targets: { radius: 20 },
-        radius: maxRadius * 0.8,
-        duration: 800,
-        ease: 'Sine.easeOut',
-        onUpdate: (tween) => {
-          const value = tween.getValue();
-          ripple2.clear();
-          ripple2.lineStyle(2, color, 0.4 - (value / maxRadius) * 0.4);
-          ripple2.strokeCircle(x, y, value);
-        },
-        onComplete: () => {
-          ripple2.destroy();
-        }
-      });
-    });
-  }
-
-  /**
-   * Обновление счетчика комбо в реальном времени (добавьте в update)
-   */
-  updateComboCounter() {
-    if (!this.comboSystem) return;
-    
-    const combo = this.comboSystem.combo || 0;
-    
-    // Создаем текст для комбо если его нет
-    if (!this.comboSystem.comboText && combo > 1) {
-      this.comboSystem.comboText = this.add.text(
-        this.scale.width / 2, 
-        60, 
-        `x${combo}`,
-        {
-          fontSize: '20px',
-          fontFamily: "'Orbitron', monospace",
-          color: '#ffff00',
-          stroke: '#ff8800',
-          strokeThickness: 3,
-          shadow: { blur: 10, color: '#ffff00', fill: true }
-        }
-      ).setOrigin(0.5).setDepth(10).setScrollFactor(0);
-    }
-    
-    // Обновляем текст и визуал
-    if (this.comboSystem.comboText) {
-      if (combo > 1) {
-        this.comboSystem.comboText.setText(`x${combo}`);
-        this.comboSystem.comboText.setVisible(true);
-        
-        // Меняем цвет в зависимости от комбо
-        if (combo >= 20) {
-          this.comboSystem.comboText.setColor('#ff00ff');
-          this.comboSystem.comboText.setStroke('#ff88ff');
-        } else if (combo >= 10) {
-          this.comboSystem.comboText.setColor('#ff5500');
-          this.comboSystem.comboText.setStroke('#ffaa00');
-        } else if (combo >= 5) {
-          this.comboSystem.comboText.setColor('#ffff00');
-          this.comboSystem.comboText.setStroke('#ff8800');
-        }
-      } else {
-        this.comboSystem.comboText.setVisible(false);
-      }
-    }
-  }
+  
 
   /**
    * Метод для проверки новых рекордов
@@ -2642,72 +2372,127 @@ flap() {
     }
   }
 
-  /**
-   * Метод для проверки максимального комбо
+    /**
+   * Метод для проверки максимального комбо - ЛЕГКАЯ ВЕРСИЯ
    */
   checkMaxCombo() {
     if (!this.comboSystem) return;
     
     if (this.comboSystem.combo > this.comboSystem.maxCombo) {
       this.comboSystem.maxCombo = this.comboSystem.combo;
-      if (this.comboSystem.maxCombo % 10 === 0) {
-        this.showNotification(`Максимальное комбо: ${this.comboSystem.maxCombo}!`, 2000, '#ffff00');
+      
+      // Показываем только для значимых рекордов
+      if (this.comboSystem.maxCombo >= 5 && this.comboSystem.maxCombo % 5 === 0) {
+        // Определяем цвет
+        let color = '#ffff00';
+        let icon = '⭐';
+        
+        if (this.comboSystem.maxCombo >= 20) {
+          color = '#ff00ff';
+          icon = '👑';
+        } else if (this.comboSystem.maxCombo >= 10) {
+          color = '#ff5500';
+          icon = '🔥';
+        }
+        
+        // Просто текст, без частиц
+        this.showNotification(
+          `${icon} ${this.comboSystem.maxCombo} x ${icon}`,
+          1500,
+          color
+        );
+        
+        // Легкая тряска
+        this.cameras.main.shake(100, 0.001);
       }
     }
   }
 
   /**
-   * Метод для проверки производительности
+   * Метод для проверки производительности - ЛЕГКАЯ ВЕРСИЯ
    */
   checkPerformance() {
+    // Ничего не делаем, просто проверяем
     const fps = this.game.loop.actualFps;
-    if (fps < 30) {
-      // Можно снизить качество графики, но пока просто логируем
+    if (fps < 20) {
+      // Только логируем, без изменений
+      console.log('FPS low:', fps);
     }
   }
 
   /**
-   * Метод для оптимизации памяти
+   * Метод для оптимизации памяти - ЛЕГКАЯ ВЕРСИЯ
    */
   optimizeMemory() {
-    // Очистка неиспользуемых объектов
-    if (this.pipes) this.pipes = this.pipes.filter(p => p && p.active);
-    if (this.coins) this.coins = this.coins.filter(c => c && c.active);
-    if (this.asteroids) this.asteroids = this.asteroids.filter(a => a && a.sprite && a.sprite.active);
-    if (this.powerUps) this.powerUps = this.powerUps.filter(p => p && p.sprite && p.sprite.active);
+    const now = Date.now();
+    
+    // Раз в 5 секунд
+    if (!this.lastOptimizeTime || now - this.lastOptimizeTime > 5000) {
+      this.lastOptimizeTime = now;
+      
+      // Простая очистка
+      if (this.pipes) this.pipes = this.pipes.filter(p => p && p.active);
+      if (this.coins) this.coins = this.coins.filter(c => c && c.active);
+      if (this.asteroids) this.asteroids = this.asteroids.filter(a => a && a.sprite && a.sprite.active);
+      if (this.powerUps) this.powerUps = this.powerUps.filter(p => p && p.sprite && p.sprite.active);
+    }
   }
 
   /**
-   * Метод для создания эффекта бонуса
+   * Метод для создания эффекта бонуса - МИНИМАЛЬНАЯ ВЕРСИЯ
    */
   createBonusVisualEffect(type) {
-    const colors = {
-      speed: 0xffff00,
-      shield: 0x00ffff,
-      magnet: 0xff00ff,
-      slow: 0xff8800
-    };
-
-    const color = colors[type] || 0x00ffff;
-    const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
-      speed: { min: -150, max: 150 },
-      scale: { start: 1, end: 0 },
-      alpha: { start: 0.8, end: 0 },
-      lifespan: 400,
-      quantity: 20,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: color
+    if (!this.player || !this.player.active) return;
+    
+    // Только пульсация игрока, без частиц
+    this.tweens.add({
+      targets: this.player,
+      scaleX: 1.1,
+      scaleY: 1.1,
+      duration: 100,
+      yoyo: true,
+      ease: 'Quad.out'
     });
+    
+    // Очень мало частиц (только 3 штуки)
+    if (!this.lowPerformanceMode) {
+      const colors = {
+        speed: 0xffff00,
+        shield: 0x00ffff,
+        magnet: 0xff00ff,
+        slow: 0xff8800
+      };
+      
+      const color = colors[type] || 0x00ffff;
+      
+      // Минимум частиц
+      const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
+        speed: { min: 50, max: 100 },
+        scale: { start: 0.5, end: 0 },
+        alpha: { start: 0.5, end: 0 },
+        lifespan: 200,
+        quantity: 3,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: color
+      });
 
-    emitter.explode(20);
+      emitter.explode(3);
+      
+      // Быстро уничтожаем
+      this.time.delayedCall(300, () => {
+        if (emitter) emitter.destroy();
+      });
+    }
   }
 
   /**
-   * Метод для показа уведомления
+   * Метод для показа уведомления - ЛЕГКАЯ ВЕРСИЯ
    */
-  showNotification(text, duration = 2000, color = '#ffffff') {
+  showNotification(text, duration = 1500, color = '#ffffff') {
     const w = this.scale.width;
-    const notification = this.add.text(w / 2, 100, text, {
+    
+    // Только текст, без фона
+    const notification = this.add.text(w / 2, 80, text, {
       fontSize: '16px',
       fontFamily: "'Orbitron', monospace",
       color: color,
@@ -2716,11 +2501,21 @@ flap() {
       align: 'center'
     }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
+    // Простое появление
+    notification.setAlpha(0);
+    
+    this.tweens.add({
+      targets: notification,
+      alpha: 1,
+      duration: 100
+    });
+
+    // Исчезновение
     this.tweens.add({
       targets: notification,
       alpha: 0,
-      duration: duration,
-      ease: 'Power2.easeOut',
+      delay: duration - 300,
+      duration: 300,
       onComplete: () => notification.destroy()
     });
   }
