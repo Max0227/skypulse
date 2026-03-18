@@ -13,34 +13,23 @@ export const COLORS = {
 };
 
 export const DIFFICULTY_CURVE = {
-  0: { speed: 240, gap: 240, spawnDelay: 1500, coinChance: 0.8 },
-  3: { speed: 280, gap: 230, spawnDelay: 1400, coinChance: 0.75 },
-  6: { speed: 320, gap: 220, spawnDelay: 1300, coinChance: 0.70 },
-  9: { speed: 360, gap: 210, spawnDelay: 1200, coinChance: 0.65 },
-  12: { speed: 400, gap: 200, spawnDelay: 1100, coinChance: 0.60 },
-  15: { speed: 440, gap: 190, spawnDelay: 1000, coinChance: 0.55 },
-  20: { speed: 500, gap: 180, spawnDelay: 900, coinChance: 0.50 },
-  25: { speed: 560, gap: 170, spawnDelay: 800, coinChance: 0.45 },
-  30: { speed: 620, gap: 160, spawnDelay: 700, coinChance: 0.40 },
-  35: { speed: 680, gap: 150, spawnDelay: 600, coinChance: 0.35 },
-  40: { speed: 750, gap: 140, spawnDelay: 500, coinChance: 0.30 },
-  45: { speed: 820, gap: 130, spawnDelay: 400, coinChance: 0.25 },
-  50: { speed: 900, gap: 120, spawnDelay: 300, coinChance: 0.20 }
+  0: { speed: 240, gap: 240, spawnDelay: 1500, coinChance: 0.8, asteroidChance: 0.3, powerUpChance: 0.1 },
+  3: { speed: 280, gap: 230, spawnDelay: 1400, coinChance: 0.75, asteroidChance: 0.4, powerUpChance: 0.12 },
+  6: { speed: 320, gap: 220, spawnDelay: 1300, coinChance: 0.7, asteroidChance: 0.5, powerUpChance: 0.14 },
+  9: { speed: 360, gap: 210, spawnDelay: 1200, coinChance: 0.65, asteroidChance: 0.6, powerUpChance: 0.16 },
+  12: { speed: 400, gap: 200, spawnDelay: 1100, coinChance: 0.6, asteroidChance: 0.7, powerUpChance: 0.18 },
 };
 
 export const SHOP_UPGRADES = [
-  { key: 'jumpPower', name: 'Сила прыжка', icon: '🚀', cost: 10, maxLevel: 10 },
-  { key: 'gravity', name: 'Гравитация', icon: '⬇️', cost: 15, maxLevel: 10 },
-  { key: 'shieldDuration', name: 'Длительность щита', icon: '🛡️', cost: 20, maxLevel: 10 },
-  { key: 'magnetRange', name: 'Радиус магнита', icon: '🧲', cost: 20, maxLevel: 10 },
-  { key: 'wagonHP', name: 'Прочность вагонов', icon: '💪', cost: 25, maxLevel: 10 },
-  { key: 'maxWagons', name: 'Макс. вагонов', icon: '🚃', cost: 30, maxLevel: 10 },
-  { key: 'wagonGap', name: 'Дистанция вагонов', icon: '📏', cost: 30, maxLevel: 10 },
-  { key: 'headHP', name: 'Макс. здоровье', icon: '❤️', cost: 40, maxLevel: 10 },
-  { key: 'revival', name: 'Воскрешение', icon: '🔄', cost: 50, maxLevel: 5 },
-  { key: 'weaponDamage', name: 'Урон оружия', icon: '💥', cost: 20, maxLevel: 10 },
-  { key: 'weaponSpeed', name: 'Скорость пуль', icon: '⚡', cost: 15, maxLevel: 10 },
-  { key: 'weaponFireRate', name: 'Скорострельность', icon: '🔫', cost: 25, maxLevel: 10 },
+  { key: 'jumpPower', name: 'Сила прыжка', icon: '🚀', maxLevel: 10 },
+  { key: 'gravity', name: 'Гравитация', icon: '⬇️', maxLevel: 10 },
+  { key: 'shieldDuration', name: 'Длительность щита', icon: '🛡️', maxLevel: 10 },
+  { key: 'magnetRange', name: 'Радиус магнита', icon: '🧲', maxLevel: 10 },
+  { key: 'wagonHP', name: 'Прочность вагонов', icon: '💪', maxLevel: 10 },
+  { key: 'maxWagons', name: 'Макс. вагонов', icon: '🚃', maxLevel: 10 },
+  { key: 'wagonGap', name: 'Дистанция вагонов', icon: '📏', maxLevel: 10 },
+  { key: 'headHP', name: 'Макс. здоровье', icon: '❤️', maxLevel: 10 },
+  { key: 'revival', name: 'Воскрешение', icon: '🔄', maxLevel: 5 },
 ];
 
 export const ACHIEVEMENTS = {
@@ -65,136 +54,56 @@ export const UPGRADE_COSTS = {
   wagonGap: { base: 30, multiplier: 1.2 },
   headHP: { base: 40, multiplier: 1.2 },
   revival: { base: 50, multiplier: 1.5 },
-  weaponDamage: { base: 20, multiplier: 1.2 },
-  weaponSpeed: { base: 15, multiplier: 1.15 },
-  weaponFireRate: { base: 25, multiplier: 1.25 },
 };
 
 export const LEVEL_CONFIG = {
   0: {
     name: 'КОСМОС',
-    theme: 'space',
     bgColor: 0x0a0a1a,
     gateColors: ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'],
-    enemyTypes: [], // без врагов
     description: 'Начни свой путь в открытом космосе',
     goalScore: 500,
-    goalCoins: 30,
-    goalEnemies: 0
+    unlockPrice: 0,
   },
   1: {
-    name: 'КИБЕРПАНК ГОРОД',
-    theme: 'cyberpunk',
+    name: 'КИБЕРПАНК',
     bgColor: 0x1a0a2a,
     gateColors: ['gate_purple', 'gate_blue', 'gate_green', 'gate_yellow', 'gate_red'],
-    enemyTypes: ['drone'],
-    description: 'Неоновые огни и летающие враги',
+    description: 'Неоновые огни киберпанка',
     goalScore: 800,
-    goalCoins: 40,
-    goalEnemies: 5
+    unlockPrice: 200,
   },
   2: {
     name: 'ПОДЗЕМЕЛЬЕ',
-    theme: 'dungeon',
     bgColor: 0x2a1a0a,
     gateColors: ['gate_red', 'gate_yellow', 'gate_green', 'gate_blue', 'gate_purple'],
-    enemyTypes: ['skeleton'],
-    description: 'Тёмные коридоры и древние ловушки',
+    description: 'Тёмные коридоры подземелья',
     goalScore: 1200,
-    goalCoins: 50,
-    goalEnemies: 8
+    unlockPrice: 400,
   },
   3: {
-    name: 'АСТЕРОИДНОЕ ПОЛЕ',
-    theme: 'asteroids',
+    name: 'АСТЕРОИДЫ',
     bgColor: 0x0a2a2a,
     gateColors: ['gate_blue', 'gate_purple', 'gate_yellow', 'gate_green', 'gate_red'],
-    enemyTypes: ['drone', 'skeleton'],
-    description: 'Опасное путешествие через метеориты',
+    description: 'Опасные астероиды',
     goalScore: 1600,
-    goalCoins: 60,
-    goalEnemies: 10
+    unlockPrice: 600,
   },
   4: {
     name: 'ЧЁРНАЯ ДЫРА',
-    theme: 'blackhole',
     bgColor: 0x000000,
     gateColors: ['gate_red', 'gate_purple', 'gate_blue', 'gate_green', 'gate_yellow'],
-    enemyTypes: ['sentinel', 'drone', 'skeleton'],
-    description: 'Финальное испытание у края вселенной',
+    description: 'Финальное испытание',
     goalScore: 2000,
-    goalCoins: 70,
-    goalEnemies: 12
-  }
+    unlockPrice: 800,
+  },
 };
 
-export const ENEMY_CONFIG = {
-  drone: {
-    health: 2,
-    speed: 150,
-    attackRange: 300,
-    detectionRange: 400,
-    damage: 1,
-    scoreValue: 5,
-    fireDelay: 800,
-    bulletSpeed: 400,
-    bulletDamage: 1
-  },
-  sentinel: {
-    health: 3,
-    speed: 200,
-    attackRange: 350,
-    detectionRange: 450,
-    damage: 1.5,
-    scoreValue: 10,
-    fireDelay: 600,
-    bulletSpeed: 500,
-    bulletDamage: 1
-  },
-  skeleton: {
-    health: 1,
-    speed: 120,
-    attackRange: 250,
-    detectionRange: 350,
-    damage: 1,
-    scoreValue: 3,
-    fireDelay: 1000,
-    bulletSpeed: 300,
-    bulletDamage: 1
-  }
-};
-
-export const WAVE_CONFIG = {
-  space: [
-    { wave: 0, count: 0, type: 'drone' },
-  ],
-  cyberpunk: [
-    { wave: 0, count: 2, type: 'drone' },
-    { wave: 1, count: 3, type: 'drone' },
-    { wave: 2, count: 2, type: 'sentinel' },
-    { wave: 3, count: 3, type: 'sentinel' },
-  ],
-  dungeon: [
-    { wave: 0, count: 2, type: 'skeleton' },
-    { wave: 1, count: 3, type: 'skeleton' },
-    { wave: 2, count: 4, type: 'skeleton' },
-    { wave: 3, count: 5, type: 'skeleton' },
-  ],
-  asteroids: [
-    { wave: 0, count: 3, type: 'drone' },
-    { wave: 1, count: 2, type: 'sentinel' },
-    { wave: 2, count: 4, type: 'drone' },
-  ],
-  station: [
-    { wave: 0, count: 2, type: 'sentinel' },
-    { wave: 1, count: 3, type: 'sentinel' },
-    { wave: 2, count: 2, type: 'drone' },
-    { wave: 3, count: 4, type: 'sentinel' },
-  ],
-  blackhole: [
-    { wave: 0, count: 4, type: 'sentinel' },
-    { wave: 1, count: 5, type: 'drone' },
-    { wave: 2, count: 3, type: 'skeleton' },
-    { wave: 3, count: 6, type: 'sentinel' },
-  ]
-};
+export const SKINS = [
+  { id: 'default', name: 'Классика', price: 0, texture: 'player', description: 'Стандартное такси' },
+  { id: 'neon', name: 'Неоновое', price: 100, texture: 'player_neon', description: 'Светится в темноте' },
+  { id: 'cyber', name: 'Киберпанк', price: 250, texture: 'player_cyber', description: 'Стиль будущего' },
+  { id: 'gold', name: 'Золотое', price: 500, texture: 'player_gold', description: 'Для коллекционеров' },
+  { id: 'rainbow', name: 'Радужное', price: 1000, texture: 'player_rainbow', description: 'Переливается цветами' },
+  { id: 'crystal', name: 'Кристальное', price: 1500, texture: 'player_crystal', description: 'Сверкает как алмаз' },
+];
