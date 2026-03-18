@@ -155,28 +155,28 @@ export class ComboSystem {
   }
 
   pulseScreen() {
-    if (this.combo < 3) return;
-    
-    const intensity = Math.min(0.05, 0.01 * this.combo);
-    this.scene.cameras.main.shake(100, intensity);
-    
-    // Эффект свечения по краям
-    const w = this.scale.width;
-    const h = this.scale.height;
-    
-    const glow = this.scene.add.graphics();
-    glow.lineStyle(10, 0xffff00, 0.3);
-    glow.strokeRect(5, 5, w - 10, h - 10);
-    glow.setDepth(200);
-    glow.setScrollFactor(0);
-    
-    this.scene.tweens.add({
-      targets: glow,
-      alpha: 0,
-      duration: 200,
-      onComplete: () => glow.destroy()
-    });
-  }
+  if (this.combo < 3) return;
+  
+  const intensity = Math.min(0.05, 0.01 * this.combo);
+  this.scene.cameras.main.shake(100, intensity);
+  
+  // Эффект свечения по краям
+  const w = this.scene.scale.width;  // БЫЛО: this.scale.width
+  const h = this.scene.scale.height; // БЫЛО: this.scale.height
+  
+  const glow = this.scene.add.graphics();
+  glow.lineStyle(10, 0xffff00, 0.3);
+  glow.strokeRect(5, 5, w - 10, h - 10);
+  glow.setDepth(200);
+  glow.setScrollFactor(0);
+  
+  this.scene.tweens.add({
+    targets: glow,
+    alpha: 0,
+    duration: 200,
+    onComplete: () => glow.destroy()
+  });
+}
 
   getMultiplier() {
     return this.multiplier;
