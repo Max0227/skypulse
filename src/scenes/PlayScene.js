@@ -23,12 +23,9 @@ import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
 
 // =========================================================================
-// ВНУТРЕННИЕ КЛАССЫ (чтобы избежать ошибок импорта)
+// ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
 // =========================================================================
 
-// -------------------------------------------------------------------------
-// КЛАСС ВРАГА (AIEnemy)
-// -------------------------------------------------------------------------
 class AIEnemy {
   constructor(scene, x, y, type) {
     this.scene = scene;
@@ -40,7 +37,6 @@ class AIEnemy {
     this.health = this.config.health;
     this.maxHealth = this.config.health;
     
-    // Полоска здоровья
     this.healthBar = null;
     this.createHealthBar();
     
@@ -105,7 +101,6 @@ class AIEnemy {
       this.healthBar.destroy();
     }
     this.sprite.destroy();
-    // Удаляем из списка врагов в WaveManager
     if (this.scene.waveManager) {
       this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(e => e !== this);
     }
@@ -152,7 +147,6 @@ class AIEnemy {
       this.scene.fireEnemyBullet(this, playerPos);
       this.fireCooldown = this.config.fireDelay;
     }
-    // Небольшое движение при атаке
     this.chase(playerPos);
   }
 
@@ -163,7 +157,6 @@ class AIEnemy {
       this.patrolTimer = 0;
     }
     this.sprite.body.setVelocity(this.config.speed * this.patrolDirection * 0.5, 0);
-    // Ограничение по Y, чтобы не улетел за экран
     if (this.sprite.y < 50) {
       this.sprite.y = 50;
       this.sprite.body.setVelocityY(0);
@@ -174,9 +167,6 @@ class AIEnemy {
   }
 }
 
-// -------------------------------------------------------------------------
-// МЕНЕДЖЕР ВОЛН (WaveManager)
-// -------------------------------------------------------------------------
 class WaveManager {
   constructor(scene, levelManager) {
     this.scene = scene;
@@ -242,9 +232,6 @@ class WaveManager {
   }
 }
 
-// -------------------------------------------------------------------------
-// СИСТЕМА УРОНА (DamageSystem)
-// -------------------------------------------------------------------------
 class DamageSystem {
   constructor(scene) {
     this.scene = scene;
@@ -323,9 +310,6 @@ class DamageSystem {
   }
 }
 
-// -------------------------------------------------------------------------
-// МЕНЕДЖЕР СПЕЦИАЛЬНЫХ СОБЫТИЙ (SpecialEventManager)
-// -------------------------------------------------------------------------
 class SpecialEventManager {
   constructor(scene) {
     this.scene = scene;
@@ -472,7 +456,7 @@ export class PlayScene extends Phaser.Scene {
     // Состояния
     this.started = false;
     this.dead = false;
-    this.gameLevel = 0; // уровень сложности (растёт с метражом)
+    this.gameLevel = 0;
     this.isPaused = false;
     this.pauseOverlay = null;
     this.pauseTexts = [];
@@ -520,7 +504,7 @@ export class PlayScene extends Phaser.Scene {
     this.specialEventManager = new SpecialEventManager(this);
     this.waveManager = new WaveManager(this, this.levelManager);
 
-    // Параметры оружия (устанавливаются в UpgradeSystem)
+    // Параметры оружия
     this.weaponDamage = 1;
     this.weaponBulletSpeed = 400;
     this.weaponFireDelay = 500;
@@ -543,7 +527,7 @@ export class PlayScene extends Phaser.Scene {
     this.powerUpGroup = this.physics.add.group();
     this.playerBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
     this.enemyBullets = this.physics.add.group({ classType: Phaser.GameObjects.Image, runChildUpdate: false });
-    this.enemyGroup = this.physics.add.group(); // для коллизий пуль с врагами
+    this.enemyGroup = this.physics.add.group();
 
     // Таймеры
     this.spawnTimer = null;
@@ -591,46 +575,24 @@ export class PlayScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isPaused || this.countdownActive) return;
-    // Принудительно обнуляем вертикальную скорость для всех ворот и монет,
-// а также восстанавливаем горизонтальную, если она пропала
-this.gateGroup.getChildren().forEach(obj => {
-  if (obj.body) {
-    obj.body.setVelocityY(0);
-    obj.body.setGravityY(0);
-    // Если скорость по X обнулилась (например, из-за коллизий), восстанавливаем
-    if (obj.body.velocity.x === 0 && obj.speed) {
-      obj.body.velocity.x = -obj.speed;
-    }
-  }
-});
-
-this.coinGroup.getChildren().forEach(obj => {
-  if (obj.body) {
-    obj.body.setVelocityY(0);
-    obj.body.setGravityY(0);
-    if (obj.body.velocity.x === 0) {
-      // Для монет используем текущую скорость игры
-      obj.body.velocity.x = -this.currentSpeed;
-    }
-  }
-});
 
     this.updateStars(time, delta);
     this.updatePlanets(delta);
     this.updateShips(delta);
     this.updateAsteroids(delta);
 
-    // !!! КРИТИЧЕСКИЙ ФИКС: принудительно обнуляем вертикальную скорость для всех ворот, чтобы они не падали !!!
+    // Принудительно обнуляем вертикальную скорость для всех ворот
     this.gateGroup.getChildren().forEach(gate => {
       if (gate.body) {
         gate.body.setVelocityY(0);
+        gate.body.setGravityY(0);
       }
     });
 
-    // Также обнуляем для зон (на всякий случай)
     this.scoreZones.forEach(zone => {
       if (zone.body) {
         zone.body.setVelocityY(0);
+        zone.body.setGravityY(0);
       }
     });
 
@@ -641,7 +603,7 @@ this.coinGroup.getChildren().forEach(obj => {
       this.weaponCooldown -= delta;
     }
 
-    // Автоматическая стрельба по ближайшему врагу (если есть враги)
+    // Автоматическая стрельба
     if (this.level >= 1 && this.waveManager.enemies.length > 0) {
       if (this.weaponCooldown <= 0) {
         const closestEnemy = this.waveManager.enemies[0];
@@ -695,7 +657,7 @@ this.coinGroup.getChildren().forEach(obj => {
       this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
     }
 
-    // Обновление пуль: удаление вышедших за экран
+    // Обновление пуль
     this.playerBullets.getChildren().forEach(b => {
       if (b.x > this.scale.width + 100) b.destroy();
     });
@@ -703,7 +665,7 @@ this.coinGroup.getChildren().forEach(obj => {
       if (b.x < -100) b.destroy();
     });
 
-    // Обновление астероидов (если есть)
+    // Обновление астероидов
     for (let i = this.asteroids.length - 1; i >= 0; i--) {
       const asteroid = this.asteroids[i];
       if (!asteroid || typeof asteroid.update !== 'function') {
@@ -808,7 +770,7 @@ this.coinGroup.getChildren().forEach(obj => {
     }
   }
 
-  // ===== МЕТОДЫ ДЛЯ КОЛЛЕКТА МОНЕТ =====
+  // ===== МЕТОДЫ ДЛЯ МОНЕТ =====
   collectCoinExtended(coin) {
     this.collectCoin(coin);
   }
@@ -873,7 +835,7 @@ this.coinGroup.getChildren().forEach(obj => {
     gameManager.save();
   }
 
-  // ===== МЕТОДЫ ДЛЯ ВОРОТ И ПРОХОЖДЕНИЯ =====
+  // ===== МЕТОДЫ ДЛЯ ВОРОТ =====
   passGateWithCombo(zone) {
     if (zone.passed) return;
     zone.passed = true;
@@ -918,44 +880,80 @@ this.coinGroup.getChildren().forEach(obj => {
     const bottomY = centerY + gap / 2;
     const x = w;
 
-    // Создаём верхнюю створку (без физики)
-    const topPipe = this.add.image(x, topY, gateTexture)
-        .setOrigin(0.5, 1)
-        .setScale(1, Math.max(0.2, topY / 400))
-        .setBlendMode(Phaser.BlendModes.ADD);
+    // Создание верхней створки
+    const topPipe = this.physics.add.image(x, topY, gateTexture)
+      .setOrigin(0.5, 1)
+      .setImmovable(true)
+      .setScale(1, Math.max(0.2, topY / 400));
 
-    // Создаём нижнюю створку (без физики)
-    const bottomPipe = this.add.image(x, bottomY, gateTexture)
-        .setOrigin(0.5, 0)
-        .setScale(1, Math.max(0.2, (h - bottomY) / 400))
-        .setBlendMode(Phaser.BlendModes.ADD);
+    topPipe.body.setAllowGravity(false);
+    topPipe.body.setGravityY(0);
+    topPipe.setVelocityX(-difficulty.speed);
+    topPipe.setBlendMode(Phaser.BlendModes.ADD);
+    topPipe.body.moves = true;
+    topPipe.isGate = true; // метка для идентификации
 
-    // Сохраняем скорость
-    topPipe.speed = difficulty.speed;
-    bottomPipe.speed = difficulty.speed;
+    // Создание нижней створки
+    const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
+      .setOrigin(0.5, 0)
+      .setImmovable(true)
+      .setScale(1, Math.max(0.2, (h - bottomY) / 400));
+
+    bottomPipe.body.setAllowGravity(false);
+    bottomPipe.body.setGravityY(0);
+    bottomPipe.setVelocityX(-difficulty.speed);
+    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
+    bottomPipe.body.moves = true;
+    bottomPipe.isGate = true; // метка для идентификации
 
     this.pipes.push(topPipe, bottomPipe);
     this.gateGroup.add(topPipe);
     this.gateGroup.add(bottomPipe);
 
-    // Создаём зону для счёта (без физики)
-    const zone = this.add.zone(x + 60, h / 2, 12, h);
-    zone.speed = difficulty.speed;
-    zone.passed = false;
+    // ===== ИСПРАВЛЕННАЯ МЕХАНИКА СТОЛКНОВЕНИЙ =====
+    // Коллизия игрока с воротами
+    this.physics.add.overlap(this.player, topPipe, (p, pipe) => this.hitPipe(p, pipe), null, this);
+    this.physics.add.overlap(this.player, bottomPipe, (p, pipe) => this.hitPipe(p, pipe), null, this);
     
-    // Добавляем зону в массив для проверки
+    // Коллизия вагонов с воротами
+    this.physics.add.collider(this.player, topPipe, null, null, this); // отключаем стандартную коллизию
+    this.physics.add.collider(this.player, bottomPipe, null, null, this);
+    
+    // Добавляем коллизию вагонов с воротами
+    this.physics.add.collider(this.wagons, this.gateGroup, (wagon, pipe) => this.wagonHit(wagon, pipe), null, this);
+
+    // Зона для подсчёта очков
+    const zone = this.add.zone(x + 60, h / 2, 12, h);
+    this.physics.add.existing(zone);
+    zone.body.setAllowGravity(false);
+    zone.body.setGravityY(0);
+    zone.body.setImmovable(true);
+    zone.body.setVelocityX(-difficulty.speed);
+    zone.body.moves = true;
+    zone.passed = false;
+
+    this.physics.add.overlap(this.player, zone, (p, z) => {
+      if (!z.passed) {
+        z.passed = true;
+        this.passGateWithCombo(z);
+      }
+    }, null, this);
+
     this.scoreZones.push(zone);
 
-    // Проверка прохождения зоны
-    // Будет выполняться в update()
-
+    // Спавн монет, астероидов, усилителей
     if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
     if (Math.random() < difficulty.asteroidChance) this.spawnAsteroid();
     if (Math.random() < difficulty.powerUpChance) this.spawnPowerUp(x + 100, centerY);
-}
+  }
 
   hitPipe(player, pipe) {
-    if (this.shieldActive) return;
+    if (this.shieldActive) {
+      this.particleManager.createBonusEffect('shield', pipe.x, pipe.y);
+      this.player.body.setVelocityY(-100);
+      return;
+    }
+
     this.headHP--;
     this.updateHearts();
     this.cameras.main.shake(100, 0.003);
@@ -989,6 +987,7 @@ this.coinGroup.getChildren().forEach(obj => {
     wagon.setData('maxHP', this.wagonBaseHP);
     wagon.setTint(0x88aaff);
     wagon.setBlendMode(Phaser.BlendModes.ADD);
+    wagon.isWagon = true;
 
     this.wagons.push(wagon);
 
@@ -1001,7 +1000,10 @@ this.coinGroup.getChildren().forEach(obj => {
       ease: 'Sine.easeOut'
     });
 
-    this.physics.add.collider(wagon, this.gateGroup, (w, g) => this.wagonHit(w, g), null, this);
+    // Коллизия вагонов с воротами
+    this.physics.add.collider(wagon, this.gateGroup, (w, pipe) => this.wagonHit(w, pipe), null, this);
+    
+    // Коллизия вагонов с врагами
     this.physics.add.overlap(wagon, this.enemyGroup, (w, enemySprite) => {
       const enemy = enemySprite.enemyRef;
       if (enemy) this.damageSystem.enemyHitByWagon(enemy, w);
@@ -1031,7 +1033,7 @@ this.coinGroup.getChildren().forEach(obj => {
     }
   }
 
-  wagonHit(wagon, gate) {
+  wagonHit(wagon, pipe) {
     const hp = wagon.getData('hp') - 1;
     if (hp <= 0) {
       this.wagons = this.wagons.filter(w => w !== wagon);
@@ -1383,22 +1385,19 @@ this.coinGroup.getChildren().forEach(obj => {
     }
 
     const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-  .setImmovable(true)
-  .setAngularVelocity(200);
+      .setImmovable(true)
+      .setAngularVelocity(200);
 
-// === ДОБАВЬТЕ ЭТИ СТРОКИ ===
-coin.body.setAllowGravity(false);
-coin.body.setGravityY(0);
-coin.body.setVelocityY(0);
-coin.setVelocityX(-this.currentSpeed);
-coin.body.velocity.x = -this.currentSpeed;
-coin.body.velocity.y = 0;
-// ============================
+    coin.body.setAllowGravity(false);
+    coin.body.setGravityY(0);
+    coin.body.setVelocityY(0);
+    coin.setVelocityX(-this.currentSpeed);
+    coin.body.velocity.x = -this.currentSpeed;
 
-coin.setScale(0.01);
-coin.coinType = coinType;
-coin.setBlendMode(Phaser.BlendModes.ADD);
-coin.collected = false;
+    coin.setScale(0.01);
+    coin.coinType = coinType;
+    coin.setBlendMode(Phaser.BlendModes.ADD);
+    coin.collected = false;
 
     this.tweens.add({
       targets: coin,
@@ -1412,7 +1411,7 @@ coin.collected = false;
     this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
   }
 
-  // ===== МЕТОДЫ ДЛЯ ФОНОВЫХ ОБЪЕКТОВ =====
+  // ===== МЕТОДЫ ДЛЯ ФОНА =====
   createBackground() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -1490,7 +1489,6 @@ coin.collected = false;
     }
   }
 
-  // ===== МЕТОДЫ ДЛЯ ИГРОКА =====
   createPlayer() {
     const h = this.scale.height;
     const skin = gameManager.getCurrentSkin();
@@ -1519,13 +1517,11 @@ coin.collected = false;
       tint: [0x00ffff, 0xff00ff, 0xffff00]
     });
 
-    // Свойства игрока для бонусов
     this.player.doubleCrystals = false;
     this.player.shieldActive = false;
     this.player.magnetActive = false;
     this.player.speedBoost = 1;
 
-    // Звуки
     try {
       this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
       this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
@@ -1637,8 +1633,32 @@ coin.collected = false;
       align: 'center'
     }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
 
-    // Кнопки управления
-    this.createControlButtons();
+    this.pauseButton = this.add.image(w - 35, h - 35, 'pause_button')
+      .setInteractive().setDepth(20).setScrollFactor(0)
+      .on('pointerdown', () => this.togglePause())
+      .on('pointerover', () => this.pauseButton.setScale(1.1))
+      .on('pointerout', () => this.pauseButton.setScale(1));
+
+    this.shopButton = this.add.image(w - 90, h - 35, 'shop_button')
+      .setInteractive().setDepth(20).setScrollFactor(0)
+      .setVisible(true)
+      .on('pointerdown', () => this.openShop())
+      .on('pointerover', () => this.shopButton.setScale(1.1))
+      .on('pointerout', () => this.shopButton.setScale(1));
+
+    this.menuButton = this.add.image(w - 145, h - 35, 'menu_button')
+      .setInteractive().setDepth(20).setScrollFactor(0)
+      .on('pointerdown', () => this.confirmExit())
+      .on('pointerover', () => this.menuButton.setScale(1.1))
+      .on('pointerout', () => this.menuButton.setScale(1));
+
+    this.attackButton = this.add.image(50, h - 35, 'attack_button')
+      .setInteractive().setDepth(20).setScrollFactor(0)
+      .on('pointerdown', () => this.attackEnemies())
+      .on('pointerover', () => this.attackButton.setScale(1.1))
+      .on('pointerout', () => this.attackButton.setScale(1));
+
+    this.createGameOverBox();
 
     // Коллизии
     this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
@@ -1676,36 +1696,6 @@ coin.collected = false;
     }, null, this);
   }
 
-  createControlButtons() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-
-    this.pauseButton = this.add.image(w - 35, h - 35, 'pause_button')
-      .setInteractive().setDepth(20).setScrollFactor(0)
-      .on('pointerdown', () => this.togglePause())
-      .on('pointerover', () => this.pauseButton.setScale(1.1))
-      .on('pointerout', () => this.pauseButton.setScale(1));
-
-    this.shopButton = this.add.image(w - 90, h - 35, 'shop_button')
-      .setInteractive().setDepth(20).setScrollFactor(0)
-      .setVisible(true)
-      .on('pointerdown', () => this.openShop())
-      .on('pointerover', () => this.shopButton.setScale(1.1))
-      .on('pointerout', () => this.shopButton.setScale(1));
-
-    this.menuButton = this.add.image(w - 145, h - 35, 'menu_button')
-      .setInteractive().setDepth(20).setScrollFactor(0)
-      .on('pointerdown', () => this.confirmExit())
-      .on('pointerover', () => this.menuButton.setScale(1.1))
-      .on('pointerout', () => this.menuButton.setScale(1));
-
-    this.attackButton = this.add.image(50, h - 35, 'attack_button')
-      .setInteractive().setDepth(20).setScrollFactor(0)
-      .on('pointerdown', () => this.attackEnemies())
-      .on('pointerover', () => this.attackButton.setScale(1.1))
-      .on('pointerout', () => this.attackButton.setScale(1));
-  }
-
   updateHearts() {
     this.heartContainer.removeAll(true);
     for (let i = 0; i < this.maxHeadHP; i++) {
@@ -1720,42 +1710,15 @@ coin.collected = false;
     const w = this.scale.width;
     const h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-    
-    const panel = this.add.rectangle(0, 0, 300, 250, 0x0a0a1a, 0.95)
-        .setStrokeStyle(3, 0x00ffff, 0.9)
-        .setScrollFactor(0);
-    
-    const title = this.add.text(0, -100, 'ИГРА ОКОНЧЕНА', { 
-        fontSize: '20px', 
-        fontFamily, 
-        color: '#ffffff', 
-        stroke: '#ff00ff', 
-        strokeThickness: 4 
-    }).setOrigin(0.5).setScrollFactor(0);
-    
-    const subtitle = this.add.text(0, -20, '', { 
-        fontSize: '12px', 
-        fontFamily, 
-        color: '#7dd3fc', 
-        align: 'center', 
-        stroke: '#0f172a', 
-        strokeThickness: 2 
-    }).setOrigin(0.5).setScrollFactor(0);
-    
-    this.gameOverSubtitle = subtitle; // <-- ВАЖНО: сохраняем ссылку
-    
-    const tip = this.add.text(0, 80, 'Нажми, чтобы продолжить', { 
-        fontSize: '12px', 
-        fontFamily, 
-        color: '#cbd5e1', 
-        align: 'center' 
-    }).setOrigin(0.5).setScrollFactor(0);
-    
+    const panel = this.add.rectangle(0, 0, 300, 250, 0x0a0a1a, 0.95).setStrokeStyle(3, 0x00ffff, 0.9).setScrollFactor(0);
+    const title = this.add.text(0, -100, 'ИГРА ОКОНЧЕНА', { fontSize: '20px', fontFamily, color: '#ffffff', stroke: '#ff00ff', strokeThickness: 4 }).setOrigin(0.5).setScrollFactor(0);
+    const subtitle = this.add.text(0, -20, '', { fontSize: '12px', fontFamily, color: '#7dd3fc', align: 'center', stroke: '#0f172a', strokeThickness: 2 }).setOrigin(0.5).setScrollFactor(0);
+    this.gameOverSubtitle = subtitle;
+    const tip = this.add.text(0, 80, 'Нажми, чтобы продолжить', { fontSize: '12px', fontFamily, color: '#cbd5e1', align: 'center' }).setOrigin(0.5).setScrollFactor(0);
     this.gameOverBox = this.add.container(w / 2, h / 2, [panel, title, subtitle, tip]);
     this.gameOverBox.setVisible(false);
-}
+  }
 
-  // ===== МЕТОДЫ УПРАВЛЕНИЯ ИГРОЙ =====
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
@@ -1870,7 +1833,6 @@ coin.collected = false;
     }).on('pointerover', function() { this.setStyle({ color: '#ffffff', backgroundColor: '#aa0000' }); }).on('pointerout', function() { this.setStyle({ color: '#ff0000', backgroundColor: '#1a1a3a' }); });
   }
 
-  // ===== МЕТОДЫ ДЛЯ МАГАЗИНА =====
   showShop() {
     if (this.shopVisible) return;
     this.shopVisible = true;
@@ -2088,7 +2050,6 @@ coin.collected = false;
     });
   }
 
-  // ===== МЕТОДЫ ДЛЯ УРОВНЕЙ =====
   checkLevelProgression() {
     const nextLevel = Math.floor(this.score / 500);
     if (nextLevel > this.levelManager.currentLevel && nextLevel < 6) {
@@ -2226,7 +2187,6 @@ coin.collected = false;
     this.cameras.main.flash(200, 255, 255, 100);
   }
 
-  // ===== МЕТОДЫ ДЛЯ СМЕРТИ =====
   handleDeath() {
     if (this.upgradeSystem.upgrades.revival > 0 && !this.dead) {
       this.upgradeSystem.upgrades.revival--;
@@ -2273,29 +2233,21 @@ coin.collected = false;
   }
 
   showGameOver() {
-    // Если gameOverBox ещё не создан, создаём его
-    if (!this.gameOverBox) {
-        this.createGameOverBox();
-    }
-    
-    // Проверяем, что gameOverSubtitle существует перед установкой текста
-    if (this.gameOverSubtitle) {
-        this.gameOverSubtitle.setText(
-            `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
-        );
-    }
-    
+    if (!this.gameOverBox) this.createGameOverBox();
+    this.gameOverSubtitle.setText(
+      `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
+    );
     this.gameOverBox.setVisible(true);
     this.gameOverBox.setScale(0.9).setAlpha(0);
     this.tweens.add({
-        targets: this.gameOverBox,
-        scaleX: 1,
-        scaleY: 1,
-        alpha: 1,
-        duration: 400,
-        ease: 'Back.out'
+      targets: this.gameOverBox,
+      scaleX: 1,
+      scaleY: 1,
+      alpha: 1,
+      duration: 400,
+      ease: 'Back.out'
     });
-}
+  }
 
   // ===== МЕТОДЫ ДЛЯ ДОСТИЖЕНИЙ =====
   initAchievements() {
@@ -2375,7 +2327,6 @@ coin.collected = false;
     try { this.levelUpSound.play(); } catch (e) {}
   }
 
-  // ===== МЕТОДЫ ДЛЯ ЕЖЕДНЕВНЫХ НАГРАД =====
   initDailyRewards() {
     this.dailyReward = {
       lastClaimDate: localStorage.getItem('skypulse_daily_date') || '',
@@ -2431,7 +2382,6 @@ coin.collected = false;
     localStorage.setItem('skypulse_daily_streak', String(this.dailyReward.streak));
   }
 
-  // ===== МЕТОДЫ ДЛЯ ЛИДЕРБОРДА =====
   initLeaderboard() {
     this.leaderboard = [];
     try {
@@ -2457,7 +2407,6 @@ coin.collected = false;
     this.saveLeaderboard();
   }
 
-  // ===== МЕТОДЫ ДЛЯ СТАТИСТИКИ =====
   initStats() {
     this.stats = {
       totalGames: 0,
@@ -2490,7 +2439,6 @@ coin.collected = false;
     this.saveStats();
   }
 
-  // ===== МЕТОДЫ ДЛЯ ОЧИСТКИ ОБЪЕКТОВ =====
   cleanupObjects() {
     this.pipes = this.pipes.filter(p => {
       if (p.x < -150) {
@@ -2525,7 +2473,6 @@ coin.collected = false;
     }
   }
 
-  // ===== МЕТОДЫ ДЛЯ ОБНОВЛЕНИЯ ФОНА =====
   updateStars(time, delta) {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -2586,7 +2533,6 @@ coin.collected = false;
     }
   }
 
-  // ===== МЕТОДЫ ДЛЯ РЕСАЙЗА =====
   onResize() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -2609,7 +2555,6 @@ coin.collected = false;
     if (this.heartContainer) this.heartContainer.setPosition(10, 30);
   }
 
-  // ===== МЕТОДЫ ДЛЯ ОЧИСТКИ ПРИ ЗАКРЫТИИ СЦЕНЫ =====
   shutdown() {
     if (this.spawnTimer) this.spawnTimer.remove();
     if (this.bonusTimer) this.bonusTimer.remove();
