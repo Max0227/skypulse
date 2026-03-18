@@ -560,7 +560,41 @@ flap() {
     }
   } catch (e) {}
 }
+  createComboEffect() {
+    if (!this.comboSystem) return;
+    
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const combo = this.comboSystem.combo || 0;
 
+    if (combo > 1 && combo % 5 === 0) {
+      // Только текст, без частиц
+      const text = this.add.text(w / 2, h / 2 - 100, `x${combo}!`, {
+        fontSize: '36px',
+        fontFamily: "'Orbitron', monospace",
+        color: '#ffff00',
+        stroke: '#ff8800',
+        strokeThickness: 4,
+        shadow: { blur: 10, color: '#ffff00', fill: true }
+      }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+
+      // Легкая тряска
+      this.cameras.main.shake(100, 0.001);
+
+      // Анимация текста
+      this.tweens.add({
+        targets: text,
+        y: text.y - 50,
+        alpha: 0,
+        duration: 1000,
+        ease: 'Power2.easeOut',
+        onComplete: () => text.destroy()
+      });
+
+      // Звук (если есть)
+      try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
+    }
+  }
   create() {
     console.log('PlayScene: create started');
     const w = this.scale.width;
@@ -777,7 +811,7 @@ flap() {
         }
       }
     }
-
+    
     // ===== ОБНОВЛЕНИЕ ПОЗИЦИИ ИГРОКА =====
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
     this.player.x +=
