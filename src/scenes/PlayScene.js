@@ -591,17 +591,27 @@ export class PlayScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isPaused || this.countdownActive) return;
-    // Принудительно обнуляем вертикальную скорость для всех ворот и монет
-    this.gateGroup.getChildren().forEach(obj => {
+    // Принудительно обнуляем вертикальную скорость для всех ворот и монет,
+// а также восстанавливаем горизонтальную, если она пропала
+this.gateGroup.getChildren().forEach(obj => {
   if (obj.body) {
     obj.body.setVelocityY(0);
     obj.body.setGravityY(0);
+    // Если скорость по X обнулилась (например, из-за коллизий), восстанавливаем
+    if (obj.body.velocity.x === 0 && obj.speed) {
+      obj.body.velocity.x = -obj.speed;
+    }
   }
 });
-    this.coinGroup.getChildren().forEach(obj => {
+
+this.coinGroup.getChildren().forEach(obj => {
   if (obj.body) {
     obj.body.setVelocityY(0);
     obj.body.setGravityY(0);
+    if (obj.body.velocity.x === 0) {
+      // Для монет используем текущую скорость игры
+      obj.body.velocity.x = -this.currentSpeed;
+    }
   }
 });
 
@@ -913,6 +923,18 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setImmovable(true)
       .setScale(1, Math.max(0.2, topY / 400));
+      // === ДОБАВЬТЕ ЭТИ СТРОКИ ===
+     topPipe.body.setAllowGravity(false);      // отключаем гравитацию
+     topPipe.body.setGravityY(0);              // обнуляем локальную гравитацию
+     topPipe.body.setVelocityY(0);              // обнуляем вертикальную скорость
+     topPipe.setVelocityX(-difficulty.speed);  // задаём горизонтальную скорость
+     topPipe.body.velocity.x = -difficulty.speed; // явно через body (для надёжности)
+     topPipe.body.velocity.y = 0;               // ещё раз обнуляем Y
+     topPipe.speed = difficulty.speed;          // сохраняем скорость для будущего использования
+   // ============================
+
+     topPipe.setBlendMode(Phaser.BlendModes.ADD);
+     topPipe.body.moves = true; // убеждаемся, что движение разрешено
      topPipe.body.setAllowGravity(false);
      topPipe.body.setGravityY(0);
      topPipe.body.setVelocityY(0);
@@ -928,6 +950,15 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setImmovable(true)
       .setScale(1, Math.max(0.2, (h - bottomY) / 400));
+    bottomPipe.body.setAllowGravity(false);
+    bottomPipe.body.setGravityY(0);
+    bottomPipe.body.setVelocityY(0);
+    bottomPipe.setVelocityX(-difficulty.speed);
+    bottomPipe.body.velocity.x = -difficulty.speed;
+    bottomPipe.body.velocity.y = 0;
+    bottomPipe.speed = difficulty.speed;
+    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
+    bottomPipe.body.moves = true;
 
     bottomPipe.body.setAllowGravity(false);
     bottomPipe.body.setGravityY(0);
@@ -944,16 +975,18 @@ export class PlayScene extends Phaser.Scene {
 
     // Зона для подсчёта очков
     const zone = this.add.zone(x + 60, h / 2, 12, h);
-    this.physics.add.existing(zone);
-    zone.body.setAllowGravity(false);
-    zone.body.setGravityY(0);
-    zone.body.setVelocityY(0);
-    zone.body.setAllowGravity(false);
-    zone.body.setGravityY(0);
-    zone.body.setImmovable(true);
-    zone.body.setVelocityX(-difficulty.speed);
-    zone.body.moves = true;
-    zone.passed = false;
+this.physics.add.existing(zone);
+
+zone.body.setAllowGravity(false);
+zone.body.setGravityY(0);
+zone.body.setVelocityY(0);
+zone.body.setVelocityX(-difficulty.speed);
+zone.body.velocity.x = -difficulty.speed;
+zone.body.velocity.y = 0;
+zone.speed = difficulty.speed; // сохраняем скорость
+zone.body.setImmovable(true);
+zone.body.moves = true;
+zone.passed = false;
 
     this.physics.add.overlap(this.player, zone, (p, z) => {
       if (!z.passed) {
@@ -1399,18 +1432,22 @@ export class PlayScene extends Phaser.Scene {
     }
 
     const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-      .setImmovable(true)
-      .setVelocityX(-this.currentSpeed)
-      .setAngularVelocity(200);
+  .setImmovable(true)
+  .setAngularVelocity(200);
 
-    coin.body.setAllowGravity(false);
-    coin.body.setGravityY(0);
-    coin.body.setVelocityY(0);
+// === ДОБАВЬТЕ ЭТИ СТРОКИ ===
+coin.body.setAllowGravity(false);
+coin.body.setGravityY(0);
+coin.body.setVelocityY(0);
+coin.setVelocityX(-this.currentSpeed);
+coin.body.velocity.x = -this.currentSpeed;
+coin.body.velocity.y = 0;
+// ============================
 
-    coin.setScale(0.01);
-    coin.coinType = coinType;
-    coin.setBlendMode(Phaser.BlendModes.ADD);
-    coin.collected = false;
+coin.setScale(0.01);
+coin.coinType = coinType;
+coin.setBlendMode(Phaser.BlendModes.ADD);
+coin.collected = false;
 
     this.tweens.add({
       targets: coin,
