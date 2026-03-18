@@ -2916,60 +2916,26 @@ export class PlayScene extends Phaser.Scene {
   }
 
   spawnCoin(x, y) {
-    if (Math.random() > 0.9) return;
-
-    let coinType = 'gold', texture = 'coin_gold';
-    const r = Math.random();
-
-    const redChance = 0.1 + (this.gameLevel * 0.02);
-    const blueChance = 0.1 + (this.gameLevel * 0.015);
-    const greenChance = 0.1 + (this.gameLevel * 0.01);
-    const purpleChance = 0.1 + (this.gameLevel * 0.005);
-
-    if (this.gameLevel >= 1 && r < redChance) {
-      coinType = 'red';
-      texture = 'coin_red';
-    } else if (this.gameLevel >= 2 && r < redChance + blueChance) {
-      coinType = 'blue';
-      texture = 'coin_blue';
-    } else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) {
-      coinType = 'green';
-      texture = 'coin_green';
-    } else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) {
-      coinType = 'purple';
-      texture = 'coin_purple';
-    }
-
-    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-      .setImmovable(true)
-      .setAngularVelocity(200);
-
-    if (coin.body) {
+      if (Math.random() > 0.9) return;
+      let coinType = 'gold', texture = 'coin_gold';
+      const r = Math.random();
+      if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
+      else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
+      else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
+      else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
+      const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
+        .setImmovable(true)
+        .setVelocityX(-this.currentSpeed)
+        .setAngularVelocity(200);
       coin.body.setAllowGravity(false);
-      coin.body.setGravityY(0);
-      coin.body.setVelocityY(0);
-      coin.setVelocityX(-this.currentSpeed);
-      coin.body.velocity.x = -this.currentSpeed;
+      coin.setScale(0.01);
+      coin.coinType = coinType;
+      coin.setBlendMode(Phaser.BlendModes.ADD);
+      coin.collected = false;
+      this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
+      this.coins.push(coin);
+      this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoinExtended(c), null, this);
     }
-
-    coin.setScale(0.01);
-    coin.coinType = coinType;
-    coin.setBlendMode(Phaser.BlendModes.ADD);
-    coin.collected = false;
-
-    this.tweens.add({
-      targets: coin,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 300,
-      ease: 'Back.out'
-    });
-
-    this.coinGroup.add(coin);
-    if (this.player) {
-      this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
-    }
-  }
 
   completeLevel() {
     let stars = 1;
