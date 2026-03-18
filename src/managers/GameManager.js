@@ -9,6 +9,7 @@ export class GameManager {
     try {
       const saved = localStorage.getItem('skypulse_data');
       const data = saved ? JSON.parse(saved) : this.getDefaultData();
+      
       // Миграции для новых полей
       if (!data.unlockedWorlds) data.unlockedWorlds = [0];
       if (!data.unlockedLevels) data.unlockedLevels = { '0': [0] };
@@ -23,6 +24,9 @@ export class GameManager {
       if (!data.musicEnabled) data.musicEnabled = true;
       if (!data.vibrationEnabled) data.vibrationEnabled = true;
       if (!data.tutorialCompleted) data.tutorialCompleted = false;
+      if (!data.ownedSkins) data.ownedSkins = ['default'];
+      if (!data.currentSkin) data.currentSkin = 'player';
+      
       return data;
     } catch (e) {
       console.error('Failed to load data, using defaults', e);
@@ -104,6 +108,21 @@ export class GameManager {
     return total;
   }
 
+  // ===== СКИНЫ =====
+  addSkin(skinKey) {
+    if (!this.data.ownedSkins.includes(skinKey)) {
+      this.data.ownedSkins.push(skinKey);
+      this.save();
+    }
+  }
+
+  setCurrentSkin(skinKey) {
+    if (this.data.ownedSkins.includes(skinKey)) {
+      this.data.currentSkin = skinKey;
+      this.save();
+    }
+  }
+
   // ===== ПРОКАЧКИ =====
   getUpgradeLevel(key) { return this.data.upgrades[key] || 0; }
 
@@ -152,4 +171,4 @@ export class GameManager {
 }
 
 export const gameManager = new GameManager();
-window.gameManager = gameManager;
+window.gameManager = gameManager; // ← Оставляем одну строку, без конфликта

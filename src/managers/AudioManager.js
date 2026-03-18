@@ -42,4 +42,4 @@ export class AudioManager {
 }
 
 export const audioManager = new AudioManager();
-window.audioManager = audioManager; // ← Добавьте эту строку
+window.audioManager = audioManager;
