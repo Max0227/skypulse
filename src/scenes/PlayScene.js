@@ -918,90 +918,41 @@ this.coinGroup.getChildren().forEach(obj => {
     const bottomY = centerY + gap / 2;
     const x = w;
 
-    // Создание верхней створки
-    const topPipe = this.physics.add.image(x, topY, gateTexture)
-      .setOrigin(0.5, 1)
-      .setImmovable(true)
-      .setScale(1, Math.max(0.2, topY / 400));
-      // === ДОБАВЬТЕ ЭТИ СТРОКИ ===
-     topPipe.body.setAllowGravity(false);      // отключаем гравитацию
-     topPipe.body.setGravityY(0);              // обнуляем локальную гравитацию
-     topPipe.body.setVelocityY(0);              // обнуляем вертикальную скорость
-     topPipe.setVelocityX(-difficulty.speed);  // задаём горизонтальную скорость
-     topPipe.body.velocity.x = -difficulty.speed; // явно через body (для надёжности)
-     topPipe.body.velocity.y = 0;               // ещё раз обнуляем Y
-     topPipe.speed = difficulty.speed;          // сохраняем скорость для будущего использования
-   // ============================
+    // Создаём верхнюю створку (без физики)
+    const topPipe = this.add.image(x, topY, gateTexture)
+        .setOrigin(0.5, 1)
+        .setScale(1, Math.max(0.2, topY / 400))
+        .setBlendMode(Phaser.BlendModes.ADD);
 
-     topPipe.setBlendMode(Phaser.BlendModes.ADD);
-     topPipe.body.moves = true; // убеждаемся, что движение разрешено
-     topPipe.body.setAllowGravity(false);
-     topPipe.body.setGravityY(0);
-     topPipe.body.setVelocityY(0);
+    // Создаём нижнюю створку (без физики)
+    const bottomPipe = this.add.image(x, bottomY, gateTexture)
+        .setOrigin(0.5, 0)
+        .setScale(1, Math.max(0.2, (h - bottomY) / 400))
+        .setBlendMode(Phaser.BlendModes.ADD);
 
-    topPipe.body.setAllowGravity(false);
-    topPipe.body.setGravityY(0);
-    topPipe.setVelocityX(-difficulty.speed);
-    topPipe.setBlendMode(Phaser.BlendModes.ADD);
-    topPipe.body.moves = true; // разрешаем движение
-
-    // Создание нижней створки
-    const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
-      .setOrigin(0.5, 0)
-      .setImmovable(true)
-      .setScale(1, Math.max(0.2, (h - bottomY) / 400));
-    bottomPipe.body.setAllowGravity(false);
-    bottomPipe.body.setGravityY(0);
-    bottomPipe.body.setVelocityY(0);
-    bottomPipe.setVelocityX(-difficulty.speed);
-    bottomPipe.body.velocity.x = -difficulty.speed;
-    bottomPipe.body.velocity.y = 0;
+    // Сохраняем скорость
+    topPipe.speed = difficulty.speed;
     bottomPipe.speed = difficulty.speed;
-    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
-    bottomPipe.body.moves = true;
-
-    bottomPipe.body.setAllowGravity(false);
-    bottomPipe.body.setGravityY(0);
-    bottomPipe.setVelocityX(-difficulty.speed);
-    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
-    bottomPipe.body.moves = true;
 
     this.pipes.push(topPipe, bottomPipe);
     this.gateGroup.add(topPipe);
     this.gateGroup.add(bottomPipe);
 
-    this.physics.add.collider(this.player, topPipe, (p, pi) => this.hitPipe(p, pi), null, this);
-    this.physics.add.collider(this.player, bottomPipe, (p, pi) => this.hitPipe(p, pi), null, this);
-
-    // Зона для подсчёта очков
+    // Создаём зону для счёта (без физики)
     const zone = this.add.zone(x + 60, h / 2, 12, h);
-this.physics.add.existing(zone);
-
-zone.body.setAllowGravity(false);
-zone.body.setGravityY(0);
-zone.body.setVelocityY(0);
-zone.body.setVelocityX(-difficulty.speed);
-zone.body.velocity.x = -difficulty.speed;
-zone.body.velocity.y = 0;
-zone.speed = difficulty.speed; // сохраняем скорость
-zone.body.setImmovable(true);
-zone.body.moves = true;
-zone.passed = false;
-
-    this.physics.add.overlap(this.player, zone, (p, z) => {
-      if (!z.passed) {
-        z.passed = true;
-        this.passGateWithCombo(z);
-      }
-    }, null, this);
-
+    zone.speed = difficulty.speed;
+    zone.passed = false;
+    
+    // Добавляем зону в массив для проверки
     this.scoreZones.push(zone);
 
-    // Спавн монет, астероидов, усилителей
+    // Проверка прохождения зоны
+    // Будет выполняться в update()
+
     if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
     if (Math.random() < difficulty.asteroidChance) this.spawnAsteroid();
     if (Math.random() < difficulty.powerUpChance) this.spawnPowerUp(x + 100, centerY);
-  }
+}
 
   hitPipe(player, pipe) {
     if (this.shieldActive) return;
@@ -1769,14 +1720,40 @@ coin.collected = false;
     const w = this.scale.width;
     const h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-    const panel = this.add.rectangle(0, 0, 300, 250, 0x0a0a1a, 0.95).setStrokeStyle(3, 0x00ffff, 0.9).setScrollFactor(0);
-    const title = this.add.text(0, -100, 'ИГРА ОКОНЧЕНА', { fontSize: '20px', fontFamily, color: '#ffffff', stroke: '#ff00ff', strokeThickness: 4 }).setOrigin(0.5).setScrollFactor(0);
-    const subtitle = this.add.text(0, -20, '', { fontSize: '12px', fontFamily, color: '#7dd3fc', align: 'center', stroke: '#0f172a', strokeThickness: 2 }).setOrigin(0.5).setScrollFactor(0);
-    this.gameOverSubtitle = subtitle;
-    const tip = this.add.text(0, 80, 'Нажми, чтобы продолжить', { fontSize: '12px', fontFamily, color: '#cbd5e1', align: 'center' }).setOrigin(0.5).setScrollFactor(0);
+    
+    const panel = this.add.rectangle(0, 0, 300, 250, 0x0a0a1a, 0.95)
+        .setStrokeStyle(3, 0x00ffff, 0.9)
+        .setScrollFactor(0);
+    
+    const title = this.add.text(0, -100, 'ИГРА ОКОНЧЕНА', { 
+        fontSize: '20px', 
+        fontFamily, 
+        color: '#ffffff', 
+        stroke: '#ff00ff', 
+        strokeThickness: 4 
+    }).setOrigin(0.5).setScrollFactor(0);
+    
+    const subtitle = this.add.text(0, -20, '', { 
+        fontSize: '12px', 
+        fontFamily, 
+        color: '#7dd3fc', 
+        align: 'center', 
+        stroke: '#0f172a', 
+        strokeThickness: 2 
+    }).setOrigin(0.5).setScrollFactor(0);
+    
+    this.gameOverSubtitle = subtitle; // <-- ВАЖНО: сохраняем ссылку
+    
+    const tip = this.add.text(0, 80, 'Нажми, чтобы продолжить', { 
+        fontSize: '12px', 
+        fontFamily, 
+        color: '#cbd5e1', 
+        align: 'center' 
+    }).setOrigin(0.5).setScrollFactor(0);
+    
     this.gameOverBox = this.add.container(w / 2, h / 2, [panel, title, subtitle, tip]);
     this.gameOverBox.setVisible(false);
-  }
+}
 
   // ===== МЕТОДЫ УПРАВЛЕНИЯ ИГРОЙ =====
   startRun() {
@@ -2296,21 +2273,29 @@ coin.collected = false;
   }
 
   showGameOver() {
-    if (!this.gameOverBox) this.createGameOverBox();
-    this.gameOverSubtitle.setText(
-      `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
-    );
+    // Если gameOverBox ещё не создан, создаём его
+    if (!this.gameOverBox) {
+        this.createGameOverBox();
+    }
+    
+    // Проверяем, что gameOverSubtitle существует перед установкой текста
+    if (this.gameOverSubtitle) {
+        this.gameOverSubtitle.setText(
+            `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
+        );
+    }
+    
     this.gameOverBox.setVisible(true);
     this.gameOverBox.setScale(0.9).setAlpha(0);
     this.tweens.add({
-      targets: this.gameOverBox,
-      scaleX: 1,
-      scaleY: 1,
-      alpha: 1,
-      duration: 400,
-      ease: 'Back.out'
+        targets: this.gameOverBox,
+        scaleX: 1,
+        scaleY: 1,
+        alpha: 1,
+        duration: 400,
+        ease: 'Back.out'
     });
-  }
+}
 
   // ===== МЕТОДЫ ДЛЯ ДОСТИЖЕНИЙ =====
   initAchievements() {
