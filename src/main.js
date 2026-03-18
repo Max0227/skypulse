@@ -6,6 +6,7 @@ import { WorldSelectScene } from './scenes/WorldSelectScene';
 import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { PlayScene } from './scenes/PlayScene';
 import { LevelCompleteScene } from './scenes/LevelCompleteScene';
+import { GameOverScene } from './scenes/GameOverScene';
 import { ShopScene } from './scenes/ShopScene';
 import { AchievementsScene } from './scenes/AchievementsScene';
 import { QuestsScene } from './scenes/QuestsScene';
@@ -29,7 +30,8 @@ const config = {
       gravity: { y: 1300 },
       debug: false,
       maxEntities: 500,
-      enableBody: true
+      enableBody: true,
+      enableStaticBody: true
     }
   },
   render: {
@@ -46,6 +48,7 @@ const config = {
     LevelSelectScene,
     PlayScene,
     LevelCompleteScene,
+    GameOverScene,
     ShopScene,
     AchievementsScene,
     QuestsScene,
@@ -57,4 +60,38 @@ const config = {
   }
 };
 
-window.game = new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// Telegram интеграция
+if (window.Telegram?.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+
+  tg.onEvent('viewportChanged', () => {
+    const viewport = tg.viewportStableHeight;
+    game.scale.setGameSize(window.innerWidth, viewport);
+  });
+
+  tg.BackButton.onClick(() => {
+    if (game.scene.isActive('play')) {
+      game.scene.getScene('play').confirmExit();
+    } else {
+      game.scene.start('menu');
+    }
+  });
+}
+
+// Отладка
+window.gameDebug = {
+  addCrystals: (amount) => {
+    import('./managers/GameManager').then(({ gameManager }) => {
+      gameManager.data.crystals += amount;
+      gameManager.save();
+    });
+  },
+  resetData: () => {
+    localStorage.clear();
+    location.reload();
+  }
+};
