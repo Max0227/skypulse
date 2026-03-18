@@ -1181,111 +1181,78 @@ export class PlayScene extends Phaser.Scene {
    * Спавн ворот
    */
   spawnGate() {
-    if (this.dead) return;
-
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const difficulty = this.getDifficulty();
-    const gateTexture = this.gateTextures[Math.min(this.gameLevel, 4)];
-    const gap = difficulty.gap + Phaser.Math.Between(-15, 15);
-    const centerY = Phaser.Math.Between(120, h - 120);
-    const topY = centerY - gap / 2;
-    const bottomY = centerY + gap / 2;
-    const x = w;
-
-    // Верхняя створка
-    const topPipe = this.physics.add
-      .image(x, topY, gateTexture)
-      .setOrigin(0.5, 1)
-      .setImmovable(true)
-      .setScale(1, Math.max(0.2, topY / 400));
-
-    if (topPipe && topPipe.body) {
+      if (this.dead) return;
+      const w = this.scale.width, h = this.scale.height;
+      const difficulty = this.getDifficulty();
+      const gateTexture = this.gateTextures[Math.min(this.level,4)];
+      const gap = difficulty.gap + Phaser.Math.Between(-15,15);
+      const centerY = Phaser.Math.Between(120, h - 120);
+      const topY = centerY - gap/2;
+      const bottomY = centerY + gap/2;
+      const x = w;
+  
+      const topPipe = this.physics.add.image(x, topY, gateTexture)
+        .setOrigin(0.5,1)
+        .setImmovable(true)
+        .setScale(1, Math.max(0.2, topY/400))
+        .setVelocityX(-difficulty.speed);
       topPipe.body.setAllowGravity(false);
-      topPipe.body.setGravityY(0);
-      topPipe.body.moves = true;
-    }
-    topPipe.setVelocityX(-difficulty.speed);
-    topPipe.setBlendMode(Phaser.BlendModes.ADD);
-    topPipe.isGate = true;
-
-    // Нижняя створка
-    const bottomPipe = this.physics.add
-      .image(x, bottomY, gateTexture)
-      .setOrigin(0.5, 0)
-      .setImmovable(true)
-      .setScale(1, Math.max(0.2, (h - bottomY) / 400));
-
-    if (bottomPipe && bottomPipe.body) {
+      topPipe.setBlendMode(Phaser.BlendModes.ADD);
+  
+      const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
+        .setOrigin(0.5,0)
+        .setImmovable(true)
+        .setScale(1, Math.max(0.2, (h - bottomY)/400))
+        .setVelocityX(-difficulty.speed);
       bottomPipe.body.setAllowGravity(false);
-      bottomPipe.body.setGravityY(0);
-      bottomPipe.body.moves = true;
-    }
-    bottomPipe.setVelocityX(-difficulty.speed);
-    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
-    bottomPipe.isGate = true;
-
-    this.pipes.push(topPipe, bottomPipe);
-    if (this.gateGroup) {
-      this.gateGroup.add(topPipe);
-      this.gateGroup.add(bottomPipe);
-    }
-
-    // Коллизии игрока с воротами
-    if (this.player) {
-      this.physics.add.overlap(
-        this.player,
-        topPipe,
-        (p, pipe) => this.hitPipe(p, pipe),
-        null,
-        this
-      );
-      this.physics.add.overlap(
-        this.player,
-        bottomPipe,
-        (p, pipe) => this.hitPipe(p, pipe),
-        null,
-        this
-      );
-    }
-
-    // Коллизия вагонов с воротами
-    if (this.wagons && this.wagons.length > 0) {
-      this.physics.add.collider(
-        this.wagons,
-        this.gateGroup,
-        (wagon, pipe) => this.wagonHit(wagon, pipe),
-        null,
-        this
-      );
-    }
-
-    // Зона для подсчёта очков
-    const zone = this.add.zone(x + 60, h / 2, 12, h);
-    this.physics.add.existing(zone);
-    if (zone.body) {
+      bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
+  
+      [topPipe,bottomPipe].forEach(pipe => {
+        pipe.setScale(1,0.01);
+        this.tweens.add({ targets: pipe, scaleY: pipe.scaleY, duration:300, ease:'Back.out' });
+      });
+  
+      if (this.level >= 2 && Math.random() < 0.4) {
+        const moveDistance = Phaser.Math.Between(-50,50);
+        const tween = this.tweens.add({ targets: [topPipe,bottomPipe], y: `+=${moveDistance}`, duration:1200, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
+        topPipe.tween = tween; bottomPipe.tween = tween;
+      }
+  
+      this.pipes.push(topPipe,bottomPipe);
+      this.physics.add.collider(this.player, topPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
+      this.physics.add.collider(this.player, bottomPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
+  
+      const zone = this.add.zone(x+60, h/2, 12, h);
+      this.physics.add.existing(zone);
       zone.body.setAllowGravity(false);
-      zone.body.setGravityY(0);
       zone.body.setImmovable(true);
-      zone.body.moves = true;
       zone.body.setVelocityX(-difficulty.speed);
+      zone.body.setSize(12, h);
+      this.physics.add.overlap(this.player, zone, ()=>this.passGateWithCombo(zone), null, this);
+      this.scoreZones.push(zone);
+  
+      if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
     }
-    zone.passed = false;
-
-    if (this.player) {
-      this.physics.add.overlap(
-        this.player,
-        zone,
-        (p, z) => {
-          if (!z.passed) {
-            z.passed = true;
-            this.passGateWithCombo(z);
-          }
-        },
-        null,
-        this
-      );
-    }
+  
+    hitPipe(player, pipe) {
+      if (this.shieldActive) {
+        this.particleManager.createBonusEffect('shield', pipe.x, pipe.y);
+        this.player.body.setVelocityY(-100);
+        return;
+      } else {
+        this.headHP--;
+        this.updateHearts();
+        this.cameras.main.shake(100,0.003);
+        this.hitSound.play();
+        this.player.body.setVelocityX(0);
+        if (this.headHP <= 0) {
+          this.handleDeath();
+        } else {
+          this.player.setTint(0xff8888);
+          this.time.delayedCall(500, ()=>this.player.clearTint());
+        }
+      }
+    
 
     this.scoreZones.push(zone);
 
