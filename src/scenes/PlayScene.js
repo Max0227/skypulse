@@ -901,6 +901,7 @@ flap() {
     this.updateMultiplier();
     this.checkWaveAchievements();
     this.createComboEffect();
+    this.updateComboCounter();
     this.checkNewRecords();
     this.checkQuests();
     this.updateRealTimeStats();
@@ -1057,6 +1058,7 @@ flap() {
   /**
    * Сбор монеты
    */
+  
   collectCoin(coin) {
     if (!coin || !coin.active || coin.collected) return;
     coin.collected = true;
@@ -1109,20 +1111,17 @@ flap() {
       this.collectedCoins -= this.coinsForWagon;
     }
 
+    // ИСПРАВЛЕНИЕ: Активация бонуса в зависимости от типа монеты
     if (bonusType) {
-      if (this.bonusActive && this.bonusType === bonusType) {
-        this.bonusTime += 2;
-        try {
-          if (this.itemSound) this.itemSound.play();
-        } catch (e) {}
-      } else {
-        this.activateBonus(bonusType);
-      }
+      // Всегда активируем бонус при сборе цветной монеты
+      this.activateBonus(bonusType);
+      
       this.particleManager.createCoinCollectEffect(
         coin.x,
         coin.y,
         coin.coinType
       );
+      
       if (bonusType === 'shield' && this.questSystem) {
         this.questSystem.updateProgress('shield', 1);
       }
@@ -1615,8 +1614,8 @@ flap() {
     });
   }
 
-  /**
-   * Активация бонуса от монет
+    /**
+   * Активация бонуса от монет - УЛУЧШЕННАЯ ВЕРСИЯ
    */
   activateBonus(type) {
     const now = Date.now();
@@ -1629,6 +1628,7 @@ flap() {
     this.bonusType = type;
     this.bonusTime = this.shieldDuration;
 
+    // Создаем уникальные эффекты для каждого типа бонуса
     switch (type) {
       case 'speed':
         this.currentSpeed = this.baseSpeed * 1.5;
@@ -1636,18 +1636,39 @@ flap() {
         if (this.player) {
           this.player.setTint(0xffff00);
           this.player.speedBoost = 1.5;
+          
+          // Эффект скоростных линий
+          this.createSpeedLines();
+          
+          // Пульсация игрока
+          this.tweens.add({
+            targets: this.player,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+          });
         }
         if (this.bonusText) {
           this.bonusText.setColor('#ffff00').setText(`🚀 x2 ${Math.ceil(this.bonusTime)}с`);
           this.bonusText.setVisible(true);
         }
         this.particleManager.createBonusEffect('speed', this.player.x, this.player.y);
+        
+        // Визуальный индикатор скорости
+        this.createSpeedIndicator();
         break;
+
       case 'shield':
         this.shieldActive = true;
         if (this.player) {
           this.player.setTint(0x00ffff);
           this.player.shieldActive = true;
+          
+          // Эффект вращающегося щита
+          this.createShieldEffect();
         }
         if (this.bonusText) {
           this.bonusText.setColor('#00ffff').setText(`🛡️ ${Math.ceil(this.bonusTime)}с`);
@@ -1655,11 +1676,18 @@ flap() {
         }
         this.particleManager.createShieldEffect(this.player);
         break;
+
       case 'magnet':
         this.magnetActive = true;
         if (this.player) {
           this.player.setTint(0xff00ff);
           this.player.magnetActive = true;
+          
+          // Эффект магнитного поля
+          this.createMagnetField();
+          
+          // Искрящиеся частицы вокруг игрока
+          this.createMagnetParticles();
         }
         if (this.bonusText) {
           this.bonusText.setColor('#ff00ff').setText(`🧲 ${Math.ceil(this.bonusTime)}с`);
@@ -1667,10 +1695,14 @@ flap() {
         }
         this.particleManager.createBonusEffect('magnet', this.player.x, this.player.y);
         break;
+
       case 'slow':
         this.currentSpeed = this.baseSpeed * 0.6;
         if (this.player) {
           this.player.setTint(0xff8800);
+          
+          // Эффект замедления времени
+          this.createSlowMotionEffect();
         }
         if (this.bonusText) {
           this.bonusText.setColor('#ff8800').setText(`⏳ ${Math.ceil(this.bonusTime)}с`);
@@ -1695,45 +1727,415 @@ flap() {
           if (this.bonusText) {
             this.bonusText.setText(`${emoji} ${Math.ceil(this.bonusTime)}с`);
           }
+          
+          // Обновляем визуальные эффекты в реальном времени
+          this.updateBonusEffects(type);
         }
       },
       loop: true
     });
+    
+    // Звуковой эффект для бонуса
+    this.playBonusSound(type);
   }
 
   /**
-   * Деактивация бонуса
+   * Создание эффекта скоростных линий
+   */
+  createSpeedLines() {
+    if (this.speedLinesEmitter) this.speedLinesEmitter.stop();
+    
+    this.speedLinesEmitter = this.add.particles(0, 0, 'flare', {
+      x: this.player.x,
+      y: this.player.y,
+      speed: { min: 200, max: 400 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.6, end: 0 },
+      lifespan: 300,
+      quantity: 2,
+      frequency: 50,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: 0xffff00,
+      follow: this.player,
+      followOffset: { x: -20, y: 0 }
+    });
+  }
+
+  /**
+   * Создание индикатора скорости
+   */
+  createSpeedIndicator() {
+    if (this.speedIndicator) this.speedIndicator.destroy();
+    
+    this.speedIndicator = this.add.graphics();
+    this.speedIndicator.setDepth(25);
+    
+    // Анимированный индикатор
+    this.tweens.add({
+      targets: this.speedIndicator,
+      alpha: { from: 0.8, to: 0.3 },
+      duration: 300,
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  /**
+   * Создание эффекта щита
+   */
+  createShieldEffect() {
+    if (this.shieldGraphics) this.shieldGraphics.destroy();
+    
+    this.shieldGraphics = this.add.graphics();
+    this.shieldGraphics.setDepth(14);
+    
+    // Создаем вращающиеся частицы вокруг щита
+    this.shieldParticles = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const particle = this.add.circle(
+        this.player.x + Math.cos(angle) * 45,
+        this.player.y + Math.sin(angle) * 45,
+        3, 0x00ffff, 0.8
+      );
+      particle.setDepth(14);
+      particle.angle = angle;
+      particle.speed = 0.02;
+      this.shieldParticles.push(particle);
+    }
+    
+    // Анимация вращения частиц
+    this.shieldRotationTween = this.tweens.add({
+      targets: { dummy: 0 },
+      duration: 2000,
+      repeat: -1,
+      onUpdate: () => {
+        if (!this.shieldParticles) return;
+        const time = Date.now() * 0.002;
+        this.shieldParticles.forEach((p, i) => {
+          if (p && p.active) {
+            const angle = (i / this.shieldParticles.length) * Math.PI * 2 + time;
+            p.x = this.player.x + Math.cos(angle) * 45;
+            p.y = this.player.y + Math.sin(angle) * 45;
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Создание магнитного поля
+   */
+  createMagnetField() {
+    if (this.magnetGraphics) this.magnetGraphics.destroy();
+    
+    this.magnetGraphics = this.add.graphics();
+    this.magnetGraphics.setDepth(14);
+    
+    // Пульсация магнитного поля
+    this.magnetPulseTween = this.tweens.add({
+      targets: { scale: 1 },
+      scale: 1.3,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      onUpdate: (tween, target) => {
+        if (!this.magnetGraphics || !this.player) return;
+        
+        this.magnetGraphics.clear();
+        
+        // Внешний круг
+        this.magnetGraphics.lineStyle(3, 0xff00ff, 0.4);
+        this.magnetGraphics.strokeCircle(
+          this.player.x, 
+          this.player.y, 
+          this.magnetRange * target.scale
+        );
+        
+        // Внутренний круг
+        this.magnetGraphics.lineStyle(2, 0xff88ff, 0.6);
+        this.magnetGraphics.strokeCircle(
+          this.player.x, 
+          this.player.y, 
+          this.magnetRange * 0.7
+        );
+        
+        // Магнитные линии
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + Date.now() * 0.001;
+          const x1 = this.player.x + Math.cos(angle) * this.magnetRange * 0.5;
+          const y1 = this.player.y + Math.sin(angle) * this.magnetRange * 0.5;
+          const x2 = this.player.x + Math.cos(angle) * this.magnetRange;
+          const y2 = this.player.y + Math.sin(angle) * this.magnetRange;
+          
+          this.magnetGraphics.lineStyle(1, 0xff00ff, 0.3);
+          this.magnetGraphics.lineBetween(x1, y1, x2, y2);
+        }
+      }
+    });
+  }
+
+  /**
+   * Создание магнитных частиц
+   */
+  createMagnetParticles() {
+    if (this.magnetParticles) this.magnetParticles.destroy();
+    
+    this.magnetParticles = this.add.particles(0, 0, 'flare', {
+      x: this.player.x,
+      y: this.player.y,
+      speed: { min: 50, max: 150 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.3, end: 0 },
+      alpha: { start: 0.8, end: 0 },
+      lifespan: 600,
+      quantity: 3,
+      frequency: 100,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: [0xff00ff, 0xff88ff, 0xffffff],
+      follow: this.player
+    });
+  }
+
+  /**
+   * Создание эффекта замедления времени
+   */
+  createSlowMotionEffect() {
+    if (this.slowMotionGraphics) this.slowMotionGraphics.destroy();
+    
+    this.slowMotionGraphics = this.add.graphics();
+    this.slowMotionGraphics.setDepth(14);
+    
+    // Эффект "ряби" времени
+    this.slowMotionTween = this.tweens.add({
+      targets: { time: 0 },
+      duration: 1000,
+      repeat: -1,
+      onUpdate: () => {
+        if (!this.slowMotionGraphics || !this.player) return;
+        
+        this.slowMotionGraphics.clear();
+        
+        const time = Date.now() * 0.003;
+        const radius = 30 + Math.sin(time) * 10;
+        
+        // Создаем эффект часов
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + time * 0.5;
+          const x = this.player.x + Math.cos(angle) * radius;
+          const y = this.player.y + Math.sin(angle) * radius;
+          
+          this.slowMotionGraphics.fillStyle(0xffaa00, 0.5);
+          this.slowMotionGraphics.fillCircle(x, y, 3);
+        }
+        
+        // Центральный круг
+        this.slowMotionGraphics.lineStyle(2, 0xffaa00, 0.6);
+        this.slowMotionGraphics.strokeCircle(this.player.x, this.player.y, radius);
+      }
+    });
+    
+    // Добавляем медленные частицы
+    if (this.slowParticles) this.slowParticles.destroy();
+    
+    this.slowParticles = this.add.particles(0, 0, 'flare', {
+      x: this.player.x,
+      y: this.player.y,
+      speed: { min: 20, max: 50 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.2, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      lifespan: 1000,
+      quantity: 1,
+      frequency: 150,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: 0xffaa00,
+      follow: this.player
+    });
+  }
+
+  /**
+   * Обновление визуальных эффектов в реальном времени
+   */
+  updateBonusEffects(type) {
+    if (!this.player) return;
+    
+    switch (type) {
+      case 'speed':
+        if (this.speedLinesEmitter) {
+          // Увеличиваем интенсивность при окончании бонуса
+          const intensity = Math.min(1, this.bonusTime / 2);
+          this.speedLinesEmitter.setFrequency(50 / intensity);
+        }
+        
+        if (this.speedIndicator) {
+          this.speedIndicator.clear();
+          this.speedIndicator.lineStyle(2, 0xffff00, 0.8);
+          this.speedIndicator.strokeCircle(
+            this.player.x, 
+            this.player.y - 50, 
+            20 + (1 - this.bonusTime / this.shieldDuration) * 10
+          );
+        }
+        break;
+        
+      case 'shield':
+        if (this.shieldGraphics) {
+          this.shieldGraphics.clear();
+          const alpha = 0.3 + (this.bonusTime / this.shieldDuration) * 0.3;
+          this.shieldGraphics.lineStyle(4, 0x00ffff, alpha);
+          this.shieldGraphics.strokeCircle(this.player.x, this.player.y, 40);
+          this.shieldGraphics.fillStyle(0x00ffff, alpha * 0.3);
+          this.shieldGraphics.fillCircle(this.player.x, this.player.y, 40);
+        }
+        break;
+    }
+  }
+
+  /**
+   * Воспроизведение звука бонуса
+   */
+  playBonusSound(type) {
+    try {
+      const sounds = {
+        speed: 'speed_sound',
+        shield: 'shield_sound',
+        magnet: 'magnet_sound',
+        slow: 'slow_sound'
+      };
+      
+      const soundKey = sounds[type];
+      if (soundKey && this.cache.audio.has(soundKey)) {
+        const sound = this.sound.add(soundKey, { volume: 0.5 });
+        sound.play();
+      }
+    } catch (e) {
+      // Игнорируем ошибки звука
+    }
+  }
+
+  /**
+   * Деактивация бонуса - УЛУЧШЕННАЯ ВЕРСИЯ
    */
   deactivateBonus() {
     if (!this.bonusActive) return;
+    
     this.bonusActive = false;
     this.bonusType = null;
     this.shieldActive = false;
     this.magnetActive = false;
+    
     if (this.player) {
       this.player.shieldActive = false;
       this.player.magnetActive = false;
       this.player.speedBoost = 1;
       this.player.clearTint();
+      
+      // Останавливаем пульсацию
+      this.tweens.killTweensOf(this.player);
+      this.player.setScale(0.9);
     }
+    
     this.bonusMultiplier = 1;
     this.currentSpeed = this.baseSpeed;
+    
     if (this.bonusText) {
       this.bonusText.setVisible(false);
     }
+    
     this.updatePlayerVisuals();
+    
     if (this.bonusTimer) {
       this.bonusTimer.remove();
       this.bonusTimer = null;
     }
+    
+    // Очищаем все визуальные эффекты
+    this.cleanupBonusEffects();
+    
     this.particleManager.clearAll();
+    
+    // Финальная вспышка при деактивации
+    if (this.player) {
+      this.cameras.main.flash(200, 100, 100, 100, false);
+    }
+  }
+
+  /**
+   * Очистка всех визуальных эффектов бонусов
+   */
+  cleanupBonusEffects() {
+    // Останавливаем эмиттеры
+    if (this.speedLinesEmitter) {
+      this.speedLinesEmitter.stop();
+      this.speedLinesEmitter = null;
+    }
+    
+    if (this.magnetParticles) {
+      this.magnetParticles.destroy();
+      this.magnetParticles = null;
+    }
+    
+    if (this.slowParticles) {
+      this.slowParticles.destroy();
+      this.slowParticles = null;
+    }
+    
+    // Уничтожаем графику
+    if (this.speedIndicator) {
+      this.speedIndicator.destroy();
+      this.speedIndicator = null;
+    }
+    
+    if (this.shieldGraphics) {
+      this.shieldGraphics.destroy();
+      this.shieldGraphics = null;
+    }
+    
+    if (this.magnetGraphics) {
+      this.magnetGraphics.destroy();
+      this.magnetGraphics = null;
+    }
+    
+    if (this.slowMotionGraphics) {
+      this.slowMotionGraphics.destroy();
+      this.slowMotionGraphics = null;
+    }
+    
+    // Останавливаем твины
+    if (this.shieldRotationTween) {
+      this.shieldRotationTween.stop();
+      this.shieldRotationTween = null;
+    }
+    
+    if (this.magnetPulseTween) {
+      this.magnetPulseTween.stop();
+      this.magnetPulseTween = null;
+    }
+    
+    if (this.slowMotionTween) {
+      this.slowMotionTween.stop();
+      this.slowMotionTween = null;
+    }
+    
+    // Уничтожаем частицы щита
+    if (this.shieldParticles) {
+      this.shieldParticles.forEach(p => p.destroy());
+      this.shieldParticles = null;
+    }
   }
 
   /**
    * Получить эмодзи для бонуса
    */
   getBonusEmoji(type) {
-    const emojis = { speed: '🚀', shield: '🛡️', magnet: '🧲', slow: '⏳' };
+    const emojis = { 
+      speed: '🚀', 
+      shield: '🛡️', 
+      magnet: '🧲', 
+      slow: '⏳' 
+    };
     return emojis[type] || '✨';
   }
 
@@ -1742,6 +2144,7 @@ flap() {
    */
   updatePlayerVisuals() {
     if (!this.player) return;
+    
     if (this.shieldActive) {
       this.player.setTint(0x00ffff);
     } else if (this.bonusActive && this.bonusType === 'speed') {
@@ -1825,8 +2228,8 @@ flap() {
     }
   }
 
-  /**
-   * Метод для создания эффекта комбо
+    /**
+   * Метод для создания эффекта комбо - УЛУЧШЕННАЯ ВЕРСИЯ
    */
   createComboEffect() {
     if (!this.comboSystem) return;
@@ -1836,27 +2239,263 @@ flap() {
     const combo = this.comboSystem.combo || 0;
 
     if (combo > 1 && combo % 5 === 0) {
-      const text = this.add.text(w / 2, h / 2 - 100, `КОМБО x${combo}!`, {
-        fontSize: '32px',
-        fontFamily: "'Orbitron', monospace",
-        color: '#ffff00',
-        stroke: '#ff8800',
-        strokeThickness: 4,
-        shadow: { blur: 15, color: '#ffff00', fill: true }
+      // Определяем цвет и размер в зависимости от комбо
+      let color, strokeColor, fontSize, glowColor;
+      
+      if (combo >= 20) {
+        color = '#ff00ff'; // Фиолетовый для x20+
+        strokeColor = '#ff88ff';
+        glowColor = 0xff00ff;
+        fontSize = '48px';
+      } else if (combo >= 15) {
+        color = '#ff5500'; // Оранжевый для x15+
+        strokeColor = '#ffaa00';
+        glowColor = 0xff5500;
+        fontSize = '44px';
+      } else if (combo >= 10) {
+        color = '#ff0000'; // Красный для x10+
+        strokeColor = '#ff8800';
+        glowColor = 0xff0000;
+        fontSize = '40px';
+      } else if (combo >= 5) {
+        color = '#ffff00'; // Желтый для x5+
+        strokeColor = '#ff8800';
+        glowColor = 0xffff00;
+        fontSize = '36px';
+      } else {
+        color = '#ffff00';
+        strokeColor = '#ff8800';
+        glowColor = 0xffff00;
+        fontSize = '32px';
+      }
+
+      // Создаем основной текст
+      const text = this.add.text(w / 2, h / 2 - 100, `x${combo}!`, {
+        fontSize: fontSize,
+        fontFamily: "'Orbitron', 'Audiowide', monospace",
+        color: color,
+        stroke: strokeColor,
+        strokeThickness: 6,
+        shadow: { blur: 20, color: color, fill: true }
       }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
-      this.cameras.main.shake(100, 0.002);
+      // Добавляем подпись "КОМБО" сверху
+      const comboLabel = this.add.text(w / 2, h / 2 - 140, 'КОМБО', {
+        fontSize: '24px',
+        fontFamily: "'Orbitron', monospace",
+        color: '#ffffff',
+        stroke: strokeColor,
+        strokeThickness: 3,
+        shadow: { blur: 15, color: color, fill: true }
+      }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
-      this.tweens.add({
-        targets: text,
-        y: text.y - 50,
-        alpha: 0,
-        duration: 1500,
-        ease: 'Power2.easeOut',
-        onComplete: () => text.destroy()
+      // Создаем взрыв частиц
+      const particles = this.add.particles(w / 2, h / 2 - 100, 'flare', {
+        speed: { min: 200, max: 400 },
+        scale: { start: 1.5, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 800,
+        quantity: 30,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: [glowColor, 0xffffff, 0xffaa00]
       });
 
-      try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
+      particles.explode(30);
+
+      // Эффект пульсации камеры (более сильный для больших комбо)
+      const shakeIntensity = Math.min(0.005 + combo * 0.0005, 0.015);
+      this.cameras.main.shake(300, shakeIntensity);
+      
+      // Эффект вспышки
+      this.cameras.main.flash(200, 100, 100, 100, false);
+
+      // Анимация для текста
+      this.tweens.add({
+        targets: [text, comboLabel],
+        y: '-=80',
+        alpha: 0,
+        duration: 1800,
+        ease: 'Power2.easeOut',
+        onComplete: () => {
+          text.destroy();
+          comboLabel.destroy();
+        }
+      });
+
+      // Добавляем маленькие цифры, разлетающиеся в стороны
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 80;
+        const smallText = this.add.text(
+          w / 2 + Math.cos(angle) * 30,
+          h / 2 - 100 + Math.sin(angle) * 30,
+          `+${combo}`,
+          {
+            fontSize: '16px',
+            fontFamily: "'Orbitron', monospace",
+            color: color,
+            stroke: strokeColor,
+            strokeThickness: 2
+          }
+        ).setOrigin(0.5).setDepth(49).setScrollFactor(0);
+
+        this.tweens.add({
+          targets: smallText,
+          x: w / 2 + Math.cos(angle) * distance,
+          y: h / 2 - 100 + Math.sin(angle) * distance,
+          alpha: 0,
+          duration: 1000,
+          ease: 'Power2.easeOut',
+          onComplete: () => smallText.destroy()
+        });
+      }
+
+      // Звуковой эффект (разные звуки для разных комбо)
+      try {
+        if (combo >= 20) {
+          if (this.cache.audio.has('epic_combo_sound')) {
+            const sound = this.sound.add('epic_combo_sound', { volume: 0.7 });
+            sound.play();
+          }
+        } else if (combo >= 10) {
+          if (this.cache.audio.has('big_combo_sound')) {
+            const sound = this.sound.add('big_combo_sound', { volume: 0.6 });
+            sound.play();
+          }
+        } else if (this.levelUpSound) {
+          this.levelUpSound.play();
+        }
+      } catch (e) {}
+
+      // Вибрация для Telegram (разная интенсивность)
+      try {
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+          if (combo >= 20) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+          } else if (combo >= 10) {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+          } else {
+            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+          }
+        }
+      } catch (e) {}
+
+      // Добавляем эффект "ряби" на экране для больших комбо
+      if (combo >= 15) {
+        this.createComboRippleEffect(w / 2, h / 2 - 100, glowColor);
+      }
+
+      // Обновляем счетчик комбо в UI с анимацией
+      if (this.comboSystem.comboText) {
+        this.tweens.add({
+          targets: this.comboSystem.comboText,
+          scaleX: 1.5,
+          scaleY: 1.5,
+          duration: 200,
+          yoyo: true,
+          repeat: 1,
+          ease: 'Back.out'
+        });
+      }
+    }
+  }
+
+  /**
+   * Создание эффекта ряби для больших комбо
+   */
+  createComboRippleEffect(x, y, color) {
+    const ripple = this.add.graphics();
+    ripple.setDepth(45);
+    ripple.setScrollFactor(0);
+    
+    let radius = 20;
+    const maxRadius = 200;
+    
+    const rippleTween = this.tweens.add({
+      targets: { radius: radius },
+      radius: maxRadius,
+      duration: 1000,
+      ease: 'Sine.easeOut',
+      onUpdate: (tween) => {
+        const value = tween.getValue();
+        ripple.clear();
+        ripple.lineStyle(3, color, 0.5 - (value / maxRadius) * 0.5);
+        ripple.strokeCircle(x, y, value);
+      },
+      onComplete: () => {
+        ripple.destroy();
+      }
+    });
+    
+    // Вторая рябь с задержкой
+    this.time.delayedCall(200, () => {
+      const ripple2 = this.add.graphics();
+      ripple2.setDepth(45);
+      ripple2.setScrollFactor(0);
+      
+      this.tweens.add({
+        targets: { radius: 20 },
+        radius: maxRadius * 0.8,
+        duration: 800,
+        ease: 'Sine.easeOut',
+        onUpdate: (tween) => {
+          const value = tween.getValue();
+          ripple2.clear();
+          ripple2.lineStyle(2, color, 0.4 - (value / maxRadius) * 0.4);
+          ripple2.strokeCircle(x, y, value);
+        },
+        onComplete: () => {
+          ripple2.destroy();
+        }
+      });
+    });
+  }
+
+  /**
+   * Обновление счетчика комбо в реальном времени (добавьте в update)
+   */
+  updateComboCounter() {
+    if (!this.comboSystem) return;
+    
+    const combo = this.comboSystem.combo || 0;
+    
+    // Создаем текст для комбо если его нет
+    if (!this.comboSystem.comboText && combo > 1) {
+      this.comboSystem.comboText = this.add.text(
+        this.scale.width / 2, 
+        60, 
+        `x${combo}`,
+        {
+          fontSize: '20px',
+          fontFamily: "'Orbitron', monospace",
+          color: '#ffff00',
+          stroke: '#ff8800',
+          strokeThickness: 3,
+          shadow: { blur: 10, color: '#ffff00', fill: true }
+        }
+      ).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+    }
+    
+    // Обновляем текст и визуал
+    if (this.comboSystem.comboText) {
+      if (combo > 1) {
+        this.comboSystem.comboText.setText(`x${combo}`);
+        this.comboSystem.comboText.setVisible(true);
+        
+        // Меняем цвет в зависимости от комбо
+        if (combo >= 20) {
+          this.comboSystem.comboText.setColor('#ff00ff');
+          this.comboSystem.comboText.setStroke('#ff88ff');
+        } else if (combo >= 10) {
+          this.comboSystem.comboText.setColor('#ff5500');
+          this.comboSystem.comboText.setStroke('#ffaa00');
+        } else if (combo >= 5) {
+          this.comboSystem.comboText.setColor('#ffff00');
+          this.comboSystem.comboText.setStroke('#ff8800');
+        }
+      } else {
+        this.comboSystem.comboText.setVisible(false);
+      }
     }
   }
 
@@ -2763,16 +3402,27 @@ flap() {
     this.countdownActive = false;
   }
 
-  checkLevelProgression() {
+    checkLevelProgression() {
     const nextLevel = Math.floor(this.score / 500);
-    if (this.levelManager && nextLevel > this.levelManager.currentLevel && nextLevel < 6) {
+    // Проверяем, что levelManager существует и nextLevel изменился
+    if (this.levelManager && nextLevel > (this.levelManager.currentLevel || 0) && nextLevel < 6) {
       this.transitionToLevel(nextLevel);
     }
   }
 
-  transitionToLevel(levelIndex) {
+    transitionToLevel(levelIndex) {
     if (this.levelManager) {
-      this.levelManager.switchLevel(levelIndex);
+      // Исправляем: вместо switchLevel используем метод, который существует
+      if (typeof this.levelManager.setLevel === 'function') {
+        this.levelManager.setLevel(levelIndex);
+      } else if (typeof this.levelManager.changeLevel === 'function') {
+        this.levelManager.changeLevel(levelIndex);
+      } else {
+        // Если нет подходящего метода, просто обновляем текущий уровень
+        this.levelManager.currentLevel = levelIndex;
+      }
+      
+      // Пересоздаем waveManager с новым уровнем
       this.waveManager = new WaveManager(this, this.levelManager);
     }
     this.showLevelTransition(levelIndex);
