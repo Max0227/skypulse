@@ -1209,83 +1209,55 @@ flap() {
     this.cameras.main.shake(20, 0.001);
   }
 
-  /**
-   * Спавн ворот
-   */
   spawnGate() {
-      if (this.dead) return;
-      const w = this.scale.width, h = this.scale.height;
-      const difficulty = this.getDifficulty();
-      const gateTexture = this.gateTextures[Math.min(this.level,4)];
-      const gap = difficulty.gap + Phaser.Math.Between(-15,15);
-      const centerY = Phaser.Math.Between(120, h - 120);
-      const topY = centerY - gap/2;
-      const bottomY = centerY + gap/2;
-      const x = w;
-  
-      const topPipe = this.physics.add.image(x, topY, gateTexture)
-        .setOrigin(0.5,1)
-        .setImmovable(true)
-        .setScale(1, Math.max(0.2, topY/400))
-        .setVelocityX(-difficulty.speed);
-      topPipe.body.setAllowGravity(false);
-      topPipe.setBlendMode(Phaser.BlendModes.ADD);
-  
-      const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
-        .setOrigin(0.5,0)
-        .setImmovable(true)
-        .setScale(1, Math.max(0.2, (h - bottomY)/400))
-        .setVelocityX(-difficulty.speed);
-      bottomPipe.body.setAllowGravity(false);
-      bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
-  
-      [topPipe,bottomPipe].forEach(pipe => {
-        pipe.setScale(1,0.01);
-        this.tweens.add({ targets: pipe, scaleY: pipe.scaleY, duration:300, ease:'Back.out' });
-      });
-  
-      if (this.level >= 2 && Math.random() < 0.4) {
-        const moveDistance = Phaser.Math.Between(-50,50);
-        const tween = this.tweens.add({ targets: [topPipe,bottomPipe], y: `+=${moveDistance}`, duration:1200, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
-        topPipe.tween = tween; bottomPipe.tween = tween;
-      }
-  
-      this.pipes.push(topPipe,bottomPipe);
-      this.physics.add.collider(this.player, topPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
-      this.physics.add.collider(this.player, bottomPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
-  
-      const zone = this.add.zone(x+60, h/2, 12, h);
-      this.physics.add.existing(zone);
-      zone.body.setAllowGravity(false);
-      zone.body.setImmovable(true);
-      zone.body.setVelocityX(-difficulty.speed);
-      zone.body.setSize(12, h);
-      this.physics.add.overlap(this.player, zone, ()=>this.passGateWithCombo(zone), null, this);
-      this.scoreZones.push(zone);
-  
-      if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
-    }
-  
-    hitPipe(player, pipe) {
-      if (this.shieldActive) {
-        this.particleManager.createBonusEffect('shield', pipe.x, pipe.y);
-        this.player.body.setVelocityY(-100);
-        return;
-      } else {
-        this.headHP--;
-        this.updateHearts();
-        this.cameras.main.shake(100,0.003);
-        this.hitSound.play();
-        this.player.body.setVelocityX(0);
-        if (this.headHP <= 0) {
-          this.handleDeath();
-        } else {
-          this.player.setTint(0xff8888);
-          this.time.delayedCall(500, ()=>this.player.clearTint());
-        }
-      }
-    
+    if (this.dead) return;
+    const w = this.scale.width, h = this.scale.height;
+    const difficulty = this.getDifficulty();
+    const gateTexture = this.gateTextures[Math.min(this.level,4)];
+    const gap = difficulty.gap + Phaser.Math.Between(-15,15);
+    const centerY = Phaser.Math.Between(120, h - 120);
+    const topY = centerY - gap/2;
+    const bottomY = centerY + gap/2;
+    const x = w;
 
+    const topPipe = this.physics.add.image(x, topY, gateTexture)
+      .setOrigin(0.5,1)
+      .setImmovable(true)
+      .setScale(1, Math.max(0.2, topY/400))
+      .setVelocityX(-difficulty.speed);
+    topPipe.body.setAllowGravity(false);
+    topPipe.setBlendMode(Phaser.BlendModes.ADD);
+
+    const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
+      .setOrigin(0.5,0)
+      .setImmovable(true)
+      .setScale(1, Math.max(0.2, (h - bottomY)/400))
+      .setVelocityX(-difficulty.speed);
+    bottomPipe.body.setAllowGravity(false);
+    bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
+
+    [topPipe,bottomPipe].forEach(pipe => {
+      pipe.setScale(1,0.01);
+      this.tweens.add({ targets: pipe, scaleY: pipe.scaleY, duration:300, ease:'Back.out' });
+    });
+
+    if (this.level >= 2 && Math.random() < 0.4) {
+      const moveDistance = Phaser.Math.Between(-50,50);
+      const tween = this.tweens.add({ targets: [topPipe,bottomPipe], y: `+=${moveDistance}`, duration:1200, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
+      topPipe.tween = tween; bottomPipe.tween = tween;
+    }
+
+    this.pipes.push(topPipe,bottomPipe);
+    this.physics.add.collider(this.player, topPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
+    this.physics.add.collider(this.player, bottomPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
+
+    const zone = this.add.zone(x+60, h/2, 12, h);
+    this.physics.add.existing(zone);
+    zone.body.setAllowGravity(false);
+    zone.body.setImmovable(true);
+    zone.body.setVelocityX(-difficulty.speed);
+    zone.body.setSize(12, h);
+    this.physics.add.overlap(this.player, zone, ()=>this.passGateWithCombo(zone), null, this);
     this.scoreZones.push(zone);
 
     // Спавн монет, астероидов, усилителей
