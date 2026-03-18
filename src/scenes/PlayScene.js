@@ -528,35 +528,6 @@ export class PlayScene extends Phaser.Scene {
   constructor() {
     super('play');
   }
-  // Добавьте этот метод в класс PlayScene
-flap() {
-  if (!this.player || !this.player.body || this.dead) return;
-  
-  // Прыжок
-  this.player.body.setVelocityY(-this.jumpPower);
-  
-  // Анимация сжатия
-  this.player.setScale(0.95);
-  this.tweens.add({ 
-    targets: this.player, 
-    scaleX: 0.9, 
-    scaleY: 0.9, 
-    duration: 150, 
-    ease: 'Quad.out' 
-  });
-  
-  // Звук (с проверкой)
-  try { 
-    if (this.tapSound) this.tapSound.play(); 
-  } catch (e) {}
-  
-  // Вибрация для Telegram
-  try { 
-    if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
-  } catch (e) {}
-}
 
   create() {
     console.log('PlayScene: create started');
@@ -698,23 +669,15 @@ flap() {
     this.createUI();
 
     // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
-    // В методе create()
-this.input.on('pointerdown', (pointer) => {
-  // Проверяем, что нажатие не на кнопку
-  if (pointer.targetObject) return;
-  
-  if (this.dead) { 
-    this.scene.start('menu'); 
-    return; 
-  }
-  
-  if (!this.started) {
-    this.startRun();
-  }
-  
-  // Вызываем flap при каждом нажатии
-  this.flap();
-});
+    this.input.on('pointerdown', (pointer) => {
+      if (pointer.targetObject) return;
+      if (this.dead) {
+        this.scene.start('menu');
+        return;
+      }
+      if (!this.started) this.startRun();
+      this.flap();
+    });
 
     window.addEventListener('blur', () => {
       if (this.started && !this.dead && !this.isPaused) {
@@ -2414,7 +2377,7 @@ this.input.on('pointerdown', (pointer) => {
     this.createGameOverBox();
 
     // Коллизии
-    this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
+    this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
 
     // Коллизии пуль с врагами
     this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
@@ -2953,26 +2916,60 @@ this.input.on('pointerdown', (pointer) => {
   }
 
   spawnCoin(x, y) {
-      if (Math.random() > 0.9) return;
-      let coinType = 'gold', texture = 'coin_gold';
-      const r = Math.random();
-      if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
-      else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
-      else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
-      else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
-      const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
-        .setImmovable(true)
-        .setVelocityX(-this.currentSpeed)
-        .setAngularVelocity(200);
-      coin.body.setAllowGravity(false);
-      coin.setScale(0.01);
-      coin.coinType = coinType;
-      coin.setBlendMode(Phaser.BlendModes.ADD);
-      coin.collected = false;
-      this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
-      this.coins.push(coin);
-      this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
+    if (Math.random() > 0.9) return;
+
+    let coinType = 'gold', texture = 'coin_gold';
+    const r = Math.random();
+
+    const redChance = 0.1 + (this.gameLevel * 0.02);
+    const blueChance = 0.1 + (this.gameLevel * 0.015);
+    const greenChance = 0.1 + (this.gameLevel * 0.01);
+    const purpleChance = 0.1 + (this.gameLevel * 0.005);
+
+    if (this.gameLevel >= 1 && r < redChance) {
+      coinType = 'red';
+      texture = 'coin_red';
+    } else if (this.gameLevel >= 2 && r < redChance + blueChance) {
+      coinType = 'blue';
+      texture = 'coin_blue';
+    } else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) {
+      coinType = 'green';
+      texture = 'coin_green';
+    } else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) {
+      coinType = 'purple';
+      texture = 'coin_purple';
     }
+
+    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
+      .setImmovable(true)
+      .setAngularVelocity(200);
+
+    if (coin.body) {
+      coin.body.setAllowGravity(false);
+      coin.body.setGravityY(0);
+      coin.body.setVelocityY(0);
+      coin.setVelocityX(-this.currentSpeed);
+      coin.body.velocity.x = -this.currentSpeed;
+    }
+
+    coin.setScale(0.01);
+    coin.coinType = coinType;
+    coin.setBlendMode(Phaser.BlendModes.ADD);
+    coin.collected = false;
+
+    this.tweens.add({
+      targets: coin,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.out'
+    });
+
+    this.coinGroup.add(coin);
+    if (this.player) {
+      this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
+    }
+  }
 
   completeLevel() {
     let stars = 1;
