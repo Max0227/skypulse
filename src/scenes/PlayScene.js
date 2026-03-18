@@ -166,7 +166,15 @@ this.coinGroup.getChildren().forEach(coin => {
     coin.body.setVelocityY(0);
   }
 });
-
+// Принудительно устанавливаем скорость монет
+this.coinGroup.getChildren().forEach(coin => {
+  if (coin.active && coin.body) {
+    coin.body.setVelocityX(-this.currentSpeed);
+    coin.body.setVelocityY(0);
+    coin.body.setAllowGravity(false);
+    coin.body.setGravityY(0);
+  }
+});
     // Движение игрока вправо при наличии вагонов
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
     this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
@@ -966,21 +974,23 @@ this.coinGroup.getChildren().forEach(coin => {
   else if (this.level >= 3 && r < 0.40) { coinType = 'green'; texture = 'coin_green'; }
   else if (this.level >= 4 && r < 0.50) { coinType = 'purple'; texture = 'coin_purple'; }
   
-  const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-    .setImmovable(true)
-    .setVelocityX(-this.currentSpeed)
-    .setAngularVelocity(200);
+  // Создаём монету с правильной физикой
+  const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture);
   
-  // ===== ВАЖНО: отключаем гравитацию =====
-  coin.body.setAllowGravity(false);
-  coin.body.setGravityY(0); // принудительно обнуляем вертикальную гравитацию
-  coin.body.setVelocityY(0); // гарантируем, что нет вертикальной скорости
+  // ===== НАСТРОЙКА ФИЗИКИ =====
+  coin.body.setAllowGravity(false);      // отключаем гравитацию
+  coin.body.setGravityY(0);              // обнуляем вертикальную гравитацию
+  coin.body.setVelocityX(-this.currentSpeed); // скорость влево
+  coin.body.setVelocityY(0);              // гарантируем отсутствие вертикальной скорости
+  coin.setImmovable(true);                // чтобы не двигался от столкновений
   
+  coin.setAngularVelocity(200);
   coin.setScale(0.01);
   coin.coinType = coinType;
   coin.setBlendMode(Phaser.BlendModes.ADD);
   coin.collected = false;
   
+  // Анимация появления
   this.tweens.add({ 
     targets: coin, 
     scaleX: 1, 
@@ -991,6 +1001,9 @@ this.coinGroup.getChildren().forEach(coin => {
   
   this.coinGroup.add(coin);
   this.coins.push(coin);
+  
+  // ОТЛАДКА: проверим скорость монеты
+  console.log('Монета создана:', coin.x, coin.y, 'скорость X:', coin.body.velocity.x);
 }
 
   hitPipe(player, pipe) {
