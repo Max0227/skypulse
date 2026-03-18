@@ -528,6 +528,35 @@ export class PlayScene extends Phaser.Scene {
   constructor() {
     super('play');
   }
+  // Добавьте этот метод в класс PlayScene
+flap() {
+  if (!this.player || !this.player.body || this.dead) return;
+  
+  // Прыжок
+  this.player.body.setVelocityY(-this.jumpPower);
+  
+  // Анимация сжатия
+  this.player.setScale(0.95);
+  this.tweens.add({ 
+    targets: this.player, 
+    scaleX: 0.9, 
+    scaleY: 0.9, 
+    duration: 150, 
+    ease: 'Quad.out' 
+  });
+  
+  // Звук (с проверкой)
+  try { 
+    if (this.tapSound) this.tapSound.play(); 
+  } catch (e) {}
+  
+  // Вибрация для Telegram
+  try { 
+    if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) {
+      window.Telegram.WebApp.HapticFeedback.selectionChanged();
+    }
+  } catch (e) {}
+}
 
   create() {
     console.log('PlayScene: create started');
@@ -669,15 +698,23 @@ export class PlayScene extends Phaser.Scene {
     this.createUI();
 
     // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
-    this.input.on('pointerdown', (pointer) => {
-      if (pointer.targetObject) return;
-      if (this.dead) {
-        this.scene.start('menu');
-        return;
-      }
-      if (!this.started) this.startRun();
-      this.flap();
-    });
+    // В методе create()
+this.input.on('pointerdown', (pointer) => {
+  // Проверяем, что нажатие не на кнопку
+  if (pointer.targetObject) return;
+  
+  if (this.dead) { 
+    this.scene.start('menu'); 
+    return; 
+  }
+  
+  if (!this.started) {
+    this.startRun();
+  }
+  
+  // Вызываем flap при каждом нажатии
+  this.flap();
+});
 
     window.addEventListener('blur', () => {
       if (this.started && !this.dead && !this.isPaused) {
