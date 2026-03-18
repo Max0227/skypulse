@@ -20,17 +20,8 @@ export class SkinShopScene extends Phaser.Scene {
     gradient.destroy();
     this.add.image(0, 0, 'skin_shop_bg').setOrigin(0);
 
-    // Звёзды для красоты
-    for (let i = 0; i < 50; i++) {
-      const star = this.add.image(
-        Phaser.Math.Between(0, w),
-        Phaser.Math.Between(0, h),
-        'star'
-      );
-      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
-      star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.7));
-      star.setDepth(-10);
-    }
+    // Звёзды
+    this.createStars();
 
     // Заголовок
     this.add.text(w / 2, 30, 'МАГАЗИН СКИНОВ', {
@@ -70,9 +61,10 @@ export class SkinShopScene extends Phaser.Scene {
         .setStrokeStyle(2, borderColor)
         .setInteractive();
 
-      // Превью скина (просто цветной квадрат с текстом)
-      const preview = this.add.rectangle(40, currentY, 50, 50, this.getSkinColor(skin.id))
-        .setStrokeStyle(1, 0xffffff);
+      // Превью скина
+      const preview = this.add.image(40, currentY, skin.texture)
+        .setScale(0.7)
+        .setOrigin(0, 0.5);
 
       // Название
       this.add.text(100, currentY - 20, skin.name, {
@@ -112,13 +104,30 @@ export class SkinShopScene extends Phaser.Scene {
         color: statusColor
       }).setOrigin(1, 0.5);
 
+      // Редкость
+      const rarityColors = {
+        'Обычный': COLORS.text_secondary,
+        'Редкий': COLORS.primary,
+        'Эпический': COLORS.accent,
+        'Легендарный': COLORS.success
+      };
+      const rarityColor = rarityColors[skin.rarity] || COLORS.text_secondary;
+      
+      this.add.text(w - 30, currentY - 20, skin.rarity, {
+        fontSize: '10px',
+        fontFamily: "'Space Mono', monospace",
+        color: rarityColor
+      }).setOrigin(1, 0.5);
+
       // Эффекты наведения
       bg.on('pointerover', () => {
         bg.setFillStyle(0x2a2a4a);
+        preview.setScale(0.75);
       });
 
       bg.on('pointerout', () => {
         bg.setFillStyle(0x1a1a3a, 0.8);
+        preview.setScale(0.7);
       });
 
       // Обработка клика
@@ -126,7 +135,7 @@ export class SkinShopScene extends Phaser.Scene {
         if (owned && !selected) {
           // Выбрать скин
           if (gameManager.selectSkin(skin.id)) {
-            audioManager.playSound(this, 'tap_sound', 0.3);
+            try { audioManager.playSound(this, 'tap_sound', 0.3); } catch (e) {}
             this.scene.restart();
           }
         } else if (!owned && (skin.price === 0 || canAfford)) {
@@ -145,16 +154,21 @@ export class SkinShopScene extends Phaser.Scene {
     this.createButton(w / 2, h - 40, 'НАЗАД', () => this.scene.start('menu'));
   }
 
-  getSkinColor(skinId) {
-    const colors = {
-      default: 0xffaa00,
-      neon: 0x00ffff,
-      cyber: 0xff00ff,
-      gold: 0xffaa00,
-      rainbow: 0xff44ff,
-      crystal: 0x88aaff
-    };
-    return colors[skinId] || 0xffffff;
+  createStars() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    for (let i = 0; i < 100; i++) {
+      const star = this.add.image(
+        Phaser.Math.Between(0, w),
+        Phaser.Math.Between(0, h),
+        'star'
+      );
+      star.setScale(Phaser.Math.FloatBetween(0.2, 1.0));
+      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
+      star.setAlpha(Phaser.Math.FloatBetween(0.2, 0.6));
+      star.setDepth(-5);
+    }
   }
 
   confirmPurchase(skin) {
@@ -165,26 +179,38 @@ export class SkinShopScene extends Phaser.Scene {
       .setDepth(50)
       .setScrollFactor(0);
 
-    const panel = this.add.rectangle(w / 2, h / 2, 300, 200, 0x0a0a1a, 0.95)
+    const panel = this.add.rectangle(w / 2, h / 2, 300, 220, 0x0a0a1a, 0.95)
       .setStrokeStyle(2, COLORS.primary)
       .setDepth(51)
       .setScrollFactor(0);
 
-    this.add.text(w / 2, h / 2 - 50, `Купить ${skin.name}?`, {
+    // Превью скина
+    const preview = this.add.image(w / 2, h / 2 - 50, skin.texture)
+      .setScale(1.2)
+      .setDepth(52)
+      .setScrollFactor(0);
+
+    this.add.text(w / 2, h / 2 + 10, skin.name, {
       fontSize: '18px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary
     }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
     if (skin.price > 0) {
-      this.add.text(w / 2, h / 2 - 20, `${skin.price} 💎`, {
+      this.add.text(w / 2, h / 2 + 40, `${skin.price} 💎`, {
         fontSize: '24px',
         fontFamily: "'Space Mono', monospace",
         color: COLORS.accent
       }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+    } else {
+      this.add.text(w / 2, h / 2 + 40, 'БЕСПЛАТНО', {
+        fontSize: '20px',
+        fontFamily: "'Orbitron', sans-serif",
+        color: COLORS.success
+      }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
     }
 
-    const yesBtn = this.add.text(w / 2 - 80, h / 2 + 50, 'КУПИТЬ', {
+    const yesBtn = this.add.text(w / 2 - 80, h / 2 + 90, 'КУПИТЬ', {
       fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#00ff00',
@@ -192,7 +218,7 @@ export class SkinShopScene extends Phaser.Scene {
       padding: { x: 15, y: 8 }
     }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
-    const noBtn = this.add.text(w / 2 + 80, h / 2 + 50, 'ОТМЕНА', {
+    const noBtn = this.add.text(w / 2 + 80, h / 2 + 90, 'ОТМЕНА', {
       fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#ff0000',
@@ -204,12 +230,13 @@ export class SkinShopScene extends Phaser.Scene {
     yesBtn.on('pointerout', () => yesBtn.setStyle({ color: '#00ff00', backgroundColor: '#1a1a3a' }));
     yesBtn.on('pointerdown', () => {
       if (gameManager.purchaseSkin(skin.id)) {
-        audioManager.playSound(this, 'purchase_sound', 0.5);
+        try { audioManager.playSound(this, 'purchase_sound', 0.5); } catch (e) {}
         this.balanceText.setText(`💎 ${gameManager.data.crystals}`);
         this.scene.restart();
       }
       overlay.destroy();
       panel.destroy();
+      preview.destroy();
       yesBtn.destroy();
       noBtn.destroy();
     });
@@ -219,6 +246,7 @@ export class SkinShopScene extends Phaser.Scene {
     noBtn.on('pointerdown', () => {
       overlay.destroy();
       panel.destroy();
+      preview.destroy();
       yesBtn.destroy();
       noBtn.destroy();
     });

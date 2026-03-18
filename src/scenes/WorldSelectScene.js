@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, LEVEL_CONFIG } from '../config';
 import { gameManager } from '../managers/GameManager';
+import { audioManager } from '../managers/AudioManager';
 
 export class WorldSelectScene extends Phaser.Scene {
   constructor() {
@@ -8,7 +9,8 @@ export class WorldSelectScene extends Phaser.Scene {
   }
 
   create() {
-    const w = this.scale.width, h = this.scale.height;
+    const w = this.scale.width;
+    const h = this.scale.height;
 
     // Фон
     const gradient = this.make.graphics({ x: 0, y: 0, add: false });
@@ -19,13 +21,9 @@ export class WorldSelectScene extends Phaser.Scene {
     this.add.image(0, 0, 'world_bg').setOrigin(0);
 
     // Звёзды
-    for (let i = 0; i < 100; i++) {
-      const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
-      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
-      star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
-      star.setDepth(-10);
-    }
+    this.createStars();
 
+    // Заголовок
     this.add.text(w / 2, 40, 'ВЫБОР МИРА', {
       fontSize: '32px',
       fontFamily: "'Orbitron', sans-serif",
@@ -35,70 +33,148 @@ export class WorldSelectScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Список миров (все из LEVEL_CONFIG)
-    const worlds = Object.keys(LEVEL_CONFIG).map(Number).filter(w => w >= 0); // все индексы
-    const startY = 130;
-    const spacing = 90;
+    const worlds = [0, 1, 2, 3, 4];
+    let y = 120;
+    const spacing = 110;
 
-    worlds.forEach((worldIndex, i) => {
+    worlds.forEach(worldIndex => {
       const world = LEVEL_CONFIG[worldIndex];
-      const unlocked = gameManager.data.unlockedWorlds?.includes(worldIndex) || worldIndex === 0;
+      const unlocked = gameManager.data.unlockedWorlds.includes(worldIndex);
       const stars = gameManager.getStarsForWorld(worldIndex);
+      const progress = gameManager.getWorldProgress(worldIndex) + 1; // 0-9 -> 1-10
 
-      const y = startY + i * spacing;
-      const bg = this.add.rectangle(w / 2, y, w - 60, 80, 0x1a1a3a, 0.8)
-        .setStrokeStyle(2, unlocked ? COLORS.primary : COLORS.text_muted)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerover', () => unlocked && bg.setFillStyle(0x2a2a4a))
-        .on('pointerout', () => bg.setFillStyle(0x1a1a3a, 0.8))
-        .on('pointerdown', () => {
-          if (unlocked) {
-            gameManager.setCurrentWorld(worldIndex);
-            this.scene.start('levelSelect');
-          }
+      // Карточка мира
+      const bg = this.add.rectangle(w / 2, y, w - 60, 90, 0x1a1a3a, 0.8)
+        .setStrokeStyle(3, unlocked ? this.getWorldColor(worldIndex) : COLORS.text_muted)
+        .setInteractive({ useHandCursor: true });
+
+      // Эффект свечения для разблокированных миров
+      if (unlocked) {
+        this.tweens.add({
+          targets: bg,
+          strokeColor: this.getWorldColor(worldIndex),
+          alpha: 0.9,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1
         });
+      }
 
-      this.add.text(w / 2, y - 25, world.name, {
-        fontSize: '20px',
+      // Название мира с цветом
+      this.add.text(w / 2, y - 30, world.name, {
+        fontSize: '22px',
         fontFamily: "'Orbitron', sans-serif",
-        color: unlocked ? COLORS.text_primary : COLORS.text_muted
+        color: unlocked ? this.getWorldColorString(worldIndex) : COLORS.text_muted
       }).setOrigin(0.5);
 
-      this.add.text(w / 2, y + 10, `⭐ ${stars} / 15`, {
-        fontSize: '14px',
+      // Описание
+      this.add.text(w / 2, y - 5, world.description, {
+        fontSize: '12px',
         fontFamily: "'Space Mono', monospace",
-        color: COLORS.accent
+        color: unlocked ? COLORS.text_secondary : COLORS.text_muted
       }).setOrigin(0.5);
 
-      // Описание (можно добавить)
-      this.add.text(w / 2, y + 30, world.description, {
-        fontSize: '10px',
+      // Прогресс
+      this.add.text(w / 2, y + 20, `Уровни: ${progress}/10`, {
+        fontSize: '12px',
         fontFamily: "'Space Mono', monospace",
-        color: COLORS.text_secondary
+        color: unlocked ? COLORS.accent : COLORS.text_muted
       }).setOrigin(0.5);
+
+      // Звёзды
+      this.add.text(w / 2, y + 35, `⭐ ${stars}/30`, {
+        fontSize: '12px',
+        fontFamily: "'Space Mono', monospace",
+        color: unlocked ? COLORS.accent : COLORS.text_muted
+      }).setOrigin(0.5);
+
+      // Обработчики
+      bg.on('pointerover', () => {
+        if (unlocked) {
+          bg.setFillStyle(0x2a2a4a);
+        }
+      });
+
+      bg.on('pointerout', () => {
+        bg.setFillStyle(0x1a1a3a, 0.8);
+      });
+
+      bg.on('pointerdown', () => {
+        if (unlocked) {
+          gameManager.setCurrentWorld(worldIndex);
+          this.scene.start('levelSelect');
+          try { audioManager.playSound(this, 'tap_sound', 0.3); } catch (e) {}
+        }
+      });
+
+      y += spacing;
     });
 
+    // Кнопка назад
     this.createButton(w / 2, h - 40, 'НАЗАД', () => this.scene.start('menu'));
+  }
+
+  createStars() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    for (let i = 0; i < 150; i++) {
+      const star = this.add.image(
+        Phaser.Math.Between(0, w),
+        Phaser.Math.Between(0, h),
+        'star'
+      );
+      star.setScale(Phaser.Math.FloatBetween(0.2, 1.2));
+      star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
+      star.setAlpha(Phaser.Math.FloatBetween(0.2, 0.7));
+      star.setDepth(-5);
+    }
+  }
+
+  getWorldColor(worldIndex) {
+    const colors = [
+      0x00ffff, // Космос - голубой
+      0xff00ff, // Киберпанк - розовый
+      0xff6600, // Подземелье - оранжевый
+      0xffaa00, // Астероиды - жёлтый
+      0xaa00aa  // Чёрная дыра - фиолетовый
+    ];
+    return colors[worldIndex] || 0x00ffff;
+  }
+
+  getWorldColorString(worldIndex) {
+    const colors = [
+      '#00ffff',
+      '#ff00ff',
+      '#ff6600',
+      '#ffaa00',
+      '#aa00aa'
+    ];
+    return colors[worldIndex] || '#00ffff';
   }
 
   createButton(x, y, text, callback) {
     const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
+      fontSize: '18px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary,
       backgroundColor: '#1a1a3a',
-      padding: { x: 20, y: 8 },
+      padding: { x: 30, y: 10 },
       stroke: COLORS.primary,
       strokeThickness: 2
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', () => {
-        btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        btn.setScale(1.05);
-      })
-      .on('pointerout', () => {
-        btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        btn.setScale(1);
-      })
-      .on('pointerdown', callback);
+    }).setOrigin(0.5).setInteractive();
+
+    btn.on('pointerover', () => {
+      btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
+      btn.setScale(1.05);
+    });
+
+    btn.on('pointerout', () => {
+      btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
+      btn.setScale(1);
+    });
+
+    btn.on('pointerdown', callback);
     return btn;
   }
 }

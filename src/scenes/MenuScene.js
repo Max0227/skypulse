@@ -12,6 +12,7 @@ export class MenuScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
+    // Фон
     const gradient = this.make.graphics({ x: 0, y: 0, add: false });
     gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
     gradient.fillRect(0, 0, w, h);
@@ -19,14 +20,26 @@ export class MenuScene extends Phaser.Scene {
     gradient.destroy();
     this.add.image(0, 0, 'menu_bg').setOrigin(0);
 
-    for (let i = 0; i < 100; i++) {
-      const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
+    // Звёзды (мерцающие)
+    this.stars = [];
+    for (let i = 0; i < 150; i++) {
+      const star = this.add.image(
+        Phaser.Math.Between(0, w),
+        Phaser.Math.Between(0, h),
+        'star'
+      );
+      star.setScale(Phaser.Math.FloatBetween(0.2, 1.5));
       star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
       star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
       star.setDepth(-10);
+      this.stars.push({
+        sprite: star,
+        flicker: Phaser.Math.FloatBetween(0.01, 0.03)
+      });
     }
 
-    const title = this.add.text(w / 2, h * 0.15, 'SKYPULSE', {
+    // Заголовок с анимацией
+    const title = this.add.text(w / 2, h * 0.12, 'SKYPULSE', {
       fontSize: '60px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary,
@@ -34,71 +47,133 @@ export class MenuScene extends Phaser.Scene {
       strokeThickness: 4,
       shadow: { blur: 20, color: COLORS.primary, fill: true }
     }).setOrigin(0.5);
+
     this.tweens.add({
       targets: title,
       scaleX: 1.05,
       scaleY: 1.05,
       duration: 1000,
       yoyo: true,
-      repeat: -1
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
 
+    // Подзаголовок
+    this.add.text(w / 2, h * 0.22, 'КИБЕРПАНК ТАКСИ', {
+      fontSize: '16px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: COLORS.text_secondary,
+      stroke: '#0f172a',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    // Статистика
     const stats = gameManager.data.stats;
     this.add.text(w / 2, h * 0.28,
       `🏆 ${stats.maxScore} | ⭐ Уровень ${stats.maxLevel} | 🚃 ${stats.maxWagons}`,
-      { fontSize: '14px', fontFamily: "'Space Mono', monospace", color: COLORS.text_secondary }
+      {
+        fontSize: '14px',
+        fontFamily: "'Space Mono', monospace",
+        color: COLORS.text_secondary
+      }
     ).setOrigin(0.5);
 
-    // Кнопка ИГРАТЬ ведёт к выбору мира
-    this.createButton(w / 2, h * 0.45, 'ИГРАТЬ', () => {
-      this.scene.start('worldSelect');
-    }, 'large');
+    // Кнопки меню
+    const buttonY = [0.38, 0.48, 0.58, 0.68, 0.78, 0.88];
+    const buttonTexts = ['ИГРАТЬ', 'МИРЫ', 'МАГАЗИН', 'СКИНЫ', 'ДОСТИЖЕНИЯ', 'НАСТРОЙКИ'];
+    const buttonCallbacks = [
+      () => {
+        if (!gameManager.data.tutorialCompleted) {
+          this.scene.start('tutorial');
+        } else {
+          this.scene.start('worldSelect');
+        }
+      },
+      () => this.scene.start('worldSelect'),
+      () => this.scene.start('shop'),
+      () => this.scene.start('skinShop'),
+      () => this.scene.start('achievements'),
+      () => this.scene.start('settings')
+    ];
 
-    this.createButton(w / 2, h * 0.58, 'МАГАЗИН', () => this.scene.start('shop'));
-    this.createButton(w / 2, h * 0.68, 'ДОСТИЖЕНИЯ', () => this.scene.start('achievements'));
-    this.createButton(w / 2, h * 0.78, 'КВЕСТЫ', () => this.scene.start('quests'));
-    this.createButton(w / 2, h * 0.88, 'НАСТРОЙКИ', () => this.scene.start('settings'));
+    buttonTexts.forEach((text, index) => {
+      const size = index === 0 ? 'large' : 'normal';
+      this.createButton(w / 2, h * buttonY[index], text, buttonCallbacks[index], size);
+    });
 
-    this.add.text(w / 2, h - 20, 'v3.0.0', {
+    // Версия
+    this.add.text(w / 2, h - 20, 'v3.5.0', {
       fontSize: '10px',
       fontFamily: "'Space Mono', monospace",
       color: COLORS.text_muted
     }).setOrigin(0.5);
 
+    // Музыка
     audioManager.playMusic(this, 0.5);
+    
+    // Анимация мерцания звёзд
+    this.time.addEvent({
+      delay: 50,
+      callback: this.updateStars,
+      callbackScope: this,
+      loop: true
+    });
+  }
+
+  updateStars() {
+    this.stars.forEach(star => {
+      if (star.flicker) {
+        star.sprite.alpha = 0.5 + Math.sin(Date.now() * star.flicker) * 0.4;
+      }
+    });
   }
 
   createButton(x, y, text, callback, size = 'normal') {
-    const fontSize = size === 'large' ? '24px' : '16px';
+    const fontSize = size === 'large' ? '24px' : '18px';
     const padding = size === 'large' ? { x: 40, y: 15 } : { x: 30, y: 10 };
-    const btn = this.add.text(x, y, text, {
+    const width = size === 'large' ? 200 : 180;
+
+    // Фон кнопки с градиентом
+    const bg = this.add.rectangle(x, y, width, 50, 0x1a1a3a)
+      .setStrokeStyle(2, COLORS.primary)
+      .setInteractive({ useHandCursor: true });
+
+    // Текст кнопки
+    const btnText = this.add.text(x, y, text, {
       fontSize,
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary,
-      backgroundColor: '#1a1a3a',
-      padding,
       stroke: COLORS.primary,
-      strokeThickness: 2,
-      shadow: { blur: 10, color: COLORS.primary, fill: true }
-    }).setOrigin(0.5).setInteractive()
-      .on('pointerover', () => {
-        btn.setStyle({ color: COLORS.text_primary, backgroundColor: COLORS.primary });
-        btn.setScale(1.05);
-      })
-      .on('pointerout', () => {
-        btn.setStyle({ color: COLORS.primary, backgroundColor: '#1a1a3a' });
-        btn.setScale(1);
-      })
-      .on('pointerdown', () => {
-        this.tweens.add({
-          targets: btn,
-          scaleX: 0.95,
-          scaleY: 0.95,
-          duration: 100,
-          yoyo: true,
-          onComplete: callback
-        });
+      strokeThickness: 1
+    }).setOrigin(0.5);
+
+    // Эффекты наведения
+    bg.on('pointerover', () => {
+      bg.setFillStyle(0x2a2a4a);
+      btnText.setStyle({ color: COLORS.text_primary });
+      bg.setScale(1.05);
+      btnText.setScale(1.05);
+    });
+
+    bg.on('pointerout', () => {
+      bg.setFillStyle(0x1a1a3a);
+      btnText.setStyle({ color: COLORS.primary });
+      bg.setScale(1);
+      btnText.setScale(1);
+    });
+
+    bg.on('pointerdown', () => {
+      this.tweens.add({
+        targets: [bg, btnText],
+        scaleX: 0.95,
+        scaleY: 0.95,
+        duration: 100,
+        yoyo: true,
+        onComplete: callback
       });
-    return btn;
+      try { audioManager.playSound(this, 'tap_sound', 0.2); } catch (e) {}
+    });
+
+    return { bg, btnText };
   }
 }

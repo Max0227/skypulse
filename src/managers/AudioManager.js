@@ -6,27 +6,24 @@ export class AudioManager {
     this.sounds = {};
     this.musicVolume = 0.3;
     this.soundVolume = 0.5;
+    this.context = null;
   }
 
-  /**
-   * Воспроизведение фоновой музыки
-   * @param {Phaser.Scene} scene - текущая сцена
-   * @param {string} key - ключ аудиофайла (по умолчанию 'bg_music')
-   * @param {number} volume - громкость (по умолчанию 0.4)
-   */
-  playMusic(scene, volume = 0.4) {
-    // Проверяем, включена ли музыка в настройках
+  init(scene) {
+    this.context = scene.sound.context;
+  }
+
+  playMusic(scene, key = 'bg_music', volume = 0.4) {
     if (!gameManager.data.musicEnabled) return;
     
-    // Проверяем, есть ли аудиофайл в кэше
-    if (!scene.cache.audio.has('bg_music')) {
-      console.warn('⚠️ Music file "bg_music" not found in cache');
-      return;
-    }
-    
     try {
+      if (!scene.cache.audio.has(key)) {
+        console.warn(`⚠️ Music file "${key}" not found in cache`);
+        return;
+      }
+      
       if (!this.music) {
-        this.music = scene.sound.add('bg_music', { 
+        this.music = scene.sound.add(key, { 
           loop: true, 
           volume: volume 
         });
@@ -34,7 +31,6 @@ export class AudioManager {
         this.music.setVolume(volume);
       }
       
-      // Проверяем, не заблокирован ли аудиоконтекст (для мобильных браузеров)
       if (scene.sound.context.state === 'suspended') {
         scene.sound.context.resume().then(() => {
           if (!this.music.isPlaying) {
@@ -51,55 +47,54 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Остановка фоновой музыки
-   */
   stopMusic() {
     if (this.music && this.music.isPlaying) {
       this.music.stop();
     }
   }
 
-  /**
-   * Воспроизведение звукового эффекта с защитой от отсутствующих файлов
-   * @param {Phaser.Scene} scene - текущая сцена
-   * @param {string} key - ключ аудиофайла (например 'coin_sound')
-   * @param {number} volume - громкость (по умолчанию 0.5)
-   */
+  pauseMusic() {
+    if (this.music && this.music.isPlaying) {
+      this.music.pause();
+    }
+  }
+
+  resumeMusic(scene) {
+    if (this.music && this.music.isPaused) {
+      this.music.resume();
+    } else {
+      this.playMusic(scene);
+    }
+  }
+
   playSound(scene, key, volume = 0.5) {
-    // Проверяем, включены ли звуки в настройках
     if (!gameManager.data.soundEnabled) return;
     
-    // Проверяем, есть ли аудиофайл в кэше
-    if (!scene.cache.audio.has(key)) {
-      // Не выводим предупреждение в консоль для каждого звука, чтобы не засорять лог
-      // Можно раскомментировать для отладки:
-      // console.warn(`⚠️ Sound file "${key}" not found in cache`);
-      return;
-    }
-    
     try {
-      // Проверяем, не заблокирован ли аудиоконтекст
+      if (!scene.cache.audio.has(key)) {
+        return;
+      }
+      
       if (scene.sound.context.state === 'suspended') {
         scene.sound.context.resume().catch(e => console.warn('Failed to resume audio context:', e));
       }
       
-      // Создаём звук, если его ещё нет в кэше менеджера
       if (!this.sounds[key]) {
         this.sounds[key] = scene.sound.add(key, { volume });
       }
       
       this.sounds[key].play();
     } catch (e) {
-      // Игнорируем ошибки звука, чтобы не ломать игру
-      console.warn(`⚠️ Sound "${key}" playback error:`, e);
+      // Игнорируем ошибки звука
     }
   }
 
-  /**
-   * Установка громкости музыки
-   * @param {number} volume - громкость от 0 до 1
-   */
+  playRandomSound(scene, keys, volume = 0.5) {
+    if (!keys || keys.length === 0) return;
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    this.playSound(scene, randomKey, volume);
+  }
+
   setMusicVolume(volume) {
     this.musicVolume = volume;
     if (this.music) {
@@ -107,14 +102,9 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Установка громкости звуков
-   * @param {number} volume - громкость от 0 до 1
-   */
   setSoundVolume(volume) {
     this.soundVolume = volume;
     
-    // Обновляем громкость всех уже созданных звуков
     for (let key in this.sounds) {
       if (this.sounds[key]) {
         this.sounds[key].setVolume(volume);
@@ -122,13 +112,9 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Выключение всей музыки и звуков
-   */
   mute() {
     this.stopMusic();
     
-    // Останавливаем все текущие звуки
     for (let key in this.sounds) {
       if (this.sounds[key] && this.sounds[key].isPlaying) {
         this.sounds[key].stop();
@@ -136,20 +122,11 @@ export class AudioManager {
     }
   }
 
-  /**
-   * Включение музыки и звуков (воспроизведение текущей музыки заново)
-   * @param {Phaser.Scene} scene - текущая сцена
-   */
   unmute(scene) {
     this.playMusic(scene);
   }
 
-  /**
-   * Предзагрузка всех звуков (можно вызвать из BootScene)
-   * @param {Phaser.Scene} scene - сцена BootScene
-   */
   preloadSounds(scene) {
-    // Список всех звуков, используемых в игре
     const soundFiles = [
       { key: 'coin_sound', file: 'sounds/coin.mp3' },
       { key: 'item_sound', file: 'sounds/item.mp3' },
@@ -160,7 +137,16 @@ export class AudioManager {
       { key: 'revive_sound', file: 'sounds/revive.mp3' },
       { key: 'bg_music', file: 'sounds/fifth_element_theme.mp3' },
       { key: 'shoot_sound', file: 'sounds/shoot.mp3' },
-      { key: 'explosion_sound', file: 'sounds/explosion.mp3' }
+      { key: 'explosion_sound', file: 'sounds/explosion.mp3' },
+      { key: 'hit_sound', file: 'sounds/hit.mp3' },
+      { key: 'powerup_sound', file: 'sounds/powerup.mp3' },
+      { key: 'shield_sound', file: 'sounds/shield.mp3' },
+      { key: 'magnet_sound', file: 'sounds/magnet.mp3' },
+      { key: 'slow_sound', file: 'sounds/slow.mp3' },
+      { key: 'speed_sound', file: 'sounds/speed.mp3' },
+      { key: 'gameover_sound', file: 'sounds/gameover.mp3' },
+      { key: 'win_sound', file: 'sounds/win.mp3' },
+      { key: 'enemy_die_sound', file: 'sounds/enemy_die.mp3' },
     ];
 
     soundFiles.forEach(sound => {
@@ -172,17 +158,10 @@ export class AudioManager {
     });
   }
 
-  /**
-   * Проверка, загружен ли звук в кэш
-   * @param {Phaser.Scene} scene - текущая сцена
-   * @param {string} key - ключ аудиофайла
-   * @returns {boolean}
-   */
   isSoundLoaded(scene, key) {
     return scene.cache.audio.has(key);
   }
 }
 
-// Создаём глобальный экземпляр менеджера и делаем его доступным везде
 export const audioManager = new AudioManager();
 window.audioManager = audioManager;

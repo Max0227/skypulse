@@ -1,12 +1,13 @@
 export class ParticleEffectManager {
   constructor(scene) {
     this.scene = scene;
-    this.maxParticles = 100;
+    this.maxParticles = 200;
     this.activeEmitters = [];
+    this.particleCount = 0;
   }
 
   cleanup() {
-    this.activeEmitters = this.activeEmitters.filter(e => e && e.alive);
+    this.activeEmitters = this.activeEmitters.filter(e => e && e.active);
     if (this.activeEmitters.length > this.maxParticles) {
       const toRemove = this.activeEmitters[0];
       if (toRemove && toRemove.stop) toRemove.stop();
@@ -23,6 +24,7 @@ export class ParticleEffectManager {
       green: 0x66ff66,
       purple: 0xff66ff
     };
+    
     try {
       const emitter = this.scene.add.particles(x, y, 'flare', {
         speed: { min: 50, max: 150 },
@@ -35,6 +37,11 @@ export class ParticleEffectManager {
       });
       emitter.explode(12);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(500, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -54,6 +61,11 @@ export class ParticleEffectManager {
       });
       emitter.explode(10);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(400, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -73,6 +85,11 @@ export class ParticleEffectManager {
       });
       emitter.explode(20);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(600, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -93,6 +110,14 @@ export class ParticleEffectManager {
         follow: target
       });
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(6000, () => {
+        emitter.stop();
+        this.scene.time.delayedCall(500, () => {
+          emitter.destroy();
+          this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+        });
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -104,8 +129,11 @@ export class ParticleEffectManager {
       speed: [0x00ffff, 0x88ccff],
       magnet: [0xff00ff, 0xff88ff],
       slow: [0xff8800, 0xffaa44],
-      shield: [0x00ffff, 0x88ccff]
+      shield: [0x00ffff, 0x88ccff],
+      double: [0xffff00, 0xffaa00],
+      invincible: [0xffffff, 0x00ffff]
     };
+    
     try {
       const emitter = this.scene.add.particles(x, y, 'flare', {
         speed: { min: -150, max: 150 },
@@ -118,6 +146,11 @@ export class ParticleEffectManager {
       });
       emitter.explode(30);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(600, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -137,6 +170,11 @@ export class ParticleEffectManager {
       });
       emitter.explode(15);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(500, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
@@ -156,12 +194,16 @@ export class ParticleEffectManager {
       });
       emitter.explode(20);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(400, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
   }
 
-  // 👇 НОВЫЙ МЕТОД
   createExplosion(x, y, color = 0xff4444) {
     this.cleanup();
     try {
@@ -176,13 +218,110 @@ export class ParticleEffectManager {
       });
       emitter.explode(25);
       this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(600, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
+  }
+
+  createLevelUpEffect(x, y) {
+    this.cleanup();
+    try {
+      const emitter = this.scene.add.particles(x, y, 'flare', {
+        speed: { min: -200, max: 200 },
+        scale: { start: 1.5, end: 0 },
+        alpha: { start: 0.8, end: 0 },
+        lifespan: 600,
+        quantity: 30,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: [0x00ffff, 0xff00ff, 0xffff00, 0x00ff00]
+      });
+      emitter.explode(30);
+      this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(700, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
+  }
+
+  createTrail(x, y) {
+    try {
+      const emitter = this.scene.add.particles(x, y, 'flare', {
+        speed: 40,
+        scale: { start: 0.4, end: 0 },
+        alpha: { start: 0.8, end: 0 },
+        lifespan: 200,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: [0x00ffff, 0xff00ff, 0xffff00]
+      });
+      return emitter;
+    } catch (e) {
+      console.warn('Trail effect error:', e);
+      return null;
+    }
+  }
+
+  createGatePassEffect(x, y) {
+    this.cleanup();
+    try {
+      const emitter = this.scene.add.particles(x, y, 'flare', {
+        speed: { min: 50, max: 150 },
+        scale: { start: 1.0, end: 0 },
+        alpha: { start: 0.7, end: 0 },
+        lifespan: 300,
+        quantity: 20,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: 0x00ffff
+      });
+      emitter.explode(20);
+      this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(400, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
+  }
+
+  createHealEffect(x, y) {
+    this.cleanup();
+    try {
+      const emitter = this.scene.add.particles(x, y, 'flare', {
+        speed: { min: 30, max: 80 },
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 0.8, end: 0 },
+        lifespan: 400,
+        quantity: 15,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: 0x00ff00
+      });
+      emitter.explode(15);
+      this.activeEmitters.push(emitter);
+      
+      this.scene.time.delayedCall(500, () => {
+        emitter.destroy();
+        this.activeEmitters = this.activeEmitters.filter(e => e !== emitter);
+      });
     } catch (e) {
       console.warn('Particle effect error:', e);
     }
   }
 
   clearAll() {
-    this.activeEmitters.forEach(e => { if (e && e.stop) e.stop(); });
+    this.activeEmitters.forEach(e => {
+      if (e && e.stop) e.stop();
+      if (e && e.destroy) e.destroy();
+    });
     this.activeEmitters = [];
   }
 }
