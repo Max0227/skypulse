@@ -591,6 +591,19 @@ export class PlayScene extends Phaser.Scene {
 
   update(time, delta) {
     if (this.isPaused || this.countdownActive) return;
+    // Принудительно обнуляем вертикальную скорость для всех ворот и монет
+    this.gateGroup.getChildren().forEach(obj => {
+  if (obj.body) {
+    obj.body.setVelocityY(0);
+    obj.body.setGravityY(0);
+  }
+});
+    this.coinGroup.getChildren().forEach(obj => {
+  if (obj.body) {
+    obj.body.setVelocityY(0);
+    obj.body.setGravityY(0);
+  }
+});
 
     this.updateStars(time, delta);
     this.updatePlanets(delta);
@@ -900,6 +913,9 @@ export class PlayScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setImmovable(true)
       .setScale(1, Math.max(0.2, topY / 400));
+     topPipe.body.setAllowGravity(false);
+     topPipe.body.setGravityY(0);
+     topPipe.body.setVelocityY(0);
 
     topPipe.body.setAllowGravity(false);
     topPipe.body.setGravityY(0);
@@ -929,6 +945,9 @@ export class PlayScene extends Phaser.Scene {
     // Зона для подсчёта очков
     const zone = this.add.zone(x + 60, h / 2, 12, h);
     this.physics.add.existing(zone);
+    zone.body.setAllowGravity(false);
+    zone.body.setGravityY(0);
+    zone.body.setVelocityY(0);
     zone.body.setAllowGravity(false);
     zone.body.setGravityY(0);
     zone.body.setImmovable(true);
