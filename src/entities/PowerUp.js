@@ -6,9 +6,9 @@ export class PowerUp {
     // Настройки разных типов
     const configs = {
       booster: { color: 0x00ffff, duration: 5000, effect: 'speed' },
-      shield: { color: 0x00ff00, duration: 5000, effect: 'shield' },
-      magnet: { color: 0xff00ff, duration: 7000, effect: 'magnet' },
-      slowmo: { color: 0xffaa00, duration: 4000, effect: 'slow' }
+      shield:  { color: 0x00ff00, duration: 5000, effect: 'shield' },
+      magnet:  { color: 0xff00ff, duration: 7000, effect: 'magnet' },
+      slowmo:  { color: 0xffaa00, duration: 4000, effect: 'slow' }
     };
     
     this.config = configs[type] || configs.booster;
@@ -83,6 +83,7 @@ export class PowerUp {
   }
 
   update() {
+    // Проверка выхода за экран
     if (this.sprite.x < -100) {
       this.sprite.destroy();
       return false;

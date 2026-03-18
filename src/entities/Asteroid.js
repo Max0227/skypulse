@@ -14,8 +14,8 @@ export class Asteroid {
     this.sprite.body.setCircle(15 * scale);
     this.sprite.body.setAllowGravity(false);
     
-    // Скорость и направление
-    const angle = Phaser.Math.FloatBetween(-0.5, 0.5); // разброс по вертикали
+    // Скорость и направление (случайное отклонение по Y)
+    const angle = Phaser.Math.FloatBetween(-0.5, 0.5);
     this.sprite.setVelocityX(-speed * 0.8);
     this.sprite.setVelocityY(speed * angle);
     this.sprite.setAngularVelocity(Phaser.Math.Between(-100, 100));
@@ -26,7 +26,7 @@ export class Asteroid {
   }
 
   update() {
-    // Проверка выхода за границы
+    // Проверка выхода за границы экрана
     if (this.sprite.x < -100 || 
         this.sprite.y < -100 || 
         this.sprite.y > this.scene.scale.height + 100) {
