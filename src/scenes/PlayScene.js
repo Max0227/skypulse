@@ -160,6 +160,12 @@ export class PlayScene extends Phaser.Scene {
     this.updateAsteroids(delta);
 
     if (!this.started || this.dead) return;
+    // Принудительно удерживаем монеты на месте по вертикали
+this.coinGroup.getChildren().forEach(coin => {
+  if (coin.body) {
+    coin.body.setVelocityY(0);
+  }
+});
 
     // Движение игрока вправо при наличии вагонов
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
