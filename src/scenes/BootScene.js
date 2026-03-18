@@ -22,7 +22,7 @@ export class BootScene extends Phaser.Scene {
   createTextures() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // ===== БАЗОВОЕ ТАКСИ (ID: 'default') =====
+    // ===== БАЗОВОЕ ТАКСИ =====
     g.clear();
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
@@ -42,11 +42,10 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(56, 30, 6, 4);
     g.fillStyle(0x333333, 0.5);
     g.fillRect(10, 34, 20, 6);
-    g.generateTexture('default', 80, 60); // <-- ID 'default'
-    // Также создадим 'player' для обратной совместимости (не обязательно)
+    g.generateTexture('default', 80, 60);
     g.generateTexture('player', 80, 60);
 
-    // ===== СКИНЫ (текстуры с именами, равными ID) =====
+    // ===== СКИНЫ ТАКСИ =====
     const skinColors = {
       neon: 0x00ffff,
       cyber: 0xff00ff,
@@ -59,11 +58,6 @@ export class BootScene extends Phaser.Scene {
       g.clear();
       g.fillStyle(color);
       g.fillRoundedRect(12, 12, 56, 32, 8);
-      // Небольшие детали для разных скинов (опционально)
-      if (id === 'neon') {
-        g.fillStyle(0xffffff);
-        g.fillCircle(18, 28, 2);
-      }
       g.generateTexture(id, 80, 60);
     }
 
@@ -86,50 +80,48 @@ export class BootScene extends Phaser.Scene {
       g.fillStyle(0xffaa00);
       g.fillCircle(12, 24, 3);
       g.fillCircle(28, 24, 3);
-      g.fillStyle(0x000000, 0.2);
-      g.fillRect(6, 26, 36, 2);
       g.generateTexture(`wagon_${i}`, 48, 34);
     }
 
     // ===== ВОРОТА =====
-    const createGate = (color, light, name) => {
+    const gateColors = [
+      { color: 0x0a0a2a, light: 0x00ffff, name: 'gate_blue' },
+      { color: 0x0a2a0a, light: 0x00ffaa, name: 'gate_green' },
+      { color: 0x2a2a0a, light: 0xffff00, name: 'gate_yellow' },
+      { color: 0x2a0a0a, light: 0xff00aa, name: 'gate_red' },
+      { color: 0x2a0a2a, light: 0xff00ff, name: 'gate_purple' }
+    ];
+
+    gateColors.forEach(gate => {
       g.clear();
-      g.fillStyle(color);
+      g.fillStyle(gate.color);
       g.fillRoundedRect(0, 0, 100, 400, 20);
-      g.fillStyle(light);
+      g.fillStyle(gate.light);
       g.fillRoundedRect(10, 0, 15, 400, 8);
       g.lineStyle(3, 0x00ffff, 0.8);
       g.strokeRoundedRect(0, 0, 100, 400, 20);
-      g.generateTexture(name, 100, 400);
-    };
-    
-    createGate(0x0a0a2a, 0x00ffff, 'gate_blue');
-    createGate(0x0a2a0a, 0x00ffaa, 'gate_green');
-    createGate(0x2a2a0a, 0xffff00, 'gate_yellow');
-    createGate(0x2a0a0a, 0xff00aa, 'gate_red');
-    createGate(0x2a0a2a, 0xff00ff, 'gate_purple');
+      g.generateTexture(gate.name, 100, 400);
+    });
 
     // ===== МОНЕТЫ =====
-    const createCoin = (color, lineColor, name) => {
+    const coins = [
+      { color: 0xffaa00, line: 0xffdd44, name: 'coin_gold' },
+      { color: 0xff4444, line: 0xffaa00, name: 'coin_red' },
+      { color: 0x4444ff, line: 0xffffff, name: 'coin_blue' },
+      { color: 0x44ff44, line: 0xffffff, name: 'coin_green' },
+      { color: 0xff44ff, line: 0xffffff, name: 'coin_purple' }
+    ];
+
+    coins.forEach(coin => {
       g.clear();
-      g.fillStyle(color);
+      g.fillStyle(coin.color);
       g.fillCircle(16, 16, 14);
-      g.lineStyle(4, lineColor);
+      g.lineStyle(4, coin.line);
       g.strokeCircle(16, 16, 9);
-      g.lineStyle(2, lineColor, 0.5);
-      g.strokeCircle(16, 16, 6);
       g.fillStyle(0xffffff, 0.4);
       g.fillCircle(10, 10, 4);
-      g.lineStyle(2, 0xffffff, 0.3);
-      g.strokeCircle(16, 16, 15);
-      g.generateTexture(name, 32, 32);
-    };
-    
-    createCoin(0xffaa00, 0xffdd44, 'coin_gold');
-    createCoin(0xff4444, 0xffaa00, 'coin_red');
-    createCoin(0x4444ff, 0xffffff, 'coin_blue');
-    createCoin(0x44ff44, 0xffffff, 'coin_green');
-    createCoin(0xff44ff, 0xffffff, 'coin_purple');
+      g.generateTexture(coin.name, 32, 32);
+    });
 
     // ===== ПЛАНЕТЫ =====
     for (let i = 1; i <= 5; i++) {
@@ -154,7 +146,6 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffaa00);
     g.fillCircle(20, 30, 5);
     g.fillCircle(60, 30, 5);
-    g.fillCircle(40, 30, 3);
     g.lineStyle(2, 0x00ffff, 0.5);
     g.strokeEllipse(40, 30, 70, 20);
     g.generateTexture('bg_ship_1', 90, 50);
@@ -167,9 +158,6 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xffaa00);
     g.fillCircle(35, 35, 5);
     g.fillCircle(55, 35, 5);
-    g.fillCircle(75, 35, 4);
-    g.lineStyle(2, 0xff00aa, 0.5);
-    g.strokeRoundedRect(20, 20, 70, 30, 8);
     g.generateTexture('bg_ship_2', 120, 60);
 
     // ===== АСТЕРОИДЫ =====
@@ -232,8 +220,6 @@ export class BootScene extends Phaser.Scene {
     g.fillTriangle(8, 6, 16, 18, 24, 6);
     g.fillStyle(0xff8888);
     g.fillTriangle(8, 6, 16, 2, 24, 6);
-    g.lineStyle(1, 0xff00ff, 0.5);
-    g.strokeTriangle(8, 6, 16, 18, 24, 6);
     g.generateTexture('heart', 32, 24);
 
     // ===== КНОПКИ =====
@@ -259,7 +245,6 @@ export class BootScene extends Phaser.Scene {
     g.generateTexture('menu_button', 50, 50);
 
     g.destroy();
-    
     console.log('BootScene: all textures created');
   }
 }

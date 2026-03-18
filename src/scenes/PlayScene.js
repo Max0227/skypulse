@@ -194,16 +194,45 @@ export class PlayScene extends Phaser.Scene {
     this.comboSystem.update(delta);
 
     // Обновление астероидов
-    this.asteroids = this.asteroids.filter(a => a.update());
+    this.checkAchievements();
+this.checkLevelComplete();
+this.comboSystem.update(delta);
 
-    // Обновление усилителей
-    this.powerUps = this.powerUps.filter(p => {
-      if (p.sprite.x < -100) {
-        p.sprite.destroy();
-        return false;
-      }
-      return true;
-    });
+// ===== НОВЫЙ БЕЗОПАСНЫЙ КОД =====
+// Безопасное обновление астероидов
+for (let i = this.asteroids.length - 1; i >= 0; i--) {
+  const asteroid = this.asteroids[i];
+  if (!asteroid || typeof asteroid.update !== 'function') {
+    console.warn('Удалён повреждённый объект из asteroids');
+    this.asteroids.splice(i, 1);
+    continue;
+  }
+  if (!asteroid.update()) {
+    this.asteroids.splice(i, 1);
+  }
+}
+
+// Безопасное обновление усилителей
+for (let i = this.powerUps.length - 1; i >= 0; i--) {
+  const powerUp = this.powerUps[i];
+  if (!powerUp || typeof powerUp.update !== 'function') {
+    this.powerUps.splice(i, 1);
+    continue;
+  }
+  if (!powerUp.update()) {
+    this.powerUps.splice(i, 1);
+  }
+}
+// ===== КОНЕЦ НОВОГО КОДА =====
+
+// Удаление старых объектов (оставляем как есть)
+this.coins = this.coins.filter(c => {
+  if (!c.active || c.x < -100) {
+    c.destroy();
+    return false;
+  }
+  return true;
+});
 
     // Удаление пуль (больше не нужны)
     // this.playerBullets.getChildren().forEach(b => { ... });
