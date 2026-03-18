@@ -32,73 +32,43 @@ export class WorldSelectScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5);
 
-    // Список миров (все из LEVEL_CONFIG)
-    const worlds = [0, 1, 2, 3, 4];
-    let y = 120;
-    const spacing = 110;
+    // Список миров
+    const worlds = [0, 1, 2];
+    let y = 130;
 
     worlds.forEach(worldIndex => {
       const world = LEVEL_CONFIG[worldIndex];
       const unlocked = gameManager.data.unlockedWorlds.includes(worldIndex);
       const stars = gameManager.getStarsForWorld(worldIndex);
-      const progress = gameManager.getWorldProgress(worldIndex) + 1; // 0-9 -> 1-10
 
       // Карточка мира
       const bg = this.add.rectangle(w / 2, y, w - 60, 90, 0x1a1a3a, 0.8)
-        .setStrokeStyle(3, unlocked ? this.getWorldColor(worldIndex) : COLORS.text_muted)
+        .setStrokeStyle(2, unlocked ? this.getWorldColor(worldIndex) : COLORS.text_muted)
         .setInteractive({ useHandCursor: true });
 
-      // Эффект свечения для разблокированных миров
-      if (unlocked) {
-        this.tweens.add({
-          targets: bg,
-          strokeColor: this.getWorldColor(worldIndex),
-          alpha: 0.9,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1
-        });
-      }
-
-      // Название мира с цветом
-      this.add.text(w / 2, y - 30, world.name, {
+      // Название
+      this.add.text(w / 2, y - 25, world.name, {
         fontSize: '22px',
         fontFamily: "'Orbitron', sans-serif",
         color: unlocked ? this.getWorldColorString(worldIndex) : COLORS.text_muted
       }).setOrigin(0.5);
 
       // Описание
-      this.add.text(w / 2, y - 5, world.description, {
+      this.add.text(w / 2, y + 5, world.description, {
         fontSize: '12px',
         fontFamily: "'Space Mono', monospace",
         color: unlocked ? COLORS.text_secondary : COLORS.text_muted
       }).setOrigin(0.5);
 
-      // Прогресс
-      this.add.text(w / 2, y + 20, `Уровни: ${progress}/10`, {
-        fontSize: '12px',
-        fontFamily: "'Space Mono', monospace",
-        color: unlocked ? COLORS.accent : COLORS.text_muted
-      }).setOrigin(0.5);
-
       // Звёзды
-      this.add.text(w / 2, y + 35, `⭐ ${stars}/30`, {
-        fontSize: '12px',
+      this.add.text(w / 2, y + 30, `⭐ ${stars}/15`, {
+        fontSize: '14px',
         fontFamily: "'Space Mono', monospace",
         color: unlocked ? COLORS.accent : COLORS.text_muted
       }).setOrigin(0.5);
 
-      // Обработчики
-      bg.on('pointerover', () => {
-        if (unlocked) {
-          bg.setFillStyle(0x2a2a4a);
-        }
-      });
-
-      bg.on('pointerout', () => {
-        bg.setFillStyle(0x1a1a3a, 0.8);
-      });
-
+      bg.on('pointerover', () => unlocked && bg.setFillStyle(0x2a2a4a));
+      bg.on('pointerout', () => bg.setFillStyle(0x1a1a3a, 0.8));
       bg.on('pointerdown', () => {
         if (unlocked) {
           gameManager.setCurrentWorld(worldIndex);
@@ -107,10 +77,9 @@ export class WorldSelectScene extends Phaser.Scene {
         }
       });
 
-      y += spacing;
+      y += 110;
     });
 
-    // Кнопка назад
     this.createButton(w / 2, h - 40, 'НАЗАД', () => this.scene.start('menu'));
   }
 
@@ -118,7 +87,7 @@ export class WorldSelectScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 100; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
         Phaser.Math.Between(0, h),
@@ -132,24 +101,12 @@ export class WorldSelectScene extends Phaser.Scene {
   }
 
   getWorldColor(worldIndex) {
-    const colors = [
-      0x00ffff, // Космос - голубой
-      0xff00ff, // Киберпанк - розовый
-      0xff6600, // Подземелье - оранжевый
-      0xffaa00, // Астероиды - жёлтый
-      0xaa00aa  // Чёрная дыра - фиолетовый
-    ];
+    const colors = [0x00ffff, 0xff00ff, 0xff6600];
     return colors[worldIndex] || 0x00ffff;
   }
 
   getWorldColorString(worldIndex) {
-    const colors = [
-      '#00ffff',
-      '#ff00ff',
-      '#ff6600',
-      '#ffaa00',
-      '#aa00aa'
-    ];
+    const colors = ['#00ffff', '#ff00ff', '#ff6600'];
     return colors[worldIndex] || '#00ffff';
   }
 

@@ -20,13 +20,11 @@ export class GameManager {
       if (!data.currentSkin) data.currentSkin = 'default';
       if (!data.achievements) data.achievements = {};
       if (!data.stats) data.stats = this.getDefaultData().stats;
-      if (data.crystals === undefined) data.crystals = 0;
+      if (data.crystals === undefined) data.crystals = 1000; // для теста
       if (!data.soundEnabled) data.soundEnabled = true;
       if (!data.musicEnabled) data.musicEnabled = true;
       if (!data.vibrationEnabled) data.vibrationEnabled = true;
       if (!data.tutorialCompleted) data.tutorialCompleted = false;
-      if (!data.levelPrices) data.levelPrices = this.getDefaultLevelPrices();
-      if (!data.worldProgress) data.worldProgress = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
       
       return data;
     } catch (e) {
@@ -37,11 +35,10 @@ export class GameManager {
 
   getDefaultData() {
     return {
-      crystals: 1000, // Для тестирования
+      crystals: 1000,
       unlockedWorlds: [0],
       unlockedLevels: { '0': [0] },
       levelStars: {},
-      worldProgress: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 },
       upgrades: {
         jumpPower: 0,
         gravity: 0,
@@ -52,9 +49,6 @@ export class GameManager {
         wagonGap: 0,
         headHP: 0,
         revival: 0,
-        weaponDamage: 0,
-        weaponSpeed: 0,
-        weaponFireRate: 0,
       },
       ownedSkins: ['default'],
       currentSkin: 'default',
@@ -70,19 +64,7 @@ export class GameManager {
         maxLevel: 0,
         maxWagons: 0,
         maxCombo: 0,
-        totalCoinsCollected: 0,
-        totalEnemiesKilled: 0,
-        totalDistance: 0,
       }
-    };
-  }
-
-  getDefaultLevelPrices() {
-    return {
-      '0-0': 0, '0-1': 100, '0-2': 200, '0-3': 300, '0-4': 400,
-      '0-5': 500, '0-6': 600, '0-7': 700, '0-8': 800, '0-9': 900,
-      '1-0': 200, '1-1': 300, '1-2': 400, '1-3': 500, '1-4': 600,
-      '1-5': 700, '1-6': 800, '1-7': 900, '1-8': 1000, '1-9': 1100,
     };
   }
 
@@ -105,26 +87,8 @@ export class GameManager {
     if (!this.data.unlockedLevels[world]) this.data.unlockedLevels[world] = [];
     if (!this.data.unlockedLevels[world].includes(level)) {
       this.data.unlockedLevels[world].push(level);
-      if (level > (this.data.worldProgress[world] || -1)) {
-        this.data.worldProgress[world] = level;
-      }
       this.save();
     }
-  }
-
-  purchaseLevel(world, level) {
-    const price = this.getLevelPrice(world, level);
-    if (price === undefined) return false;
-    if (this.data.crystals < price) return false;
-    if (this.isLevelUnlocked(world, level)) return false;
-    this.data.crystals -= price;
-    this.unlockLevel(world, level);
-    return true;
-  }
-
-  getLevelPrice(world, level) {
-    const key = `${world}-${level}`;
-    return this.data.levelPrices?.[key] || 0;
   }
 
   getLevelStars(world, level) {
@@ -138,7 +102,7 @@ export class GameManager {
 
   getStarsForWorld(world) {
     let total = 0;
-    for (let l = 0; l < 10; l++) total += this.getLevelStars(world, l);
+    for (let l = 0; l < 5; l++) total += this.getLevelStars(world, l);
     return total;
   }
 
@@ -211,16 +175,13 @@ export class GameManager {
   }
 
   // ===== СТАТИСТИКА =====
-  updateStats(score, level, wagons, combo, coins, enemies, distance) {
+  updateStats(score, level, wagons, combo) {
     const s = this.data.stats;
     s.totalGames++;
     s.maxScore = Math.max(s.maxScore, score);
     s.maxLevel = Math.max(s.maxLevel, level);
     s.maxWagons = Math.max(s.maxWagons, wagons);
     s.maxCombo = Math.max(s.maxCombo || 0, combo);
-    s.totalCoinsCollected += coins;
-    s.totalEnemiesKilled += enemies;
-    s.totalDistance += distance;
     this.save();
   }
 
