@@ -8,8 +8,6 @@ import { QuestSystem } from '../systems/QuestSystem';
 import { LevelManager } from '../systems/LevelManager';
 import { ComboSystem } from '../systems/ComboSystem';
 import { MultiplierSystem } from '../systems/MultiplierSystem';
-
-// Новые сущности
 import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
 
@@ -21,29 +19,35 @@ export class PlayScene extends Phaser.Scene {
   create() {
     const w = this.scale.width, h = this.scale.height;
 
-    // Текущий мир и уровень
+    // ===== ИНФОРМАЦИЯ О МИРЕ И УРОВНЕ =====
     this.world = gameManager.getCurrentWorld();
     this.level = gameManager.getCurrentLevel();
     this.worldConfig = LEVEL_CONFIG[this.world];
 
+    // ===== ОСНОВНЫЕ ПАРАМЕТРЫ =====
     this.score = 0;
     this.crystals = gameManager.data.crystals;
     this.meters = 0;
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
 
+    // ===== ВАГОНЫ =====
     this.wagons = [];
     this.collectedCoins = 0;
     this.coinsForWagon = 15;
     this.maxWagons = 12 + (gameManager.data.upgrades.maxWagons || 0) * 2;
     this.wagonGap = 28 - (gameManager.data.upgrades.wagonGap || 0) * 2;
     this.wagonSpring = 0.25;
+    this.wagonBaseHP = 1 + (gameManager.data.upgrades.wagonHP || 0);
+
+    // ===== ИГРОК =====
     this.targetPlayerX = 110;
     this.playerXSpeed = 0.05;
     this.maxTargetX = 200;
 
+    // ===== СОСТОЯНИЯ =====
     this.started = false;
     this.dead = false;
-    this.level = 0;
+    this.level = 0; // внутренний уровень сложности (растёт с метражом)
     this.isPaused = false;
     this.pauseOverlay = null;
     this.pauseTexts = [];
@@ -51,16 +55,18 @@ export class PlayScene extends Phaser.Scene {
     this.bonusTimerPaused = null;
     this.stationTimerPaused = null;
 
-    this.maxHeadHP = 3;
-    this.headHP = 3;
-    this.wagonBaseHP = 1;
+    // ===== ЗДОРОВЬЕ =====
+    this.maxHeadHP = 3 + (gameManager.data.upgrades.headHP || 0);
+    this.headHP = this.maxHeadHP;
 
+    // ===== СКОРОСТЬ =====
     this.baseSpeed = 240;
     this.currentSpeed = this.baseSpeed;
     this.gapSize = 240;
     this.spawnDelay = 1300;
     this.gateTextures = ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'];
 
+    // ===== БОНУСЫ =====
     this.bonusActive = false;
     this.bonusType = null;
     this.bonusTime = 0;
@@ -68,16 +74,20 @@ export class PlayScene extends Phaser.Scene {
     this.bonusTimer = null;
     this.shieldActive = false;
     this.magnetActive = false;
-    this.magnetRange = 220;
+    this.magnetRange = 220 + (gameManager.data.upgrades.magnetRange || 0) * 40;
     this.lastBonusTime = 0;
-    this.shieldDuration = 5;
+    this.shieldDuration = 5 + (gameManager.data.upgrades.shieldDuration || 0) * 1.5;
 
+    // ===== СИСТЕМЫ =====
     this.upgradeSystem = new UpgradeSystem(this);
     this.jumpPower = this.upgradeSystem.getUpgradeValue('jumpPower');
     this.questSystem = new QuestSystem();
+    this.comboSystem = new ComboSystem(this);
+    this.multiplierSystem = new MultiplierSystem(this);
+    this.levelManager = new LevelManager(this);
+    this.particleManager = new ParticleEffectManager(this);
 
-    // Удалены параметры оружия (weaponDamage, weaponBulletSpeed, weaponFireDelay, weaponCooldown)
-
+    // ===== МАССИВЫ ОБЪЕКТОВ =====
     this.pipes = [];
     this.coins = [];
     this.scoreZones = [];
@@ -85,46 +95,37 @@ export class PlayScene extends Phaser.Scene {
     this.planets = [];
     this.ships = [];
     this.asteroids = [];
-    this.powerUps = []; // новые усилители
+    this.powerUps = [];
 
+    // ===== ГРУППЫ =====
+    this.gateGroup = this.physics.add.group();
+    this.coinGroup = this.physics.add.group();
+    this.asteroidGroup = this.physics.add.group();
+    this.powerUpGroup = this.physics.add.group();
+
+    // ===== ТАЙМЕРЫ =====
     this.spawnTimer = null;
     this.stationTimer = null;
 
+    // ===== СТАНЦИЯ =====
     this.stationPlanet = null;
     this.stationActive = false;
 
-    this.resumeCountdownTimer = null;
-    this.countdownActive = false;
-    this.countdownText = null;
-    this.countdownOverlay = null;
-    this.countdownPrepareText = null;
-
-    this.particleManager = new ParticleEffectManager(this);
+    // ===== СЧЁТЧИКИ ДЛЯ ДОСТИЖЕНИЙ =====
     this.initAchievements();
     this.initDailyRewards();
     this.initLeaderboard();
     this.initStats();
 
-    this.levelManager = new LevelManager(this);
-    
-    // Удалены: damageSystem, waveManager, enemyGroup, playerBullets, enemyBullets
-
-    // Новые системы
-    this.comboSystem = new ComboSystem(this);
-    this.multiplierSystem = new MultiplierSystem(this);
-
-    // Группы для новых объектов
-    this.asteroidGroup = this.physics.add.group();
-    this.powerUpGroup = this.physics.add.group();
-
+    // ===== СОЗДАНИЕ ОБЪЕКТОВ =====
     this.createBackground();
     this.createPlanets();
     this.createShips();
-    this.createAsteroids(); // фоновые астероиды
+    this.createAsteroids(); // фоновые декоративные астероиды
     this.createPlayer();
     this.createUI();
 
-    // Обработчик нажатия на экран (для прыжка) – НЕ срабатывает на кнопки
+    // ===== ОБРАБОТЧИКИ =====
     this.input.on('pointerdown', (pointer) => {
       if (pointer.targetObject) return;
       if (this.dead) { this.scene.start('menu'); return; }
@@ -132,7 +133,6 @@ export class PlayScene extends Phaser.Scene {
       this.flap();
     });
 
-    // Обработчик потери фокуса (пауза при сворачивании)
     window.addEventListener('blur', () => {
       if (this.started && !this.dead && !this.isPaused) {
         this.togglePause();
@@ -143,13 +143,17 @@ export class PlayScene extends Phaser.Scene {
     this.events.on('resize', this.onResize, this);
     this.scale.on('resize', this.onResize, this);
 
-    // Устанавливаем громкость фоновой музыки для игры (тише)
+    // Музыка
     window.audioManager.playMusic(this, 0.2);
   }
 
+  // =========================================================================
+  // UPDATE
+  // =========================================================================
   update(time, delta) {
     if (this.isPaused || this.countdownActive) return;
 
+    // Обновление фона
     this.updateStars(time, delta);
     this.updatePlanets(delta);
     this.updateShips(delta);
@@ -157,89 +161,82 @@ export class PlayScene extends Phaser.Scene {
 
     if (!this.started || this.dead) return;
 
-    // Удален блок обновления оружия
-
+    // Движение игрока вправо при наличии вагонов
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
     this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
 
+    // Поворот игрока в зависимости от скорости
     const body = this.player.body;
     this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
 
+    // Проверка выхода за границы
     if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
       this.handleDeath();
     }
 
+    // Магнит
     if (this.magnetActive) {
-      const magnetCoins = this.coins.filter(item => item.active);
-      for (let item of magnetCoins) {
-        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, item.x, item.y);
+      const magnetCoins = this.coinGroup.getChildren();
+      for (let coin of magnetCoins) {
+        const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, coin.x, coin.y);
         if (dist < this.magnetRange) {
-          const angle = Phaser.Math.Angle.Between(item.x, item.y, this.player.x, this.player.y);
-          item.x += Math.cos(angle) * 10;
-          item.y += Math.sin(angle) * 10;
+          const angle = Phaser.Math.Angle.Between(coin.x, coin.y, this.player.x, this.player.y);
+          coin.x += Math.cos(angle) * 10;
+          coin.y += Math.sin(angle) * 10;
         }
       }
     }
 
+    // Обновление вагонов
     this.updateWagons();
+
+    // Очистка устаревших объектов
     this.cleanupObjects();
 
+    // Станция
     if (this.stationPlanet && this.stationPlanet.active && this.stationActive) {
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.stationPlanet.x, this.stationPlanet.y);
       if (dist < 100) this.touchStation();
     }
 
+    // Проверка достижений и прогресса
     this.checkAchievements();
-    this.checkLevelComplete(); // Проверяем, не пройден ли уровень
+    this.checkLevelComplete();
     this.comboSystem.update(delta);
 
-    // Обновление астероидов
-    this.checkAchievements();
-this.checkLevelComplete();
-this.comboSystem.update(delta);
+    // Безопасное обновление астероидов
+    for (let i = this.asteroids.length - 1; i >= 0; i--) {
+      const asteroid = this.asteroids[i];
+      if (!asteroid || typeof asteroid.update !== 'function') {
+        console.warn('Удалён повреждённый объект из asteroids');
+        this.asteroids.splice(i, 1);
+        continue;
+      }
+      if (!asteroid.update()) {
+        this.asteroids.splice(i, 1);
+      }
+    }
 
-// ===== НОВЫЙ БЕЗОПАСНЫЙ КОД =====
-// Безопасное обновление астероидов
-for (let i = this.asteroids.length - 1; i >= 0; i--) {
-  const asteroid = this.asteroids[i];
-  if (!asteroid || typeof asteroid.update !== 'function') {
-    console.warn('Удалён повреждённый объект из asteroids');
-    this.asteroids.splice(i, 1);
-    continue;
-  }
-  if (!asteroid.update()) {
-    this.asteroids.splice(i, 1);
-  }
-}
+    // Безопасное обновление усилителей
+    for (let i = this.powerUps.length - 1; i >= 0; i--) {
+      const powerUp = this.powerUps[i];
+      if (!powerUp || typeof powerUp.update !== 'function') {
+        this.powerUps.splice(i, 1);
+        continue;
+      }
+      if (!powerUp.update()) {
+        this.powerUps.splice(i, 1);
+      }
+    }
 
-// Безопасное обновление усилителей
-for (let i = this.powerUps.length - 1; i >= 0; i--) {
-  const powerUp = this.powerUps[i];
-  if (!powerUp || typeof powerUp.update !== 'function') {
-    this.powerUps.splice(i, 1);
-    continue;
-  }
-  if (!powerUp.update()) {
-    this.powerUps.splice(i, 1);
-  }
-}
-// ===== КОНЕЦ НОВОГО КОДА =====
-
-// Удаление старых объектов (оставляем как есть)
-this.coins = this.coins.filter(c => {
-  if (!c.active || c.x < -100) {
-    c.destroy();
-    return false;
-  }
-  return true;
-});
-
-    // Удаление пуль (больше не нужны)
-    // this.playerBullets.getChildren().forEach(b => { ... });
-    // this.enemyBullets.getChildren().forEach(b => { ... });
+    // Обновление метража
+    this.meters += this.currentSpeed * delta / 1000 / 10;
+    this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
   }
 
-  // ===== МЕТОДЫ ДЛЯ НОВЫХ МЕХАНИК =====
+  // =========================================================================
+  // МЕТОДЫ ДЛЯ НОВЫХ МЕХАНИК
+  // =========================================================================
   spawnAsteroid() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -247,7 +244,7 @@ this.coins = this.coins.filter(c => {
     const speed = 300 + this.level * 30;
     const x = w + 50;
     const y = Phaser.Math.Between(50, h - 50);
-    
+
     const asteroid = new Asteroid(this, x, y, speed);
     this.asteroids.push(asteroid);
     this.asteroidGroup.add(asteroid.sprite);
@@ -258,11 +255,11 @@ this.coins = this.coins.filter(c => {
         this.updateHearts();
         this.cameras.main.shake(100, 0.005);
         try { audioManager.playSound(this, 'hit_sound', 0.3); } catch (e) {}
-        
+
         if (this.headHP <= 0) {
           this.handleDeath();
         }
-        
+
         a.destroy();
         this.asteroids = this.asteroids.filter(ast => ast.sprite !== a);
         this.comboSystem.reset();
@@ -283,32 +280,41 @@ this.coins = this.coins.filter(c => {
     }, null, this);
   }
 
-  // ===== МЕТОДЫ (оригинальные, без изменений) =====
-
+  // =========================================================================
+  // СБОР МОНЕТ
+  // =========================================================================
   collectCoin(coin) {
     if (!coin.active || coin.collected) return;
     coin.collected = true;
+
     let value = 1, bonusType = null;
     switch (coin.coinType) {
-      case 'red': value=2; bonusType='speed'; break;
-      case 'blue': value=1; bonusType='shield'; break;
-      case 'green': value=1; bonusType='magnet'; break;
-      case 'purple': value=1; bonusType='slow'; break;
-      default: value=1;
+      case 'red': value = 2; bonusType = 'speed'; break;
+      case 'blue': value = 1; bonusType = 'shield'; break;
+      case 'green': value = 1; bonusType = 'magnet'; break;
+      case 'purple': value = 1; bonusType = 'slow'; break;
+      default: value = 1;
     }
+
+    // Учёт бонуса скорости, если активен
     if (this.bonusActive && this.bonusType === 'speed') value *= 2;
 
-    const multipliedValue = Math.floor(value * this.multiplierSystem.getMultiplier());
+    // Применяем множитель от комбо
+    const multipliedValue = Math.floor(value * this.comboSystem.getMultiplier());
     this.crystals += multipliedValue;
     this.crystalText.setText(`💎 ${this.crystals}`);
     this.collectedCoins += multipliedValue;
-    this.comboSystem.addCombo();
 
+    // Комбо
+    this.comboSystem.add(); // здесь используется add(), а не addCombo()
+
+    // Вагон
     if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
       this.addWagon();
       this.collectedCoins -= this.coinsForWagon;
     }
 
+    // Бонус-эффект
     if (bonusType) {
       if (this.bonusActive && this.bonusType === bonusType) {
         this.bonusTime += 2;
@@ -325,18 +331,32 @@ this.coins = this.coins.filter(c => {
 
     this.questSystem.updateProgress('crystals', multipliedValue);
 
-    this.tweens.add({ targets: this.crystalText, scaleX:1.2, scaleY:1.2, duration:80, yoyo:true, ease:'Quad.out' });
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType?'heavy':'soft'); } catch {}
+    // Анимация текста кристаллов
+    this.tweens.add({
+      targets: this.crystalText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 80,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
+
+    // Вибро
+    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred?.(bonusType ? 'heavy' : 'soft'); } catch {}
+
     coin.destroy();
     gameManager.data.crystals = this.crystals;
     gameManager.save();
   }
 
+  // =========================================================================
+  // ПРОХОЖДЕНИЕ ВОРОТ
+  // =========================================================================
   passGateWithCombo(zone) {
     if (zone.passed) return;
     zone.passed = true;
 
-    const baseScore = 1;
+    const baseScore = 10; // базовые очки за ворота
     const comboMultiplier = this.comboSystem.getMultiplier();
     const totalScore = Math.floor(baseScore * comboMultiplier * this.multiplierSystem.getMultiplier());
 
@@ -364,34 +384,27 @@ this.coins = this.coins.filter(c => {
     this.cameras.main.shake(20, 0.001);
   }
 
+  // =========================================================================
+  // ПРОВЕРКА ЗАВЕРШЕНИЯ УРОВНЯ
+  // =========================================================================
   checkLevelComplete() {
     if (!this.started || this.dead) return;
-    
     if (this.score >= this.worldConfig.goalScore) {
       this.completeLevel();
     }
   }
 
   completeLevel() {
-    // Вычисляем количество звёзд
     let stars = 1;
     if (this.score >= this.worldConfig.goalScore * 1.5) stars = 2;
     if (this.score >= this.worldConfig.goalScore * 2) stars = 3;
-    
-    // Бонус за здоровье
-    if (this.headHP === this.maxHeadHP) {
-      stars = Math.min(3, stars + 1);
-    }
-    
-    // Сохраняем звёзды
+    if (this.headHP === this.maxHeadHP) stars = Math.min(3, stars + 1);
+
     gameManager.setLevelStars(this.world, this.level, stars);
-    
-    // Разблокируем следующий уровень
+
     if (this.level < 4) {
       gameManager.unlockLevel(this.world, this.level + 1);
     }
-    
-    // Если это последний уровень мира, разблокируем следующий мир
     if (this.level === 4 && this.world < 4) {
       const worlds = gameManager.data.unlockedWorlds;
       if (!worlds.includes(this.world + 1)) {
@@ -399,8 +412,7 @@ this.coins = this.coins.filter(c => {
         gameManager.save();
       }
     }
-    
-    // Переходим на сцену завершения уровня
+
     this.scene.start('levelComplete', {
       world: this.world,
       level: this.level,
@@ -411,13 +423,16 @@ this.coins = this.coins.filter(c => {
     });
   }
 
+  // =========================================================================
+  // ФОН
+  // =========================================================================
   createBackground() {
     const w = this.scale.width, h = this.scale.height;
     const gradient = this.add.graphics();
     gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
     gradient.fillRect(0, 0, w, h);
     gradient.setDepth(-30);
-    
+
     for (let i = 0; i < 200; i++) {
       const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
       star.setScale(Phaser.Math.FloatBetween(0.2, 1.8));
@@ -472,10 +487,13 @@ this.coins = this.coins.filter(c => {
     }
   }
 
+  // =========================================================================
+  // ИГРОК
+  // =========================================================================
   createPlayer() {
     const h = this.scale.height;
     const skin = gameManager.getCurrentSkin();
-    
+
     this.player = this.physics.add.image(this.targetPlayerX, h / 2, skin);
     this.player.setScale(0.9);
     this.player.setCollideWorldBounds(false);
@@ -511,6 +529,9 @@ this.coins = this.coins.filter(c => {
     this.hitSound = this.tapSound;
   }
 
+  // =========================================================================
+  // ИНТЕРФЕЙС
+  // =========================================================================
   createUI() {
     const w = this.scale.width, h = this.scale.height;
     const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
@@ -561,29 +582,25 @@ this.coins = this.coins.filter(c => {
 
     this.createGameOverBox();
 
-    // Коллизии (только с монетами и астероидами)
-    this.physics.add.overlap(this.player, this.coins, (p, c) => this.collectCoin(c), null, this);
+    // Коллизии
+    this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
   }
 
   createControlButtons() {
     const w = this.scale.width, h = this.scale.height;
 
-    // Кнопка паузы
     this.pauseButton = this.add.image(w - 35, h - 35, 'pause_button')
       .setInteractive().setDepth(20).setScrollFactor(0)
       .on('pointerdown', () => this.togglePause())
       .on('pointerover', () => this.pauseButton.setScale(1.1))
       .on('pointerout', () => this.pauseButton.setScale(1));
 
-    // Кнопка меню
     this.menuButton = this.add.image(w - 90, h - 35, 'menu_button')
       .setInteractive().setDepth(20).setScrollFactor(0)
       .on('pointerdown', () => this.confirmExit())
       .on('pointerover', () => this.menuButton.setScale(1.1))
       .on('pointerout', () => this.menuButton.setScale(1));
   }
-
-  // ===== ОСТАЛЬНЫЕ МЕТОДЫ (оригинальные, без изменений) =====
 
   updateHearts() {
     this.heartContainer.removeAll(true);
@@ -607,6 +624,9 @@ this.coins = this.coins.filter(c => {
     this.gameOverBox.setVisible(false);
   }
 
+  // =========================================================================
+  // ЗАПУСК И СПАВН
+  // =========================================================================
   startRun() {
     this.started = true;
     this.introText.setVisible(false);
@@ -647,7 +667,7 @@ this.coins = this.coins.filter(c => {
 
   togglePause() {
     this.isPaused = !this.isPaused;
-    
+
     if (this.isPaused) {
       this.physics.pause();
       this.spawnTimerPaused = this.spawnTimer;
@@ -656,23 +676,23 @@ this.coins = this.coins.filter(c => {
       if (this.spawnTimer) this.spawnTimer.paused = true;
       if (this.bonusTimer) this.bonusTimer.paused = true;
       if (this.stationTimer) this.stationTimer.paused = true;
-      
+
       this.pauseOverlay = this.add.rectangle(
-        this.scale.width/2, this.scale.height/2,
+        this.scale.width / 2, this.scale.height / 2,
         this.scale.width, this.scale.height,
         0x000000, 0.7
       ).setDepth(25).setScrollFactor(0);
 
       const pauseText = this.add.text(
-        this.scale.width/2, this.scale.height/2-40,
+        this.scale.width / 2, this.scale.height / 2 - 40,
         '⏸️ ПАУЗА',
-        { fontSize:'40px', fontFamily:"'Orbitron', monospace", color:'#ffffff', stroke:'#00ffff', strokeThickness:4 }
+        { fontSize: '40px', fontFamily: "'Orbitron', monospace", color: '#ffffff', stroke: '#00ffff', strokeThickness: 4 }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       const tipText = this.add.text(
-        this.scale.width/2, this.scale.height/2+30,
+        this.scale.width / 2, this.scale.height / 2 + 30,
         'Нажми на кнопку паузы, чтобы продолжить',
-        { fontSize:'12px', fontFamily:"'Orbitron', monospace", color:'#cccccc' }
+        { fontSize: '12px', fontFamily: "'Orbitron', monospace", color: '#cccccc' }
       ).setOrigin(0.5).setDepth(26).setScrollFactor(0);
 
       this.pauseTexts = [pauseText, tipText];
@@ -681,7 +701,7 @@ this.coins = this.coins.filter(c => {
       if (this.spawnTimerPaused) this.spawnTimerPaused.paused = false;
       if (this.bonusTimerPaused) this.bonusTimerPaused.paused = false;
       if (this.stationTimerPaused) this.stationTimerPaused.paused = false;
-      
+
       if (this.pauseOverlay) {
         this.pauseOverlay.destroy();
         this.pauseOverlay = null;
@@ -698,14 +718,14 @@ this.coins = this.coins.filter(c => {
     this.isPaused = true;
     this.physics.pause();
     const w = this.scale.width, h = this.scale.height;
-    const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7).setDepth(50).setScrollFactor(0);
-    const panel = this.add.rectangle(w/2, h/2, 250, 150, 0x0a0a1a, 0.95).setStrokeStyle(2, 0x00ffff).setDepth(51).setScrollFactor(0);
-    const text = this.add.text(w/2, h/2 - 30, 'Выйти в меню?', { fontSize: '16px', fontFamily: "'Orbitron', monospace", color: '#ffffff' }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
-    const yesBtn = this.add.text(w/2 - 60, h/2 + 20, 'ДА', { fontSize: '14px', fontFamily: "'Orbitron', monospace", color: '#00ff00', backgroundColor: '#1a1a3a', padding: { x: 10, y: 5 } }).setInteractive().setDepth(52).setScrollFactor(0).on('pointerdown', () => {
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.7).setDepth(50).setScrollFactor(0);
+    const panel = this.add.rectangle(w / 2, h / 2, 250, 150, 0x0a0a1a, 0.95).setStrokeStyle(2, 0x00ffff).setDepth(51).setScrollFactor(0);
+    const text = this.add.text(w / 2, h / 2 - 30, 'Выйти в меню?', { fontSize: '16px', fontFamily: "'Orbitron', monospace", color: '#ffffff' }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+    const yesBtn = this.add.text(w / 2 - 60, h / 2 + 20, 'ДА', { fontSize: '14px', fontFamily: "'Orbitron', monospace", color: '#00ff00', backgroundColor: '#1a1a3a', padding: { x: 10, y: 5 } }).setInteractive().setDepth(52).setScrollFactor(0).on('pointerdown', () => {
       overlay.destroy(); panel.destroy(); text.destroy(); yesBtn.destroy(); noBtn.destroy();
       this.scene.start('menu');
     }).on('pointerover', function() { this.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' }); }).on('pointerout', function() { this.setStyle({ color: '#00ff00', backgroundColor: '#1a1a3a' }); });
-    const noBtn = this.add.text(w/2 + 60, h/2 + 20, 'НЕТ', { fontSize: '14px', fontFamily: "'Orbitron', monospace", color: '#ff0000', backgroundColor: '#1a1a3a', padding: { x: 10, y: 5 } }).setInteractive().setDepth(52).setScrollFactor(0).on('pointerdown', () => {
+    const noBtn = this.add.text(w / 2 + 60, h / 2 + 20, 'НЕТ', { fontSize: '14px', fontFamily: "'Orbitron', monospace", color: '#ff0000', backgroundColor: '#1a1a3a', padding: { x: 10, y: 5 } }).setInteractive().setDepth(52).setScrollFactor(0).on('pointerdown', () => {
       overlay.destroy(); panel.destroy(); text.destroy(); yesBtn.destroy(); noBtn.destroy();
       this.isPaused = false;
       this.physics.resume();
@@ -745,7 +765,7 @@ this.coins = this.coins.filter(c => {
       .setVelocityX(-this.currentSpeed * 0.3);
     this.stationPlanet.body.setAllowGravity(false);
     this.stationActive = true;
-    const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', { fontSize:'16px', fontFamily:"'Orbitron', monospace", color:'#00ffff', stroke:'#ff00ff', strokeThickness:2 }).setOrigin(0.5).setDepth(-4);
+    const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', { fontSize: '16px', fontFamily: "'Orbitron', monospace", color: '#00ffff', stroke: '#ff00ff', strokeThickness: 2 }).setOrigin(0.5).setDepth(-4);
     this.stationPlanet.label = label;
     this.tweens.add({ targets: this.stationPlanet, angle: 360, duration: 8000, repeat: -1, ease: 'Linear' });
   }
@@ -764,8 +784,8 @@ this.coins = this.coins.filter(c => {
     this.targetPlayerX = 110;
     this.wagonCountText.setText(`🚃 0/${this.maxWagons}`);
     this.updateCameraZoom();
-    const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, { fontSize:'28px', fontFamily:"'Orbitron', monospace", color:'#ffaa00', stroke:'#ff00ff', strokeThickness:4 }).setOrigin(0.5);
-    this.tweens.add({ targets: msg, y: msg.y-100, alpha:0, duration:1500, onComplete:()=>msg.destroy() });
+    const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, { fontSize: '28px', fontFamily: "'Orbitron', monospace", color: '#ffaa00', stroke: '#ff00ff', strokeThickness: 4 }).setOrigin(0.5);
+    this.tweens.add({ targets: msg, y: msg.y - 100, alpha: 0, duration: 1500, onComplete: () => msg.destroy() });
     if (this.stationPlanet.label) this.stationPlanet.label.destroy();
     this.stationPlanet.destroy();
     this.stationPlanet = null;
@@ -773,14 +793,14 @@ this.coins = this.coins.filter(c => {
 
   addRandomPlanet() {
     const w = this.scale.width, h = this.scale.height;
-    const idx = Phaser.Math.Between(1,5);
-    const planet = this.add.image(w+200, Phaser.Math.Between(50,h-50), `planet_${idx}`);
-    planet.setScale(Phaser.Math.FloatBetween(1.5,3.0));
+    const idx = Phaser.Math.Between(1, 5);
+    const planet = this.add.image(w + 200, Phaser.Math.Between(50, h - 50), `planet_${idx}`);
+    planet.setScale(Phaser.Math.FloatBetween(1.5, 3.0));
     planet.setTint(0x8888ff);
     planet.setAlpha(0.6);
     planet.setDepth(-15);
     planet.setBlendMode(Phaser.BlendModes.ADD);
-    this.planets.push({ sprite: planet, speed: Phaser.Math.Between(5,18), flicker: Phaser.Math.FloatBetween(0.005,0.01) });
+    this.planets.push({ sprite: planet, speed: Phaser.Math.Between(5, 18), flicker: Phaser.Math.FloatBetween(0.005, 0.01) });
   }
 
   updateWagons() {
@@ -807,13 +827,13 @@ this.coins = this.coins.filter(c => {
     }
     this.targetPlayerX += this.wagonGap * 0.5;
     this.targetPlayerX = Math.min(this.scale.width * 0.8, this.targetPlayerX);
-    let last = this.wagons.length > 0 ? this.wagons[this.wagons.length-1] : this.player;
+    let last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
     let spawnX = last.x - this.wagonGap * 2;
     let spawnY = last.y;
-    let texIndex = Phaser.Math.Between(0,9);
+    let texIndex = Phaser.Math.Between(0, 9);
     let wagon = this.physics.add.image(spawnX, spawnY, `wagon_${texIndex}`);
     wagon.setScale(0.8);
-    wagon.body.setCircle(12,8,6);
+    wagon.body.setCircle(12, 8, 6);
     wagon.body.setAllowGravity(true);
     wagon.body.setMass(0.5);
     wagon.body.setDrag(0.9);
@@ -822,11 +842,11 @@ this.coins = this.coins.filter(c => {
     wagon.setData('maxHP', this.wagonBaseHP);
     wagon.setTint(0x88aaff);
     wagon.setBlendMode(Phaser.BlendModes.ADD);
-    this.physics.add.collider(wagon, this.pipes, (w,p)=>this.wagonHit(w,p), null, this);
+    this.physics.add.collider(wagon, this.pipes, (w, p) => this.wagonHit(w, p), null, this);
     this.wagons.push(wagon);
     wagon.x = this.scale.width + 50;
     wagon.y = this.player.y;
-    this.tweens.add({ targets: wagon, x: spawnX, duration:500, ease:'Sine.easeOut' });
+    this.tweens.add({ targets: wagon, x: spawnX, duration: 500, ease: 'Sine.easeOut' });
     this.wagonSound.play();
     this.particleManager.createWagonSpawnEffect(wagon);
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
@@ -841,12 +861,12 @@ this.coins = this.coins.filter(c => {
       wagon.destroy();
       this.targetPlayerX -= this.wagonGap * 0.5;
       this.targetPlayerX = Math.max(110, this.targetPlayerX);
-      this.cameras.main.shake(150,0.008);
+      this.cameras.main.shake(150, 0.008);
       this.hitSound.play();
       this.showNotification('Вагон потерян!', 1000, '#ff4444');
     } else {
       wagon.setData('hp', hp);
-      this.tweens.add({ targets: wagon, alpha:0.5, duration:100, yoyo:true, repeat:2 });
+      this.tweens.add({ targets: wagon, alpha: 0.5, duration: 100, yoyo: true, repeat: 2 });
       const healthPercent = hp / wagon.getData('maxHP');
       if (healthPercent < 0.5) wagon.setTint(0xff8888);
       this.hitSound.play();
@@ -860,52 +880,52 @@ this.coins = this.coins.filter(c => {
     let screenWidth = this.scale.width;
     let targetZoom = Math.min(1, screenWidth / (totalLength + 100));
     targetZoom = Math.max(0.7, targetZoom);
-    this.tweens.add({ targets: this.cameras.main, zoom: targetZoom, duration:500, ease:'Sine.easeInOut' });
+    this.tweens.add({ targets: this.cameras.main, zoom: targetZoom, duration: 500, ease: 'Sine.easeInOut' });
   }
 
   spawnGate() {
     if (this.dead) return;
     const w = this.scale.width, h = this.scale.height;
     const difficulty = this.getDifficulty();
-    const gateTexture = this.gateTextures[Math.min(this.level,4)];
-    const gap = difficulty.gap + Phaser.Math.Between(-15,15);
+    const gateTexture = this.gateTextures[Math.min(this.level, 4)];
+    const gap = difficulty.gap + Phaser.Math.Between(-15, 15);
     const centerY = Phaser.Math.Between(120, h - 120);
-    const topY = centerY - gap/2;
-    const bottomY = centerY + gap/2;
+    const topY = centerY - gap / 2;
+    const bottomY = centerY + gap / 2;
     const x = w;
 
     const topPipe = this.physics.add.image(x, topY, gateTexture)
-      .setOrigin(0.5,1)
+      .setOrigin(0.5, 1)
       .setImmovable(true)
-      .setScale(1, Math.max(0.2, topY/400))
+      .setScale(1, Math.max(0.2, topY / 400))
       .setVelocityX(-difficulty.speed);
     topPipe.body.setAllowGravity(false);
     topPipe.setBlendMode(Phaser.BlendModes.ADD);
 
     const bottomPipe = this.physics.add.image(x, bottomY, gateTexture)
-      .setOrigin(0.5,0)
+      .setOrigin(0.5, 0)
       .setImmovable(true)
-      .setScale(1, Math.max(0.2, (h - bottomY)/400))
+      .setScale(1, Math.max(0.2, (h - bottomY) / 400))
       .setVelocityX(-difficulty.speed);
     bottomPipe.body.setAllowGravity(false);
     bottomPipe.setBlendMode(Phaser.BlendModes.ADD);
 
-    [topPipe,bottomPipe].forEach(pipe => {
-      pipe.setScale(1,0.01);
-      this.tweens.add({ targets: pipe, scaleY: pipe.scaleY, duration:300, ease:'Back.out' });
+    [topPipe, bottomPipe].forEach(pipe => {
+      pipe.setScale(1, 0.01);
+      this.tweens.add({ targets: pipe, scaleY: pipe.scaleY, duration: 300, ease: 'Back.out' });
     });
 
     if (this.level >= 2 && Math.random() < 0.4) {
-      const moveDistance = Phaser.Math.Between(-50,50);
-      const tween = this.tweens.add({ targets: [topPipe,bottomPipe], y: `+=${moveDistance}`, duration:1200, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
+      const moveDistance = Phaser.Math.Between(-50, 50);
+      const tween = this.tweens.add({ targets: [topPipe, bottomPipe], y: `+=${moveDistance}`, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       topPipe.tween = tween; bottomPipe.tween = tween;
     }
 
-    this.pipes.push(topPipe,bottomPipe);
-    this.physics.add.collider(this.player, topPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
-    this.physics.add.collider(this.player, bottomPipe, (p,pi)=>this.hitPipe(p,pi), null, this);
+    this.pipes.push(topPipe, bottomPipe);
+    this.physics.add.collider(this.player, topPipe, (p, pi) => this.hitPipe(p, pi), null, this);
+    this.physics.add.collider(this.player, bottomPipe, (p, pi) => this.hitPipe(p, pi), null, this);
 
-    const zone = this.add.zone(x+60, h/2, 12, h);
+    const zone = this.add.zone(x + 60, h / 2, 12, h);
     this.physics.add.existing(zone);
     zone.body.setAllowGravity(false);
     zone.body.setImmovable(true);
@@ -922,11 +942,11 @@ this.coins = this.coins.filter(c => {
 
     // Спавн монеты
     if (Math.random() < difficulty.coinChance) this.spawnCoin(x, centerY);
-    
-    // Спавн астероида (новая механика)
+
+    // Спавн астероида
     if (Math.random() < difficulty.asteroidChance) this.spawnAsteroid();
-    
-    // Спавн усилителя (новая механика)
+
+    // Спавн усилителя
     if (Math.random() < difficulty.powerUpChance) this.spawnPowerUp(x + 100, centerY);
   }
 
@@ -934,11 +954,11 @@ this.coins = this.coins.filter(c => {
     if (Math.random() > 0.9) return;
     let coinType = 'gold', texture = 'coin_gold';
     const r = Math.random();
-    if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
-    else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
-    else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
-    else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
-    const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
+    if (this.level >= 1 && r < 0.15) { coinType = 'red'; texture = 'coin_red'; }
+    else if (this.level >= 2 && r < 0.28) { coinType = 'blue'; texture = 'coin_blue'; }
+    else if (this.level >= 3 && r < 0.40) { coinType = 'green'; texture = 'coin_green'; }
+    else if (this.level >= 4 && r < 0.50) { coinType = 'purple'; texture = 'coin_purple'; }
+    const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
       .setImmovable(true)
       .setVelocityX(-this.currentSpeed)
       .setAngularVelocity(200);
@@ -947,8 +967,9 @@ this.coins = this.coins.filter(c => {
     coin.coinType = coinType;
     coin.setBlendMode(Phaser.BlendModes.ADD);
     coin.collected = false;
-    this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
-    this.coins.push(coin);
+    this.tweens.add({ targets: coin, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.out' });
+    this.coinGroup.add(coin);
+    this.coins.push(coin); // можно удалить, если использовать только группу
   }
 
   hitPipe(player, pipe) {
@@ -959,14 +980,14 @@ this.coins = this.coins.filter(c => {
     } else {
       this.headHP--;
       this.updateHearts();
-      this.cameras.main.shake(100,0.003);
+      this.cameras.main.shake(100, 0.003);
       this.hitSound.play();
       this.player.body.setVelocityX(0);
       if (this.headHP <= 0) {
         this.handleDeath();
       } else {
         this.player.setTint(0xff8888);
-        this.time.delayedCall(500, ()=>this.player.clearTint());
+        this.time.delayedCall(500, () => this.player.clearTint());
       }
     }
   }
@@ -976,7 +997,7 @@ this.coins = this.coins.filter(c => {
       this.upgradeSystem.upgrades.revival--;
       this.headHP = this.maxHeadHP;
       this.updateHearts();
-      this.cameras.main.flash(300,100,255,100,false);
+      this.cameras.main.flash(300, 100, 255, 100, false);
       this.reviveSound.play();
       this.showNotification('ВОСКРЕШЕНИЕ!', 2000, '#00ffff');
       gameManager.data.upgrades = this.upgradeSystem.upgrades;
@@ -991,14 +1012,14 @@ this.coins = this.coins.filter(c => {
     if (this.stationTimer) this.stationTimer.remove();
 
     this.physics.pause();
-    this.cameras.main.shake(300,0.005);
-    this.cameras.main.flash(300,255,100,100,false);
+    this.cameras.main.shake(300, 0.005);
+    this.cameras.main.flash(300, 255, 100, 100, false);
     this.player.setTint(0xff0000).setAngle(90);
 
     const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
-      speed:250, scale:{start:1.2,end:0}, lifespan:600, quantity:50,
+      speed: 250, scale: { start: 1.2, end: 0 }, lifespan: 600, quantity: 50,
       blendMode: Phaser.BlendModes.ADD,
-      tint: [0xff0000,0xff8800,0xff00ff]
+      tint: [0xff0000, 0xff8800, 0xff00ff]
     });
     emitter.explode(50);
 
@@ -1007,7 +1028,7 @@ this.coins = this.coins.filter(c => {
     this.showGameOver();
 
     if (window.Telegram?.WebApp) {
-      const data = JSON.stringify({ score:this.score, level:this.level+1, meters:Math.floor(this.meters) });
+      const data = JSON.stringify({ score: this.score, level: this.level + 1, meters: Math.floor(this.meters) });
       window.Telegram.WebApp.sendData(data);
     }
     try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred?.('error'); } catch {}
@@ -1019,7 +1040,7 @@ this.coins = this.coins.filter(c => {
     );
     this.gameOverBox.setVisible(true);
     this.gameOverBox.setScale(0.9).setAlpha(0);
-    this.tweens.add({ targets: this.gameOverBox, scaleX:1, scaleY:1, alpha:1, duration:400, ease:'Back.out' });
+    this.tweens.add({ targets: this.gameOverBox, scaleX: 1, scaleY: 1, alpha: 1, duration: 400, ease: 'Back.out' });
   }
 
   showNotification(text, duration = 2000, color = '#ffffff') {
@@ -1141,16 +1162,19 @@ this.coins = this.coins.filter(c => {
 
   createLevelUpEffect() {
     const w = this.scale.width, h = this.scale.height;
-    const emitter = this.add.particles(w/2, h/2, 'flare', {
-      speed:{min:-200,max:200}, scale:{start:1.5,end:0}, alpha:{start:0.8,end:0},
-      lifespan:600, quantity:30, blendMode:Phaser.BlendModes.ADD,
-      tint:[0x00ffff,0xff00ff,0xffff00,0x00ff00]
+    const emitter = this.add.particles(w / 2, h / 2, 'flare', {
+      speed: { min: -200, max: 200 }, scale: { start: 1.5, end: 0 }, alpha: { start: 0.8, end: 0 },
+      lifespan: 600, quantity: 30, blendMode: Phaser.BlendModes.ADD,
+      tint: [0x00ffff, 0xff00ff, 0xffff00, 0x00ff00]
     });
     emitter.explode(30);
-    this.cameras.main.shake(200,0.01);
-    this.cameras.main.flash(200,255,255,100);
+    this.cameras.main.shake(200, 0.01);
+    this.cameras.main.flash(200, 255, 255, 100);
   }
 
+  // =========================================================================
+  // ДОСТИЖЕНИЯ, КВЕСТЫ, СТАТИСТИКА
+  // =========================================================================
   checkCoinAchievements() {
     if (this.collectedCoins >= 50 && !this.achievements.all_bonuses.unlocked) {
       this.unlockAchievement('all_bonuses');
@@ -1214,8 +1238,8 @@ this.coins = this.coins.filter(c => {
     const achievement = this.achievements[key];
     const notification = this.add.container(w / 2, -80).setDepth(100).setScrollFactor(0);
     const bg = this.add.rectangle(0, 0, 280, 60, 0x0a0a1a, 0.95).setStrokeStyle(2, 0x00ffff, 0.8);
-    const title = this.add.text(0, -15, `🏆 ${achievement.name}`, { fontSize:'14px', fontFamily, color:'#ffaa00', stroke:'#ff5500', strokeThickness:1 }).setOrigin(0.5);
-    const rewardText = this.add.text(0, 10, `+${reward} 💎`, { fontSize:'12px', fontFamily, color:'#00ff00', stroke:'#00aa00', strokeThickness:1 }).setOrigin(0.5);
+    const title = this.add.text(0, -15, `🏆 ${achievement.name}`, { fontSize: '14px', fontFamily, color: '#ffaa00', stroke: '#ff5500', strokeThickness: 1 }).setOrigin(0.5);
+    const rewardText = this.add.text(0, 10, `+${reward} 💎`, { fontSize: '12px', fontFamily, color: '#00ff00', stroke: '#00aa00', strokeThickness: 1 }).setOrigin(0.5);
     notification.add([bg, title, rewardText]);
     this.tweens.add({ targets: notification, y: 80, duration: 3000, ease: 'Sine.easeInOut', onComplete: () => notification.destroy() });
     this.levelUpSound.play();
@@ -1254,10 +1278,10 @@ this.coins = this.coins.filter(c => {
     gameManager.data.crystals = this.crystals; gameManager.save();
     const notification = this.add.container(w / 2, h / 2).setDepth(100).setScrollFactor(0);
     const bg = this.add.rectangle(0, 0, 300, 150, 0x0a0a1a, 0.95).setStrokeStyle(3, 0x00ffff, 0.8);
-    const title = this.add.text(0, -40, '🎁 ДНЕВНАЯ НАГРАДА', { fontSize:'18px', fontFamily, color:'#00ffff', stroke:'#ff00ff', strokeThickness:2 }).setOrigin(0.5);
-    const streak = this.add.text(0, -10, `День ${this.dailyReward.streak}/7`, { fontSize:'14px', fontFamily, color:'#ffaa00' }).setOrigin(0.5);
-    const reward = this.add.text(0, 20, `+${rewardAmount} 💎`, { fontSize:'24px', fontFamily, color:'#00ff00', stroke:'#00aa00', strokeThickness:2 }).setOrigin(0.5);
-    const claimBtn = this.add.text(0, 60, '[ПОЛУЧИТЬ]', { fontSize:'12px', fontFamily, color:'#00ff00', backgroundColor:'#1a1a3a', padding:{x:10,y:4} }).setInteractive().setOrigin(0.5).on('pointerdown', () => notification.destroy());
+    const title = this.add.text(0, -40, '🎁 ДНЕВНАЯ НАГРАДА', { fontSize: '18px', fontFamily, color: '#00ffff', stroke: '#ff00ff', strokeThickness: 2 }).setOrigin(0.5);
+    const streak = this.add.text(0, -10, `День ${this.dailyReward.streak}/7`, { fontSize: '14px', fontFamily, color: '#ffaa00' }).setOrigin(0.5);
+    const reward = this.add.text(0, 20, `+${rewardAmount} 💎`, { fontSize: '24px', fontFamily, color: '#00ff00', stroke: '#00aa00', strokeThickness: 2 }).setOrigin(0.5);
+    const claimBtn = this.add.text(0, 60, '[ПОЛУЧИТЬ]', { fontSize: '12px', fontFamily, color: '#00ff00', backgroundColor: '#1a1a3a', padding: { x: 10, y: 4 } }).setInteractive().setOrigin(0.5).on('pointerdown', () => notification.destroy());
     notification.add([bg, title, streak, reward, claimBtn]);
     this.tweens.add({ targets: notification, scale: 1.05, duration: 200, yoyo: true, ease: 'Back.out' });
   }
@@ -1314,8 +1338,21 @@ this.coins = this.coins.filter(c => {
       if (p.x < -150) { if (p.tween) p.tween.stop(); p.destroy(); return false; }
       return true;
     });
-    this.coins = this.coins.filter(c => { if (!c.active || c.x < -100) { c.destroy(); return false; } return true; });
-    this.scoreZones = this.scoreZones.filter(z => { if (z.x < -60) { z.destroy(); return false; } return true; });
+
+    // Удаляем монеты из массива (но они уже в группе)
+    this.coins = this.coins.filter(c => {
+      if (!c.active || c.x < -100) {
+        if (c.active) c.destroy();
+        return false;
+      }
+      return true;
+    });
+
+    this.scoreZones = this.scoreZones.filter(z => {
+      if (z.x < -60) { z.destroy(); return false; }
+      return true;
+    });
+
     if (this.stationPlanet && this.stationPlanet.x < -200) {
       if (this.stationPlanet.label) this.stationPlanet.label.destroy();
       this.stationPlanet.destroy();
@@ -1325,52 +1362,52 @@ this.coins = this.coins.filter(c => {
   }
 
   updateStars(time, delta) {
-    const w = this.scale.width, h = this.scale.height, factor = this.started && !this.dead ? 1 : 0.3, dt = delta/1000;
+    const w = this.scale.width, h = this.scale.height, factor = this.started && !this.dead ? 1 : 0.3, dt = delta / 1000;
     for (let s of this.stars) {
       s.sprite.x -= s.speed * factor * dt;
       if (s.flicker) s.sprite.alpha = 0.5 + Math.sin(time * s.flicker) * 0.3;
-      if (s.sprite.x < -10) { s.sprite.x = w + Phaser.Math.Between(5,50); s.sprite.y = Phaser.Math.Between(0,h); }
+      if (s.sprite.x < -10) { s.sprite.x = w + Phaser.Math.Between(5, 50); s.sprite.y = Phaser.Math.Between(0, h); }
     }
   }
 
   updatePlanets(delta) {
-    const w = this.scale.width, factor = this.started && !this.dead ? 0.2 : 0.05, dt = delta/1000;
+    const w = this.scale.width, factor = this.started && !this.dead ? 0.2 : 0.05, dt = delta / 1000;
     for (let p of this.planets) {
       p.sprite.x -= p.speed * factor * dt;
-      if (p.sprite.x < -300) { p.sprite.x = w + Phaser.Math.Between(400,2000); p.sprite.y = Phaser.Math.Between(50,this.scale.height-50); }
+      if (p.sprite.x < -300) { p.sprite.x = w + Phaser.Math.Between(400, 2000); p.sprite.y = Phaser.Math.Between(50, this.scale.height - 50); }
     }
   }
 
   updateShips(delta) {
-    const w = this.scale.width, factor = this.started && !this.dead ? 0.3 : 0.1, dt = delta/1000;
+    const w = this.scale.width, factor = this.started && !this.dead ? 0.3 : 0.1, dt = delta / 1000;
     for (let s of this.ships) {
       s.sprite.x -= s.speed * factor * dt;
-      if (s.sprite.x < -200) { s.sprite.x = w + Phaser.Math.Between(300,1500); s.sprite.y = Phaser.Math.Between(50,this.scale.height-50); }
+      if (s.sprite.x < -200) { s.sprite.x = w + Phaser.Math.Between(300, 1500); s.sprite.y = Phaser.Math.Between(50, this.scale.height - 50); }
     }
   }
 
   updateAsteroids(delta) {
-    const w = this.scale.width, factor = this.started && !this.dead ? 0.3 : 0.1, dt = delta/1000;
+    const w = this.scale.width, factor = this.started && !this.dead ? 0.3 : 0.1, dt = delta / 1000;
     for (let a of this.asteroids) {
       a.sprite.x -= a.speed * factor * dt;
-      if (a.sprite.x < -200) { a.sprite.x = w + Phaser.Math.Between(300,1500); a.sprite.y = Phaser.Math.Between(50,this.scale.height-50); }
+      if (a.sprite.x < -200) { a.sprite.x = w + Phaser.Math.Between(300, 1500); a.sprite.y = Phaser.Math.Between(50, this.scale.height - 50); }
     }
   }
 
   onResize() {
     const w = this.scale.width, h = this.scale.height;
-    if (this.scoreText) this.scoreText.setPosition(w/2, 30);
+    if (this.scoreText) this.scoreText.setPosition(w / 2, 30);
     if (this.bestText) this.bestText.setPosition(10, 10);
-    if (this.crystalText) this.crystalText.setPosition(w-10, 10);
-    if (this.meterText) this.meterText.setPosition(10, h-80);
-    if (this.wagonCountText) this.wagonCountText.setPosition(w-100, h-30);
-    if (this.bonusText) this.bonusText.setPosition(w-10, 40);
-    if (this.levelText) this.levelText.setPosition(w/2, h/2-70);
-    if (this.pauseButton) this.pauseButton.setPosition(w-35, h-35);
-    if (this.menuButton) this.menuButton.setPosition(w-90, h-35);
+    if (this.crystalText) this.crystalText.setPosition(w - 10, 10);
+    if (this.meterText) this.meterText.setPosition(10, h - 80);
+    if (this.wagonCountText) this.wagonCountText.setPosition(w - 100, h - 30);
+    if (this.bonusText) this.bonusText.setPosition(w - 10, 40);
+    if (this.levelText) this.levelText.setPosition(w / 2, h / 2 - 70);
+    if (this.pauseButton) this.pauseButton.setPosition(w - 35, h - 35);
+    if (this.menuButton) this.menuButton.setPosition(w - 90, h - 35);
     if (!this.started) {
-      if (this.introText) this.introText.setPosition(w/2, h*0.40);
-      if (this.coinTipsText) this.coinTipsText.setPosition(w/2, h*0.50);
+      if (this.introText) this.introText.setPosition(w / 2, h * 0.40);
+      if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.50);
     }
     if (this.heartContainer) this.heartContainer.setPosition(10, 30);
   }
