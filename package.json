@@ -1,17 +1,18 @@
+
 {
   "name": "skypulse",
-  "private": true,
   "version": "1.0.0",
-  "type": "module",
+  "description": "SkyPulse Game",
+  "main": "src/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
-  "devDependencies": {
-    "vite": "^5.2.0"
-  },
   "dependencies": {
-    "phaser": "^3.80.1"
+    "phaser": "^3.55.2"
+  },
+  "devDependencies": {
+    "vite": "^4.5.0"
   }
 }
