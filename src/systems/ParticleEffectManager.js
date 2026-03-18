@@ -103,7 +103,8 @@ export class ParticleEffectManager {
     const colors = {
       speed: [0x00ffff, 0x88ccff],
       magnet: [0xff00ff, 0xff88ff],
-      slow: [0xff8800, 0xffaa44]
+      slow: [0xff8800, 0xffaa44],
+      shield: [0x00ffff, 0x88ccff]
     };
     try {
       const emitter = this.scene.add.particles(x, y, 'flare', {
@@ -154,6 +155,26 @@ export class ParticleEffectManager {
         tint: 0xff0000
       });
       emitter.explode(20);
+      this.activeEmitters.push(emitter);
+    } catch (e) {
+      console.warn('Particle effect error:', e);
+    }
+  }
+
+  // 👇 НОВЫЙ МЕТОД
+  createExplosion(x, y, color = 0xff4444) {
+    this.cleanup();
+    try {
+      const emitter = this.scene.add.particles(x, y, 'spark', {
+        speed: { min: 100, max: 250 },
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 1, end: 0 },
+        lifespan: 500,
+        quantity: 25,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: color
+      });
+      emitter.explode(25);
       this.activeEmitters.push(emitter);
     } catch (e) {
       console.warn('Particle effect error:', e);
