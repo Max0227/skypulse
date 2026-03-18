@@ -2,11 +2,13 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { TutorialScene } from './scenes/TutorialScene';
+import { WorldSelectScene } from './scenes/WorldSelectScene';
+import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { PlayScene } from './scenes/PlayScene';
-import { QuestsScene } from './scenes/QuestsScene';
-import { GameOverScene } from './scenes/GameOverScene';
+import { LevelCompleteScene } from './scenes/LevelCompleteScene';
 import { ShopScene } from './scenes/ShopScene';
 import { AchievementsScene } from './scenes/AchievementsScene';
+import { QuestsScene } from './scenes/QuestsScene';
 import { SettingsScene } from './scenes/SettingsScene';
 
 const config = {
@@ -27,8 +29,7 @@ const config = {
       gravity: { y: 1300 },
       debug: false,
       maxEntities: 500,
-      enableBody: true,
-      enableStaticBody: true
+      enableBody: true
     }
   },
   render: {
@@ -41,8 +42,10 @@ const config = {
     BootScene,
     MenuScene,
     TutorialScene,
+    WorldSelectScene,
+    LevelSelectScene,
     PlayScene,
-    GameOverScene,
+    LevelCompleteScene,
     ShopScene,
     AchievementsScene,
     QuestsScene,
@@ -54,38 +57,4 @@ const config = {
   }
 };
 
-const game = new Phaser.Game(config);
-
-// Telegram интеграция
-if (window.Telegram?.WebApp) {
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-  tg.expand();
-
-  tg.onEvent('viewportChanged', () => {
-    const viewport = tg.viewportStableHeight;
-    game.scale.setGameSize(window.innerWidth, viewport);
-  });
-
-  tg.BackButton.onClick(() => {
-    if (game.scene.isActive('play')) {
-      game.scene.getScene('play').confirmExit();
-    } else {
-      game.scene.start('menu');
-    }
-  });
-}
-
-// Отладка
-window.gameDebug = {
-  addCrystals: (amount) => {
-    import('./managers/GameManager').then(({ gameManager }) => {
-      gameManager.data.crystals += amount;
-      gameManager.save();
-    });
-  },
-  resetData: () => {
-    localStorage.clear();
-    location.reload();
-  }
-};
+window.game = new Phaser.Game(config);

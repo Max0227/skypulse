@@ -14,18 +14,58 @@ export const COLORS = {
 
 export const DIFFICULTY_CURVE = {
   0: { speed: 240, gap: 240, spawnDelay: 1500, coinChance: 0.8 },
-  3: { speed: 280, gap: 230, spawnDelay: 1400, coinChance: 0.75 },
-  6: { speed: 320, gap: 220, spawnDelay: 1300, coinChance: 0.70 },
-  9: { speed: 360, gap: 210, spawnDelay: 1200, coinChance: 0.65 },
-  12: { speed: 400, gap: 200, spawnDelay: 1100, coinChance: 0.60 },
-  15: { speed: 440, gap: 190, spawnDelay: 1000, coinChance: 0.55 },
-  20: { speed: 500, gap: 180, spawnDelay: 900, coinChance: 0.50 },
-  25: { speed: 560, gap: 170, spawnDelay: 800, coinChance: 0.45 },
-  30: { speed: 620, gap: 160, spawnDelay: 700, coinChance: 0.40 },
-  35: { speed: 680, gap: 150, spawnDelay: 600, coinChance: 0.35 },
-  40: { speed: 750, gap: 140, spawnDelay: 500, coinChance: 0.30 },
-  45: { speed: 820, gap: 130, spawnDelay: 400, coinChance: 0.25 },
-  50: { speed: 900, gap: 120, spawnDelay: 300, coinChance: 0.20 }
+  1: { speed: 260, gap: 235, spawnDelay: 1400, coinChance: 0.75 },
+  2: { speed: 280, gap: 230, spawnDelay: 1300, coinChance: 0.7 },
+  3: { speed: 300, gap: 225, spawnDelay: 1200, coinChance: 0.65 },
+  4: { speed: 320, gap: 220, spawnDelay: 1100, coinChance: 0.6 },
+};
+
+// Настройка миров (уровней) – добавляйте новые сюда
+export const WORLD_CONFIG = {
+  0: {
+    name: 'КОСМОС',
+    theme: 'space',
+    bgColor: 0x0a0a1a,
+    gateTexture: 'gate_blue',
+    enemyTypes: [], // врагов нет
+    goalScore: 500,
+    description: 'Начни свой путь в открытом космосе',
+    // Слои фона (параллакс)
+    backgroundLayers: [
+      { key: 'stars_far', speed: 0.1, count: 150 },
+      { key: 'stars_mid', speed: 0.3, count: 100 },
+      { key: 'planets', speed: 0.05, count: 5 },
+    ],
+  },
+  1: {
+    name: 'КИБЕРПАНК-ГОРОД',
+    theme: 'cyberpunk',
+    bgColor: 0x1a0a2a,
+    gateTexture: 'gate_purple',
+    enemyTypes: [],
+    goalScore: 800,
+    description: 'Неоновые огни и летающие машины',
+    backgroundLayers: [
+      { key: 'city_bg', speed: 0.15, count: 1 }, // дальний фон города
+      { key: 'buildings', speed: 0.3, count: 20 }, // здания
+      { key: 'cars', speed: 0.6, count: 10 }, // машины
+      { key: 'people', speed: 0.4, count: 15 }, // силуэты людей
+    ],
+  },
+  2: {
+    name: 'ПОДЗЕМЕЛЬЕ',
+    theme: 'dungeon',
+    bgColor: 0x2a1a0a,
+    gateTexture: 'gate_red',
+    enemyTypes: [],
+    goalScore: 1200,
+    description: 'Тёмные коридоры и древние ловушки',
+    backgroundLayers: [
+      { key: 'dungeon_wall', speed: 0.2, count: 1 },
+      { key: 'torches', speed: 0.3, count: 8 },
+      { key: 'chains', speed: 0.5, count: 5 },
+    ],
+  },
 };
 
 export const SHOP_UPGRADES = [
@@ -38,9 +78,6 @@ export const SHOP_UPGRADES = [
   { key: 'wagonGap', name: 'Дистанция вагонов', icon: '📏', cost: 30, maxLevel: 10 },
   { key: 'headHP', name: 'Макс. здоровье', icon: '❤️', cost: 40, maxLevel: 10 },
   { key: 'revival', name: 'Воскрешение', icon: '🔄', cost: 50, maxLevel: 5 },
-  { key: 'weaponDamage', name: 'Урон оружия', icon: '💥', cost: 20, maxLevel: 10 },
-  { key: 'weaponSpeed', name: 'Скорость пуль', icon: '⚡', cost: 15, maxLevel: 10 },
-  { key: 'weaponFireRate', name: 'Скорострельность', icon: '🔫', cost: 25, maxLevel: 10 },
 ];
 
 export const ACHIEVEMENTS = {
@@ -65,129 +102,4 @@ export const UPGRADE_COSTS = {
   wagonGap: { base: 30, multiplier: 1.2 },
   headHP: { base: 40, multiplier: 1.2 },
   revival: { base: 50, multiplier: 1.5 },
-  weaponDamage: { base: 20, multiplier: 1.2 },
-  weaponSpeed: { base: 15, multiplier: 1.15 },
-  weaponFireRate: { base: 25, multiplier: 1.25 },
-};
-
-export const LEVEL_CONFIG = {
-  0: {
-    name: 'КОСМОС',
-    theme: 'space',
-    bgColor: 0x0a0a1a,
-    gateColors: ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'],
-    enemyTypes: [],
-    description: 'Начни свой путь в открытом космосе'
-  },
-  1: {
-    name: 'КИБЕРПАНК ГОРОД',
-    theme: 'cyberpunk',
-    bgColor: 0x1a0a2a,
-    gateColors: ['gate_purple', 'gate_blue', 'gate_green', 'gate_yellow', 'gate_red'],
-    enemyTypes: ['drone'],
-    description: 'Неоновые огни и летающие враги'
-  },
-  2: {
-    name: 'ПОДЗЕМЕЛЬЕ',
-    theme: 'dungeon',
-    bgColor: 0x2a1a0a,
-    gateColors: ['gate_red', 'gate_yellow', 'gate_green', 'gate_blue', 'gate_purple'],
-    enemyTypes: ['skeleton'],
-    description: 'Тёмные коридоры и древние ловушки'
-  },
-  3: {
-    name: 'АСТЕРОИДНОЕ ПОЛЕ',
-    theme: 'asteroids',
-    bgColor: 0x0a2a2a,
-    gateColors: ['gate_blue', 'gate_purple', 'gate_yellow', 'gate_green', 'gate_red'],
-    enemyTypes: ['drone', 'skeleton'],
-    description: 'Опасное путешествие через метеориты'
-  },
-  4: {
-    name: 'КИБЕРПАНК СТАНЦИЯ',
-    theme: 'station',
-    bgColor: 0x2a0a2a,
-    gateColors: ['gate_purple', 'gate_red', 'gate_blue', 'gate_yellow', 'gate_green'],
-    enemyTypes: ['sentinel', 'drone'],
-    description: 'Заброшенная космическая станция'
-  },
-  5: {
-    name: 'ЧЁРНАЯ ДЫРА',
-    theme: 'blackhole',
-    bgColor: 0x000000,
-    gateColors: ['gate_red', 'gate_purple', 'gate_blue', 'gate_green', 'gate_yellow'],
-    enemyTypes: ['sentinel', 'drone', 'skeleton'],
-    description: 'Финальное испытание у края вселенной'
-  }
-};
-
-export const ENEMY_CONFIG = {
-  drone: {
-    health: 2,
-    speed: 150,
-    attackRange: 300,
-    detectionRange: 400,
-    damage: 1,
-    scoreValue: 5,
-    fireDelay: 800,
-    bulletSpeed: 400,
-    bulletDamage: 1
-  },
-  sentinel: {
-    health: 3,
-    speed: 200,
-    attackRange: 350,
-    detectionRange: 450,
-    damage: 1.5,
-    scoreValue: 10,
-    fireDelay: 600,
-    bulletSpeed: 500,
-    bulletDamage: 1
-  },
-  skeleton: {
-    health: 1,
-    speed: 120,
-    attackRange: 250,
-    detectionRange: 350,
-    damage: 1,
-    scoreValue: 3,
-    fireDelay: 1000,
-    bulletSpeed: 300,
-    bulletDamage: 1
-  }
-};
-
-export const WAVE_CONFIG = {
-  space: [
-    { wave: 0, count: 0, type: 'drone' },
-  ],
-  cyberpunk: [
-    { wave: 0, count: 2, type: 'drone' },
-    { wave: 1, count: 3, type: 'drone' },
-    { wave: 2, count: 2, type: 'sentinel' },
-    { wave: 3, count: 3, type: 'sentinel' },
-  ],
-  dungeon: [
-    { wave: 0, count: 2, type: 'skeleton' },
-    { wave: 1, count: 3, type: 'skeleton' },
-    { wave: 2, count: 4, type: 'skeleton' },
-    { wave: 3, count: 5, type: 'skeleton' },
-  ],
-  asteroids: [
-    { wave: 0, count: 3, type: 'drone' },
-    { wave: 1, count: 2, type: 'sentinel' },
-    { wave: 2, count: 4, type: 'drone' },
-  ],
-  station: [
-    { wave: 0, count: 2, type: 'sentinel' },
-    { wave: 1, count: 3, type: 'sentinel' },
-    { wave: 2, count: 2, type: 'drone' },
-    { wave: 3, count: 4, type: 'sentinel' },
-  ],
-  blackhole: [
-    { wave: 0, count: 4, type: 'sentinel' },
-    { wave: 1, count: 5, type: 'drone' },
-    { wave: 2, count: 3, type: 'skeleton' },
-    { wave: 3, count: 6, type: 'sentinel' },
-  ]
 };
