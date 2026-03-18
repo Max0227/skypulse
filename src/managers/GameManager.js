@@ -86,3 +86,4 @@ export class GameManager {
 }
 
 export const gameManager = new GameManager();
+window.gameManager = gameManager; // ← Добавьте эту строку
