@@ -2414,7 +2414,7 @@ this.input.on('pointerdown', (pointer) => {
     this.createGameOverBox();
 
     // Коллизии
-    this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
+    this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
 
     // Коллизии пуль с врагами
     this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
@@ -2971,7 +2971,7 @@ this.input.on('pointerdown', (pointer) => {
       coin.collected = false;
       this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
       this.coins.push(coin);
-      this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoinExtended(c), null, this);
+      this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
     }
 
   completeLevel() {
