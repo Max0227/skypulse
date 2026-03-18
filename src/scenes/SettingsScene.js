@@ -32,16 +32,11 @@ export class SettingsScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5);
 
-    // Панель настроек
-    const panelY = 120;
-    const panel = this.add.rectangle(w / 2, panelY + 150, w - 40, 300, 0x1a1a3a, 0.8)
-      .setStrokeStyle(2, COLORS.primary);
-
-    let y = 140;
+    let y = 130;
 
     // ===== ЗВУК =====
     this.add.text(30, y, '🔊 Звук', {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.text_primary
     }).setOrigin(0, 0.5);
@@ -49,13 +44,12 @@ export class SettingsScene extends Phaser.Scene {
     this.createToggle(w - 60, y, gameManager.data.soundEnabled, (value) => {
       gameManager.data.soundEnabled = value;
       gameManager.save();
-      try { audioManager.playSound(this, 'tap_sound', 0.3); } catch (e) {}
     });
-    y += 45;
+    y += 50;
 
     // ===== МУЗЫКА =====
     this.add.text(30, y, '🎵 Музыка', {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.text_primary
     }).setOrigin(0, 0.5);
@@ -68,13 +62,12 @@ export class SettingsScene extends Phaser.Scene {
       } else {
         audioManager.stopMusic();
       }
-      try { audioManager.playSound(this, 'tap_sound', 0.3); } catch (e) {}
     });
-    y += 45;
+    y += 50;
 
     // ===== ВИБРАЦИЯ =====
     this.add.text(30, y, '📳 Вибрация', {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.text_primary
     }).setOrigin(0, 0.5);
@@ -82,85 +75,68 @@ export class SettingsScene extends Phaser.Scene {
     this.createToggle(w - 60, y, gameManager.data.vibrationEnabled, (value) => {
       gameManager.data.vibrationEnabled = value;
       gameManager.save();
-      try { audioManager.playSound(this, 'tap_sound', 0.3); } catch (e) {}
     });
-    y += 55;
+    y += 70;
 
     // ===== СЛОЖНОСТЬ =====
     this.add.text(30, y, '⚡ Сложность', {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.text_primary
     }).setOrigin(0, 0.5);
 
     const difficulty = gameManager.data.difficulty || 'normal';
     this.difficultyText = this.add.text(w - 60, y, this.getDifficultyName(difficulty), {
-      fontSize: '16px',
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.accent
     }).setOrigin(0.5, 0.5);
 
     const difficultyLeft = this.add.text(w - 120, y, '◀', {
-      fontSize: '20px',
+      fontSize: '18px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary
     }).setInteractive().setOrigin(0.5, 0.5);
 
     const difficultyRight = this.add.text(w - 0, y, '▶', {
-      fontSize: '20px',
+      fontSize: '18px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.primary
     }).setInteractive().setOrigin(0.5, 0.5);
 
     difficultyLeft.on('pointerdown', () => this.changeDifficulty(-1));
     difficultyRight.on('pointerdown', () => this.changeDifficulty(1));
-    y += 55;
+    y += 60;
 
-    // ===== ЯЗЫК =====
+    // ===== ЯЗЫК (только английский) =====
     this.add.text(30, y, '🌐 Язык', {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.text_primary
     }).setOrigin(0, 0.5);
 
-    const language = gameManager.data.language || 'ru';
-    this.languageText = this.add.text(w - 60, y, this.getLanguageName(language), {
-      fontSize: '16px',
+    this.add.text(w - 60, y, 'English', {
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.accent
     }).setOrigin(0.5, 0.5);
-
-    const langLeft = this.add.text(w - 120, y, '◀', {
-      fontSize: '20px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary
-    }).setInteractive().setOrigin(0.5, 0.5);
-
-    const langRight = this.add.text(w - 0, y, '▶', {
-      fontSize: '20px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.primary
-    }).setInteractive().setOrigin(0.5, 0.5);
-
-    langLeft.on('pointerdown', () => this.changeLanguage(-1));
-    langRight.on('pointerdown', () => this.changeLanguage(1));
+    
     y += 70;
 
-    // Кнопки действий
-    const btnY = h - 140;
-
     // Кнопка очистки данных
-    this.createButton(w / 2 - 120, btnY, 'ОЧИСТИТЬ', () => this.confirmClearData(), 'danger');
-    
+    this.createButton(w / 2, y, 'ОЧИСТИТЬ ДАННЫЕ', () => this.confirmClearData(), 'danger');
+    y += 50;
+
     // Кнопка экспорта
-    this.createButton(w / 2 + 120, btnY, 'ЭКСПОРТ', () => this.exportData(), 'normal');
+    this.createButton(w / 2, y, 'ЭКСПОРТ ДАННЫХ', () => this.exportData(), 'normal');
+    y += 50;
 
     // Кнопка назад
     this.createButton(w / 2, h - 40, 'НАЗАД', () => this.scene.start('menu'));
 
     // Версия
     this.add.text(w / 2, h - 80, 'v3.5.0', {
-      fontSize: '12px',
+      fontSize: '10px',
       fontFamily: "'Space Mono', monospace",
       color: COLORS.text_muted
     }).setOrigin(0.5);
@@ -170,46 +146,39 @@ export class SettingsScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 80; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
         Phaser.Math.Between(0, h),
         'star'
       );
-      star.setScale(Phaser.Math.FloatBetween(0.2, 1.0));
+      star.setScale(Phaser.Math.FloatBetween(0.2, 0.8));
       star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
-      star.setAlpha(Phaser.Math.FloatBetween(0.2, 0.6));
+      star.setAlpha(Phaser.Math.FloatBetween(0.2, 0.5));
       star.setDepth(-5);
     }
   }
 
   createToggle(x, y, initValue, callback) {
-    const toggleBg = this.add.rectangle(x, y, 50, 25, initValue ? 0x00aa00 : 0xaa0000)
-      .setStrokeStyle(2, COLORS.primary)
+    const toggleBg = this.add.rectangle(x, y, 40, 20, initValue ? 0x00aa00 : 0xaa0000)
+      .setStrokeStyle(1, COLORS.primary)
       .setInteractive();
 
     const toggleCircle = this.add.circle(
-      x + (initValue ? 15 : -15),
+      x + (initValue ? 10 : -10),
       y,
-      10,
+      8,
       0xffffff
     );
-
-    const toggleText = this.add.text(x, y + 30, initValue ? 'ВКЛ' : 'ВЫКЛ', {
-      fontSize: '10px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: COLORS.text_secondary
-    }).setOrigin(0.5);
 
     toggleBg.on('pointerdown', () => {
       const newValue = !initValue;
       toggleBg.setFillStyle(newValue ? 0x00aa00 : 0xaa0000);
-      toggleCircle.x = x + (newValue ? 15 : -15);
-      toggleText.setText(newValue ? 'ВКЛ' : 'ВЫКЛ');
+      toggleCircle.x = x + (newValue ? 10 : -10);
       callback(newValue);
     });
 
-    return { toggleBg, toggleCircle, toggleText };
+    return { toggleBg, toggleCircle };
   }
 
   changeDifficulty(direction) {
@@ -224,7 +193,6 @@ export class SettingsScene extends Phaser.Scene {
     gameManager.save();
     
     this.difficultyText.setText(this.getDifficultyName(newDifficulty));
-    try { audioManager.playSound(this, 'tap_sound', 0.2); } catch (e) {}
   }
 
   getDifficultyName(diff) {
@@ -237,34 +205,6 @@ export class SettingsScene extends Phaser.Scene {
     return names[diff] || diff;
   }
 
-  changeLanguage(direction) {
-    const languages = ['ru', 'en', 'es', 'fr', 'de', 'zh', 'ja'];
-    let current = gameManager.data.language || 'ru';
-    let index = languages.indexOf(current);
-    
-    index = (index + direction + languages.length) % languages.length;
-    const newLanguage = languages[index];
-    
-    gameManager.data.language = newLanguage;
-    gameManager.save();
-    
-    this.languageText.setText(this.getLanguageName(newLanguage));
-    try { audioManager.playSound(this, 'tap_sound', 0.2); } catch (e) {}
-  }
-
-  getLanguageName(lang) {
-    const names = {
-      ru: 'Русский',
-      en: 'English',
-      es: 'Español',
-      fr: 'Français',
-      de: 'Deutsch',
-      zh: '中文',
-      ja: '日本語'
-    };
-    return names[lang] || lang;
-  }
-
   confirmClearData() {
     const w = this.scale.width;
     const h = this.scale.height;
@@ -273,45 +213,38 @@ export class SettingsScene extends Phaser.Scene {
       .setDepth(50)
       .setScrollFactor(0);
 
-    const panel = this.add.rectangle(w / 2, h / 2, 300, 200, 0x0a0a1a, 0.95)
+    const panel = this.add.rectangle(w / 2, h / 2, 260, 160, 0x0a0a1a, 0.95)
       .setStrokeStyle(2, COLORS.danger)
       .setDepth(51)
       .setScrollFactor(0);
 
-    this.add.text(w / 2, h / 2 - 50, 'Очистить все данные?', {
-      fontSize: '16px',
+    this.add.text(w / 2, h / 2 - 40, 'Очистить все данные?', {
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.danger,
       align: 'center'
     }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
-    this.add.text(w / 2, h / 2 - 20, 'Это действие нельзя отменить!', {
-      fontSize: '12px',
+    this.add.text(w / 2, h / 2 - 10, 'Это действие нельзя отменить!', {
+      fontSize: '10px',
       fontFamily: "'Space Mono', monospace",
       color: COLORS.warning
     }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
-    this.add.text(w / 2, h / 2 + 10, 'Все достижения и прогресс будут потеряны', {
-      fontSize: '10px',
-      fontFamily: "'Space Mono', monospace",
-      color: COLORS.text_secondary,
-      align: 'center'
-    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
-
-    const yesBtn = this.add.text(w / 2 - 80, h / 2 + 70, 'ДА', {
-      fontSize: '16px',
+    const yesBtn = this.add.text(w / 2 - 70, h / 2 + 40, 'ДА', {
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#ff0000',
       backgroundColor: '#1a1a3a',
-      padding: { x: 20, y: 8 }
+      padding: { x: 15, y: 5 }
     }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
-    const noBtn = this.add.text(w / 2 + 80, h / 2 + 70, 'НЕТ', {
-      fontSize: '16px',
+    const noBtn = this.add.text(w / 2 + 70, h / 2 + 40, 'НЕТ', {
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#00ff00',
       backgroundColor: '#1a1a3a',
-      padding: { x: 20, y: 8 }
+      padding: { x: 15, y: 5 }
     }).setInteractive().setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
     yesBtn.on('pointerover', () => yesBtn.setStyle({ color: '#ffffff', backgroundColor: '#aa0000' }));
@@ -346,16 +279,16 @@ export class SettingsScene extends Phaser.Scene {
     a.click();
     URL.revokeObjectURL(url);
     
-    this.showNotification('✅ Данные экспортированы', 1500, COLORS.success);
+    this.showNotification('✅ Данные экспортированы', 1500);
   }
 
-  showNotification(text, duration, color) {
+  showNotification(text, duration) {
     const w = this.scale.width;
     
     const notification = this.add.text(w / 2, 100, text, {
-      fontSize: '16px',
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
-      color: color
+      color: COLORS.success
     }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
     this.tweens.add({
@@ -370,19 +303,18 @@ export class SettingsScene extends Phaser.Scene {
   createButton(x, y, text, callback, type = 'normal') {
     const colors = {
       normal: { bg: '#1a1a3a', text: COLORS.primary },
-      danger: { bg: '#3a1a1a', text: '#ff4444' },
-      success: { bg: '#1a3a1a', text: '#44ff44' }
+      danger: { bg: '#3a1a1a', text: '#ff4444' }
     };
     const col = colors[type];
 
     const btn = this.add.text(x, y, text, {
-      fontSize: '16px',
+      fontSize: '14px',
       fontFamily: "'Orbitron', sans-serif",
       color: col.text,
       backgroundColor: col.bg,
-      padding: { x: 20, y: 8 },
+      padding: { x: 15, y: 6 },
       stroke: col.text,
-      strokeThickness: 2
+      strokeThickness: 1
     }).setOrigin(0.5).setInteractive();
 
     btn.on('pointerover', () => {

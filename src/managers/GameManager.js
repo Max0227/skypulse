@@ -27,9 +27,6 @@ export class GameManager {
       if (!data.tutorialCompleted) data.tutorialCompleted = false;
       if (!data.levelPrices) data.levelPrices = this.getDefaultLevelPrices();
       if (!data.worldProgress) data.worldProgress = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
-      if (!data.dailyReward) data.dailyReward = this.getDefaultDailyReward();
-      if (!data.leaderboard) data.leaderboard = [];
-      if (!data.settings) data.settings = this.getDefaultSettings();
       
       return data;
     } catch (e) {
@@ -40,7 +37,7 @@ export class GameManager {
 
   getDefaultData() {
     return {
-      crystals: 0,
+      crystals: 1000, // Для тестирования
       unlockedWorlds: [0],
       unlockedLevels: { '0': [0] },
       levelStars: {},
@@ -86,30 +83,6 @@ export class GameManager {
       '0-5': 500, '0-6': 600, '0-7': 700, '0-8': 800, '0-9': 900,
       '1-0': 200, '1-1': 300, '1-2': 400, '1-3': 500, '1-4': 600,
       '1-5': 700, '1-6': 800, '1-7': 900, '1-8': 1000, '1-9': 1100,
-      '2-0': 400, '2-1': 500, '2-2': 600, '2-3': 700, '2-4': 800,
-      '2-5': 900, '2-6': 1000, '2-7': 1100, '2-8': 1200, '2-9': 1300,
-      '3-0': 600, '3-1': 700, '3-2': 800, '3-3': 900, '3-4': 1000,
-      '3-5': 1100, '3-6': 1200, '3-7': 1300, '3-8': 1400, '3-9': 1500,
-      '4-0': 800, '4-1': 900, '4-2': 1000, '4-3': 1100, '4-4': 1200,
-      '4-5': 1300, '4-6': 1400, '4-7': 1500, '4-8': 1600, '4-9': 1700,
-    };
-  }
-
-  getDefaultDailyReward() {
-    return {
-      lastClaimDate: '',
-      streak: 0,
-      available: true,
-    };
-  }
-
-  getDefaultSettings() {
-    return {
-      soundEnabled: true,
-      musicEnabled: true,
-      vibrationEnabled: true,
-      language: 'ru',
-      difficulty: 'normal',
     };
   }
 
@@ -132,11 +105,9 @@ export class GameManager {
     if (!this.data.unlockedLevels[world]) this.data.unlockedLevels[world] = [];
     if (!this.data.unlockedLevels[world].includes(level)) {
       this.data.unlockedLevels[world].push(level);
-      
       if (level > (this.data.worldProgress[world] || -1)) {
         this.data.worldProgress[world] = level;
       }
-      
       this.save();
     }
   }
@@ -146,7 +117,6 @@ export class GameManager {
     if (price === undefined) return false;
     if (this.data.crystals < price) return false;
     if (this.isLevelUnlocked(world, level)) return false;
-
     this.data.crystals -= price;
     this.unlockLevel(world, level);
     return true;
@@ -172,13 +142,14 @@ export class GameManager {
     return total;
   }
 
-  getWorldProgress(world) {
-    return this.data.worldProgress[world] || 0;
+  // ===== СКИНЫ =====
+  getOwnedSkins() { 
+    return this.data.ownedSkins || ['default']; 
   }
 
-  // ===== СКИНЫ =====
-  getOwnedSkins() { return this.data.ownedSkins; }
-  getCurrentSkin() { return this.data.currentSkin; }
+  getCurrentSkin() { 
+    return this.data.currentSkin || 'default'; 
+  }
 
   purchaseSkin(skinId) {
     const skin = SKINS.find(s => s.id === skinId);
@@ -253,52 +224,18 @@ export class GameManager {
     this.save();
   }
 
-  // ===== ДНЕВНЫЕ НАГРАДЫ =====
-  claimDailyReward() {
-    const today = new Date().toISOString().split('T')[0];
-    const reward = this.dailyReward;
-    
-    if (reward.lastClaimDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      if (reward.lastClaimDate === yesterdayStr) {
-        reward.streak = Math.min(reward.streak + 1, 7);
-      } else {
-        reward.streak = 1;
+  // ===== ВИБРАЦИЯ =====
+  vibrate(pattern = [50]) {
+    if (!this.data.vibrationEnabled) return;
+    try {
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      } else if (navigator.vibrate) {
+        navigator.vibrate(pattern);
       }
-      
-      reward.lastClaimDate = today;
-      reward.available = true;
-      
-      const rewardAmount = [10, 20, 30, 50, 75, 100, 150][reward.streak - 1];
-      this.addCrystals(rewardAmount);
-      this.save();
-      
-      return rewardAmount;
+    } catch (e) {
+      console.warn('Vibration not supported');
     }
-    return 0;
-  }
-
-  // ===== ЛИДЕРБОРД =====
-  addLeaderboardEntry(score, level, wagons, meters) {
-    const entry = {
-      score,
-      level,
-      wagons,
-      meters,
-      timestamp: Date.now(),
-      date: new Date().toLocaleDateString('ru-RU'),
-    };
-    
-    this.data.leaderboard.unshift(entry);
-    this.data.leaderboard = this.data.leaderboard.slice(0, 100);
-    this.save();
-  }
-
-  getLeaderboard() {
-    return this.data.leaderboard || [];
   }
 }
 
