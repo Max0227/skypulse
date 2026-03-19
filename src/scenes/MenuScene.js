@@ -388,13 +388,13 @@ export class MenuScene extends Phaser.Scene {
     const w = this.scale.width;
     
     const buttons = [
-      { text: '▶ PLAY', y: 260, size: 'large', callback: this.startGame.bind(this) },
-      { text: '🌍 WORLDS', y: 330, size: 'normal', callback: () => this.scene.start('worldSelect') },
-      { text: '🛒 SHOP', y: 390, size: 'normal', callback: () => this.scene.start('shop') },
-      { text: '🎨 SKINS', y: 450, size: 'normal', callback: () => this.scene.start('skinShop') },
-      { text: '🏆 ACHIEVEMENTS', y: 510, size: 'normal', callback: () => this.scene.start('achievements') },
-      { text: '⚙ SETTINGS', y: 570, size: 'normal', callback: () => this.scene.start('settings') }
-    ];
+  { text: '▶ ИГРАТЬ', y: 260, size: 'large', callback: this.startGame.bind(this) },
+  { text: '🌍 МИРЫ', y: 330, size: 'normal', callback: () => this.scene.start('worldSelect') },
+  { text: '🛒 МАГАЗИН', y: 390, size: 'normal', callback: () => this.scene.start('shop') },
+  { text: '🎨 СКИНЫ', y: 450, size: 'normal', callback: () => this.scene.start('skinShop') },
+  { text: '🏆 ДОСТИЖЕНИЯ', y: 510, size: 'normal', callback: () => this.scene.start('achievements') },
+  { text: '⚙ НАСТРОЙКИ', y: 570, size: 'normal', callback: () => this.scene.start('settings') }
+];
 
     buttons.forEach((btn, index) => {
       this.createNeonButton(w / 2, btn.y, btn.text, btn.callback, btn.size, index);

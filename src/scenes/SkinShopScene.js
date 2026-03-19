@@ -655,20 +655,27 @@ export class SkinShopScene extends Phaser.Scene {
       currentRarity = skin.rarity;
       
       const rarityColors = {
-        'COMMON': '#aaaaaa',
-        'RARE': '#44aaff',
-        'EPIC': '#ff44aa',
-        'LEGENDARY': '#ffaa00'
-      };
-      
-      const separator = this.add.text(w / 2, currentY, `⚡ ${skin.rarity} TIER ⚡`, {
-        fontSize: '18px',
-        fontFamily: '"Audiowide", sans-serif',
-        color: rarityColors[skin.rarity],
-        stroke: '#000000',
-        strokeThickness: 3,
-        shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
-      }).setOrigin(0.5);
+  'COMMON': '#aaaaaa',
+  'RARE': '#44aaff',
+  'EPIC': '#ff44aa',
+  'LEGENDARY': '#ffaa00'
+};
+
+const rarityNames = {
+  'COMMON': 'ОБЫЧНЫЙ',
+  'RARE': 'РЕДКИЙ',
+  'EPIC': 'ЭПИЧЕСКИЙ',
+  'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+};
+
+const separator = this.add.text(w / 2, currentY, `⚡ ${rarityNames[skin.rarity]} ТИР ⚡`, {
+  fontSize: '18px',
+  fontFamily: '"Audiowide", sans-serif',
+  color: rarityColors[skin.rarity],
+  stroke: '#000000',
+  strokeThickness: 3,
+  shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
+}).setOrigin(0.5);
       
       container.add(separator);
       currentY += 40;
@@ -780,238 +787,407 @@ export class SkinShopScene extends Phaser.Scene {
   // =========================================================================
 
   createSkinCard(skin, w, y, owned, selected, canAfford) {
-    const elements = [];
+  const elements = [];
 
-    // Определяем цвета в зависимости от статуса
-    let borderColor = 0x666666;
-    let borderGlow = 0x00ffff;
-    let bgColor = 0x0d0d1a;
-    let textColor = '#ffffff';
-    
-    if (selected) {
-      borderColor = 0x00ff00;
-      borderGlow = 0x00ff00;
-      bgColor = 0x1a3a1a;
-      textColor = '#88ff88';
-    } else if (owned) {
-      borderColor = 0x00ffff;
-      borderGlow = 0x00ffff;
-      bgColor = 0x1a2a3a;
-      textColor = '#88ccff';
-    } else if (skin.price === 0) {
-      borderColor = 0xffaa00;
-      borderGlow = 0xffaa00;
-    } else if (canAfford) {
-      borderColor = 0xffaa00;
-      borderGlow = 0xffaa00;
+  // Цвета в зависимости от статуса
+  let borderColor = 0x666666;
+  let bgColor = 0x0a0a1a;
+  
+  if (selected) {
+    borderColor = 0x00ff00;
+    bgColor = 0x1a3a1a;
+  } else if (owned) {
+    borderColor = 0x00ffff;
+    bgColor = 0x1a2a3a;
+  } else if (skin.price === 0) {
+    borderColor = 0xffaa00;
+  } else if (canAfford) {
+    borderColor = 0xffaa00;
+  }
+
+  // Фон карточки
+  const bg = this.add.graphics();
+  bg.fillStyle(bgColor, 0.9);
+  bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+  bg.lineStyle(3, borderColor, 1);
+  bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+
+  // Превью скина
+  const preview = this.add.image(50, y + 55, skin.texture)
+    .setScale(1.0)
+    .setOrigin(0.5);
+
+  // Название
+  const nameText = this.add.text(120, y + 30, skin.name, {
+    fontSize: '18px',
+    fontFamily: '"Orbitron", sans-serif',
+    color: '#ffffff',
+    stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
+    strokeThickness: 1
+  }).setOrigin(0, 0.5);
+
+  // Редкость (русские названия)
+  const rarityNames = {
+    'COMMON': 'ОБЫЧНЫЙ',
+    'RARE': 'РЕДКИЙ',
+    'EPIC': 'ЭПИЧЕСКИЙ',
+    'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+  };
+  const rarityColors = {
+    'COMMON': '#aaaaaa',
+    'RARE': '#44aaff',
+    'EPIC': '#ff44aa',
+    'LEGENDARY': '#ffaa00'
+  };
+  const rarityText = this.add.text(120, y + 55, `[${rarityNames[skin.rarity]}]`, {
+    fontSize: '11px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: rarityColors[skin.rarity]
+  }).setOrigin(0, 0.5);
+
+  // Статы в одну строку
+  const statsText = this.add.text(120, y + 80, 
+    `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
+    {
+      fontSize: '11px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#88ff88'
     }
+  ).setOrigin(0, 0.5);
 
-    // Основной фон карточки с градиентом
-    const bg = this.add.graphics();
-    bg.fillStyle(bgColor, 0.95);
-    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-    bg.lineStyle(4, borderColor, 1);
-    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-    
-    // Внутреннее свечение
-    const innerGlow = this.add.graphics();
-    innerGlow.lineStyle(2, borderGlow, 0.3);
-    innerGlow.strokeRoundedRect(w / 2 - (w - 44) / 2, y + 2, w - 44, 136, 14);
+  // Статус/цена справа (русский текст)
+  let statusText = '';
+  let statusColor = '#666666';
+  if (selected) {
+    statusText = 'ВЫБРАН';
+    statusColor = '#00ff00';
+  } else if (owned) {
+    statusText = 'КУПЛЕН';
+    statusColor = '#00ffff';
+  } else if (skin.price === 0) {
+    statusText = 'БЕСПЛАТНО';
+    statusColor = '#ffaa00';
+  } else {
+    statusText = `${skin.price} 💎`;
+    statusColor = canAfford ? '#ffaa00' : '#ff4444';
+  }
 
-    // Превью скина с вращением при наведении
-    const preview = this.add.image(60, y + 70, skin.texture)
-      .setScale(1.2)
-      .setOrigin(0.5, 0.5);
+  const status = this.add.text(w - 40, y + 55, statusText, {
+    fontSize: '14px',
+    fontFamily: '"Audiowide", sans-serif',
+    color: statusColor,
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(1, 0.5);
 
-    // Название скина с эффектом неона
-    const nameText = this.add.text(140, y + 30, skin.name, {
-      fontSize: '22px',
-      fontFamily: '"Orbitron", sans-serif',
-      color: '#ffffff',
-      stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
-      strokeThickness: 2,
-      shadow: { blur: 8, color: borderColor === 0x00ffff ? '#00ffff' : '#888888', fill: true }
-    }).setOrigin(0, 0.5);
+  // Собираем все элементы
+  elements.push(bg, preview, nameText, rarityText, statsText, status);
 
-    // Описание
-    const descText = this.add.text(140, y + 60, skin.description, {
+  // Интерактивная область
+  const hitArea = this.add.rectangle(w / 2, y + 55, w - 40, 110, 0x000000, 0)
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5);
+
+  hitArea.on('pointerover', () => {
+    bg.clear();
+    bg.fillStyle(0x1a1a3a, 0.9);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.lineStyle(3, borderColor, 1);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    preview.setScale(1.1);
+    this.playHoverSound();
+  });
+
+  hitArea.on('pointerout', () => {
+    bg.clear();
+    bg.fillStyle(bgColor, 0.9);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.lineStyle(3, borderColor, 1);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    preview.setScale(1.0);
+  });
+
+  hitArea.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.playClickSound();
+    this.openSkinDetail(skin); // открываем детальное окно
+  });
+
+  elements.push(hitArea);
+  return { elements };
+}
+
+createSkinCard(skin, w, y, owned, selected, canAfford) {
+  const elements = [];
+
+  // Цвета в зависимости от статуса
+  let borderColor = 0x666666;
+  let bgColor = 0x0a0a1a;
+  
+  if (selected) {
+    borderColor = 0x00ff00;
+    bgColor = 0x1a3a1a;
+  } else if (owned) {
+    borderColor = 0x00ffff;
+    bgColor = 0x1a2a3a;
+  } else if (skin.price === 0) {
+    borderColor = 0xffaa00;
+  } else if (canAfford) {
+    borderColor = 0xffaa00;
+  }
+
+  // Фон карточки
+  const bg = this.add.graphics();
+  bg.fillStyle(bgColor, 0.9);
+  bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+  bg.lineStyle(3, borderColor, 1);
+  bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+
+  // Превью скина
+  const preview = this.add.image(50, y + 55, skin.texture)
+    .setScale(1.0)
+    .setOrigin(0.5);
+
+  // Название
+  const nameText = this.add.text(120, y + 30, skin.name, {
+    fontSize: '18px',
+    fontFamily: '"Orbitron", sans-serif',
+    color: '#ffffff',
+    stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
+    strokeThickness: 1
+  }).setOrigin(0, 0.5);
+
+  // Редкость (русские названия)
+  const rarityNames = {
+    'COMMON': 'ОБЫЧНЫЙ',
+    'RARE': 'РЕДКИЙ',
+    'EPIC': 'ЭПИЧЕСКИЙ',
+    'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+  };
+  const rarityColors = {
+    'COMMON': '#aaaaaa',
+    'RARE': '#44aaff',
+    'EPIC': '#ff44aa',
+    'LEGENDARY': '#ffaa00'
+  };
+  const rarityText = this.add.text(120, y + 55, `[${rarityNames[skin.rarity]}]`, {
+    fontSize: '11px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: rarityColors[skin.rarity]
+  }).setOrigin(0, 0.5);
+
+  // Статы в одну строку
+  const statsText = this.add.text(120, y + 80, 
+    `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
+    {
+      fontSize: '11px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#88ff88'
+    }
+  ).setOrigin(0, 0.5);
+
+  // Статус/цена справа (русский текст)
+  let statusText = '';
+  let statusColor = '#666666';
+  if (selected) {
+    statusText = 'ВЫБРАН';
+    statusColor = '#00ff00';
+  } else if (owned) {
+    statusText = 'КУПЛЕН';
+    statusColor = '#00ffff';
+  } else if (skin.price === 0) {
+    statusText = 'БЕСПЛАТНО';
+    statusColor = '#ffaa00';
+  } else {
+    statusText = `${skin.price} 💎`;
+    statusColor = canAfford ? '#ffaa00' : '#ff4444';
+  }
+
+  const status = this.add.text(w - 40, y + 55, statusText, {
+    fontSize: '14px',
+    fontFamily: '"Audiowide", sans-serif',
+    color: statusColor,
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(1, 0.5);
+
+  // Собираем все элементы
+  elements.push(bg, preview, nameText, rarityText, statsText, status);
+
+  // Интерактивная область
+  const hitArea = this.add.rectangle(w / 2, y + 55, w - 40, 110, 0x000000, 0)
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5);
+
+  hitArea.on('pointerover', () => {
+    bg.clear();
+    bg.fillStyle(0x1a1a3a, 0.9);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.lineStyle(3, borderColor, 1);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    preview.setScale(1.1);
+    this.playHoverSound();
+  });
+
+  hitArea.on('pointerout', () => {
+    bg.clear();
+    bg.fillStyle(bgColor, 0.9);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.lineStyle(3, borderColor, 1);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    preview.setScale(1.0);
+  });
+
+  hitArea.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.playClickSound();
+    this.openSkinDetail(skin); // открываем детальное окно
+  });
+
+  elements.push(hitArea);
+  return { elements };
+}
+openSkinDetail(skin) {
+  const w = this.scale.width;
+  const h = this.scale.height;
+
+  const owned = gameManager.getOwnedSkins().includes(skin.id);
+  const selected = gameManager.getCurrentSkin() === skin.id;
+  const canAfford = gameManager.data.crystals >= skin.price;
+
+  // Затемнение фона
+  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+    .setDepth(50)
+    .setScrollFactor(0)
+    .setInteractive();
+
+  // Панель
+  const panel = this.add.graphics();
+  panel.fillStyle(0x0a0a1a, 0.95);
+  panel.fillRoundedRect(w / 2 - 200, h / 2 - 200, 400, 400, 20);
+  panel.lineStyle(4, skin.rarity === 'LEGENDARY' ? 0xffaa00 : 0x00ffff, 1);
+  panel.strokeRoundedRect(w / 2 - 200, h / 2 - 200, 400, 400, 20);
+  panel.setDepth(51);
+
+  // Превью
+  const preview = this.add.image(w / 2, h / 2 - 80, skin.texture)
+    .setScale(2.5)
+    .setDepth(52)
+    .setScrollFactor(0);
+
+  // Название
+  this.add.text(w / 2, h / 2, skin.name, {
+    fontSize: '24px',
+    fontFamily: '"Orbitron", sans-serif',
+    color: '#ffffff',
+    stroke: '#000000',
+    strokeThickness: 3
+  }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+
+  // Описание
+  this.add.text(w / 2, h / 2 + 30, skin.description, {
+    fontSize: '14px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: '#aaccff',
+    align: 'center',
+    wordWrap: { width: 300 }
+  }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+
+  // Характеристики (русские подписи)
+  const stats = [
+    { label: 'СКОРОСТЬ', value: skin.stats.speedBonus, icon: '⚡', color: 0xffff00 },
+    { label: 'БРОНЯ', value: skin.stats.armorBonus, icon: '🛡️', color: 0x00ffff },
+    { label: 'УПРАВЛЕНИЕ', value: skin.stats.handlingBonus, icon: '🌀', color: 0xff00ff },
+    { label: 'ПРЫЖОК', value: skin.stats.jumpBonus, icon: '🚀', color: 0xff8800 }
+  ];
+
+  let yPos = h / 2 + 70;
+  stats.forEach(stat => {
+    this.add.text(w / 2 - 100, yPos, `${stat.icon} ${stat.label}:`, {
       fontSize: '14px',
       fontFamily: '"Share Tech Mono", monospace',
-      color: '#aaccff'
-    }).setOrigin(0, 0.5);
+      color: '#ffffff'
+    }).setOrigin(0, 0.5).setDepth(52).setScrollFactor(0);
 
-    // Статистика в виде иконок
-    const stats = [
-      { icon: '⚡', value: skin.stats.speedBonus, color: 0xffff00 },
-      { icon: '🛡️', value: skin.stats.armorBonus, color: 0x00ffff },
-      { icon: '🌀', value: skin.stats.handlingBonus, color: 0xff00ff },
-      { icon: '🚀', value: skin.stats.jumpBonus, color: 0xff8800 }
-    ];
+    const sign = stat.value >= 0 ? '+' : '';
+    const color = stat.value >= 0 ? '#88ff88' : '#ff8888';
+    this.add.text(w / 2 + 100, yPos, `${sign}${stat.value}`, {
+      fontSize: '16px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: color
+    }).setOrigin(1, 0.5).setDepth(52).setScrollFactor(0);
+    yPos += 25;
+  });
 
-    let statsX = 140;
-    stats.forEach((stat, index) => {
-      const statBg = this.add.graphics();
-      statBg.fillStyle(0x1a1a2a, 0.8);
-      statBg.fillRoundedRect(statsX, y + 85, 45, 20, 8);
-      statBg.lineStyle(1, stat.color, 0.5);
-      statBg.strokeRoundedRect(statsX, y + 85, 45, 20, 8);
-      
-      const statIcon = this.add.text(statsX + 12, y + 95, stat.icon, {
-        fontSize: '12px'
-      }).setOrigin(0.5);
-      
-      const statValue = this.add.text(statsX + 30, y + 95, `+${stat.value}`, {
-        fontSize: '10px',
-        fontFamily: '"Share Tech Mono", monospace',
-        color: Phaser.Display.Color.ValueToColor(stat.color).rgba
-      }).setOrigin(0, 0.5);
-      
-      elements.push(statBg, statIcon, statValue);
-      statsX += 55;
-    });
+  // Кнопки
+  const buttonY = h / 2 + 170;
+  if (!owned) {
+    const buyBtn = this.add.text(w / 2 - 80, buttonY, 'КУПИТЬ', {
+      fontSize: '18px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: canAfford ? '#00ff00' : '#ff4444',
+      backgroundColor: '#1a1a3a',
+      padding: { x: 20, y: 10 }
+    }).setInteractive().setDepth(52).setScrollFactor(0).setOrigin(0.5);
 
-    // Редкость
-    const rarityColors = {
-      'COMMON': '#aaaaaa',
-      'RARE': '#44aaff',
-      'EPIC': '#ff44aa',
-      'LEGENDARY': '#ffaa00'
-    };
-    
-    const rarityText = this.add.text(140, y + 115, `[${skin.rarity}]`, {
-      fontSize: '12px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: rarityColors[skin.rarity]
-    }).setOrigin(0, 0.5);
-
-    // Статус/цена справа
-    let statusContent = '';
-    let statusColor = '#666666';
-    let statusBg = 0x1a1a2a;
-    
-    if (selected) {
-      statusContent = 'EQUIPPED';
-      statusColor = '#00ff00';
-      statusBg = 0x1a3a1a;
-    } else if (owned) {
-      statusContent = 'OWNED';
-      statusColor = '#00ffff';
-      statusBg = 0x1a2a3a;
-    } else if (skin.price === 0) {
-      statusContent = 'FREE';
-      statusColor = '#ffaa00';
-      statusBg = 0x3a2a1a;
-    } else {
-      statusContent = `${skin.price}`;
-      statusColor = canAfford ? '#ffaa00' : '#ff4444';
-      statusBg = canAfford ? 0x3a2a1a : 0x3a1a1a;
-    }
-
-    // Фон для статуса/цены с эффектом
-    const statusBgGraphic = this.add.graphics();
-    statusBgGraphic.fillStyle(statusBg, 0.9);
-    statusBgGraphic.fillRoundedRect(w - 140, y + 45, 100, 35, 18);
-    statusBgGraphic.lineStyle(2, parseInt(statusColor.replace('#', '0x'), 16), 0.7);
-    statusBgGraphic.strokeRoundedRect(w - 140, y + 45, 100, 35, 18);
-
-    // Иконка кристалла для цены
-    if (!selected && !owned && skin.price > 0) {
-      const crystalIcon = this.add.text(w - 125, y + 62, '💎', {
-        fontSize: '16px'
-      }).setOrigin(0.5);
-      elements.push(crystalIcon);
-    }
-
-    // Текст статуса/цены
-    const statusText = this.add.text(
-      w - (selected || owned || skin.price === 0 ? 90 : 70), 
-      y + 62, 
-      statusContent, 
-      {
-        fontSize: selected || owned ? '14px' : '18px',
-        fontFamily: '"Audiowide", sans-serif',
-        color: statusColor,
-        stroke: '#000000',
-        strokeThickness: 2
-      }
-    ).setOrigin(0.5);
-
-    // Индикаторы эффектов
-    if (skin.effects !== 'none') {
-      const effectIcons = {
-        'siren': '🚨',
-        'neon': '💡',
-        'flames': '🔥',
-        'monster': '👣',
-        'formula': '⚡',
-        'gold': '👑',
-        'cyber': '🤖',
-        'void': '🌌'
-      };
-      
-      const effectIcon = effectIcons[skin.effects] || '✨';
-      
-      const effectBg = this.add.graphics();
-      effectBg.fillStyle(0x2a1a2a, 0.8);
-      effectBg.fillRoundedRect(w - 140, y + 90, 40, 30, 10);
-      effectBg.lineStyle(1, borderColor, 0.5);
-      effectBg.strokeRoundedRect(w - 140, y + 90, 40, 30, 10);
-      
-      const effectText = this.add.text(w - 120, y + 105, effectIcon, {
-        fontSize: '20px'
-      }).setOrigin(0.5);
-      
-      elements.push(effectBg, effectText);
-    }
-
-    // Собираем все элементы
-    elements.push(bg, innerGlow, preview, nameText, descText, rarityText, statusBgGraphic, statusText);
-
-    // Добавляем интерактивную область
-    const hitArea = this.add.rectangle(w / 2, y + 70, w - 40, 140, 0x000000, 0)
-      .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(w / 2 - (w - 40) / 2, y, w - 40, 140) })
-      .setOrigin(0.5);
-
-    // Эффекты наведения
-    hitArea.on('pointerover', () => {
-      bg.clear();
-      bg.fillStyle(0x2a2a4a, 0.95);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-      bg.lineStyle(4, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-      
-      preview.setScale(1.4);
-      this.playHoverSound();
-    });
-
-    hitArea.on('pointerout', () => {
-      bg.clear();
-      bg.fillStyle(bgColor, 0.95);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-      bg.lineStyle(4, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 140, 16);
-      
-      preview.setScale(1.2);
-    });
-
-    // Обработка клика
-    hitArea.on('pointerdown', (pointer) => {
-      pointer.event.stopPropagation();
-      this.playClickSound();
-      
-      if (owned && !selected) {
-        this.selectSkin(skin);
-      } else if (!owned && (skin.price === 0 || canAfford)) {
+    buyBtn.on('pointerover', () => buyBtn.setStyle({ backgroundColor: '#2a2a5a' }));
+    buyBtn.on('pointerout', () => buyBtn.setStyle({ backgroundColor: '#1a1a3a' }));
+    buyBtn.on('pointerdown', () => {
+      if (canAfford) {
+        // Закрываем текущее окно и открываем окно подтверждения покупки
+        overlay.destroy();
+        panel.destroy();
+        preview.destroy();
+        buyBtn.destroy();
         this.confirmPurchase(skin);
-      } else if (!canAfford && !owned) {
+      } else {
         this.showNoFunds();
       }
     });
+  } else if (!selected) {
+    const selectBtn = this.add.text(w / 2 - 80, buttonY, 'ВЫБРАТЬ', {
+      fontSize: '18px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: '#00ffff',
+      backgroundColor: '#1a1a3a',
+      padding: { x: 20, y: 10 }
+    }).setInteractive().setDepth(52).setScrollFactor(0).setOrigin(0.5);
 
-    elements.push(hitArea);
-
-    return { elements, bg, preview };
+    selectBtn.on('pointerover', () => selectBtn.setStyle({ backgroundColor: '#2a2a5a' }));
+    selectBtn.on('pointerout', () => selectBtn.setStyle({ backgroundColor: '#1a1a3a' }));
+    selectBtn.on('pointerdown', () => {
+      this.selectSkin(skin);
+      overlay.destroy();
+      panel.destroy();
+      preview.destroy();
+      selectBtn.destroy();
+    });
+  } else {
+    this.add.text(w / 2, buttonY, 'ВЫБРАНО', {
+      fontSize: '18px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: '#00ff00',
+      backgroundColor: '#1a3a1a',
+      padding: { x: 20, y: 10 }
+    }).setDepth(52).setScrollFactor(0).setOrigin(0.5);
   }
+
+  // Кнопка закрытия
+  const closeBtn = this.add.text(w - 40, h / 2 - 180, '✕', {
+    fontSize: '32px',
+    fontFamily: 'sans-serif',
+    color: '#ff4444'
+  }).setInteractive().setDepth(52).setScrollFactor(0).setOrigin(0.5);
+
+  closeBtn.on('pointerover', () => closeBtn.setStyle({ color: '#ff8888' }));
+  closeBtn.on('pointerout', () => closeBtn.setStyle({ color: '#ff4444' }));
+  closeBtn.on('pointerdown', () => {
+    overlay.destroy();
+    panel.destroy();
+    preview.destroy();
+    closeBtn.destroy();
+  });
+}
 
   // =========================================================================
   // СОЗДАНИЕ ПОДВАЛА
