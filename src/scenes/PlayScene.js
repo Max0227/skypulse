@@ -1252,18 +1252,21 @@ export class PlayScene extends Phaser.Scene {
     // ===== СТАРЫЙ МЕТОД updateLevel БОЛЬШЕ НЕ ВЫЗЫВАЕТСЯ =====
     // this.updateLevel(); - УДАЛЕН
 
-    // Дополнительные методы
-    this.updatePlayerEffects();
-    this.updateMultiplier();
-    this.checkWaveAchievements();
-    this.createComboEffect();
-    this.checkNewRecords();
-    this.checkQuests();
-    this.updateRealTimeStats();
-    this.checkLevelCompletion();
-    this.checkMaxCombo();
-    this.checkPerformance();
-    this.optimizeMemory();
+    // ===== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ =====
+if (this.updatePlayerEffects) this.updatePlayerEffects();
+if (this.updateMultiplier) this.updateMultiplier();
+if (this.checkWaveAchievements) this.checkWaveAchievements();
+if (this.createComboEffect) this.createComboEffect();
+if (this.checkNewRecords) this.checkNewRecords();
+if (this.checkQuests) this.checkQuests();
+if (this.updateRealTimeStats) this.updateRealTimeStats();
+
+// ВАЖНО: закомментировано, так как метод удален
+// if (this.checkLevelCompletion) this.checkLevelCompletion();
+
+if (this.checkMaxCombo) this.checkMaxCombo();
+if (this.checkPerformance) this.checkPerformance();
+if (this.optimizeMemory) this.optimizeMemory();
     // ===== ПРОВЕРКИ И ОБНОВЛЕНИЯ =====
 this.checkAchievements();
 if (this.level >= 1 && this.waveManager) {
