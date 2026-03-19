@@ -3646,178 +3646,293 @@ updatePlayerVisuals() {
     });
   }
 
-  updateLevel() {
-    const newLevel = Math.floor(this.meters / 1000);
-    if (newLevel > this.gameLevel) {
-      this.gameLevel = newLevel;
-      this.updateDifficulty();
+  /**
+ * Обновление уровня каждые 1000 метров
+ */
+updateLevel() {
+  const newLevel = Math.floor(this.meters / 1000);
+  if (newLevel > this.gameLevel) {
+    this.gameLevel = newLevel;
+    this.updateDifficulty(); // теперь这个方法 существует
 
-      const w = this.scale.width;
-      const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
-        fontSize: '24px',
-        fontFamily: "'Orbitron', sans-serif",
-        color: '#00ffff',
-        stroke: '#ff00ff',
-        strokeThickness: 3
-      }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
-
-      this.tweens.add({
-        targets: levelText,
-        alpha: 0,
-        duration: 2000,
-        onComplete: () => levelText.destroy()
-      });
-
-      this.checkStationSpawn();
-      if (this.questSystem) {
-        this.questSystem.updateProgress('level', 1);
-      }
-    }
-  }
-
-  checkStationSpawn() {
-    if (this.stationActive || this.dead) return;
-    if (this.level > 0 && this.level % 10 === 0 && !this.stationPlanet) {
-      this.spawnStation();
-    }
-  }
-
-  spawnStation() {
     const w = this.scale.width;
-    const h = this.scale.height;
-    const x = w + 200;
-    const y = Phaser.Math.Between(100, h - 100);
-    this.stationPlanet = this.physics.add.image(x, y, 'station_planet')
-      .setImmovable(true)
-      .setScale(1.5)
-      .setDepth(-5)
-      .setVelocityX(-this.currentSpeed * 0.3);
-    if (this.stationPlanet.body) {
-      this.stationPlanet.body.setAllowGravity(false);
-    }
-    this.stationActive = true;
-    const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', {
-      fontSize: '16px',
-      fontFamily: "'Orbitron', monospace",
+    const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
+      fontSize: '24px',
+      fontFamily: "'Orbitron', sans-serif",
       color: '#00ffff',
       stroke: '#ff00ff',
-      strokeThickness: 2
-    }).setOrigin(0.5).setDepth(-4);
-    this.stationPlanet.label = label;
-    this.tweens.add({
-      targets: this.stationPlanet,
-      angle: 360,
-      duration: 8000,
-      repeat: -1,
-      ease: 'Linear'
-    });
-  }
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
-  touchStation() {
-    if (!this.stationActive || !this.stationPlanet) return;
-    this.stationActive = false;
-    const bonus = this.wagons.length * 10;
-    this.crystals += bonus;
-    if (this.crystalText) {
-      this.crystalText.setText(`💎 ${this.crystals}`);
-    }
-    if (gameManager.data) {
-      gameManager.data.crystals = this.crystals;
-      gameManager.save();
-    }
-    this.particleManager.createBonusEffect('speed', this.stationPlanet.x, this.stationPlanet.y);
-    this.wagons.forEach(w => { if (w && w.destroy) w.destroy(); });
-    this.wagons = [];
-    this.targetPlayerX = 110;
-    if (this.wagonCountText) {
-      this.wagonCountText.setText(`🚃 0/${this.maxWagons}`);
-    }
-    this.updateCameraZoom();
-    const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, {
-      fontSize: '28px',
-      fontFamily: "'Orbitron', monospace",
-      color: '#ffaa00',
-      stroke: '#ff00ff',
-      strokeThickness: 4
-    }).setOrigin(0.5);
     this.tweens.add({
-      targets: msg,
-      y: msg.y - 100,
+      targets: levelText,
       alpha: 0,
-      duration: 1500,
-      onComplete: () => msg.destroy()
+      duration: 2000,
+      onComplete: () => levelText.destroy()
     });
-    if (this.stationPlanet.label) this.stationPlanet.label.destroy();
-    this.stationPlanet.destroy();
-    this.stationPlanet = null;
-  }
 
-  spawnCoin(x, y) {
-    if (Math.random() > 0.9) return;
-    let coinType = 'gold', texture = 'coin_gold';
-    const r = Math.random();
-    if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
-    else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
-    else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
-    else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
-    const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
-      .setImmovable(true)
-      .setVelocityX(-this.currentSpeed)
-      .setAngularVelocity(200);
-    coin.body.setAllowGravity(false);
-    coin.setScale(0.01);
-    coin.coinType = coinType;
-    coin.setBlendMode(Phaser.BlendModes.ADD);
-    coin.collected = false;
-    this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
-    this.coins.push(coin);
-    // Fix: Change collectCoinExtended to collectCoin
-    this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
-  }
-
-  completeLevel() {
-    let stars = 1;
-    if (this.score >= (this.worldConfig?.goalScore || 500) * 1.5) stars = 2;
-    if (this.score >= (this.worldConfig?.goalScore || 500) * 2) stars = 3;
-    if (this.headHP === this.maxHeadHP) stars = Math.min(3, stars + 1);
-
-    if (gameManager.setLevelStars) {
-      gameManager.setLevelStars(this.world, this.level, stars);
+    this.checkStationSpawn();
+    if (this.questSystem) {
+      this.questSystem.updateProgress('level', 1);
     }
+  }
+}
 
-    if (this.level < 9 && gameManager.unlockLevel) {
-      gameManager.unlockLevel(this.world, this.level + 1);
-    }
-    if (this.level === 9 && this.world < 4 && gameManager.data) {
-      const worlds = gameManager.data.unlockedWorlds || [];
-      if (!worlds.includes(this.world + 1)) {
-        worlds.push(this.world + 1);
-        if (gameManager.save) gameManager.save();
+/**
+ * Обновление параметров сложности на основе текущего уровня
+ */
+updateDifficulty() {
+  const diff = this.getDifficulty();
+  this.baseSpeed = diff.speed;
+  this.gapSize = diff.gap;
+  this.spawnDelay = diff.spawnDelay;
+  
+  // Если нет активного бонуса, обновляем текущую скорость
+  if (!this.bonusActive) {
+    this.currentSpeed = this.baseSpeed;
+  }
+  
+  // Обновляем скорость всех существующих объектов
+  this.updateExistingObjectsSpeed();
+  
+  // Отладочный вывод (можно удалить в продакшене)
+  console.log(`Уровень ${this.gameLevel}: скорость ${this.baseSpeed}px/с, зазор ${this.gapSize}px`);
+}
+
+/**
+ * Обновление скорости уже существующих объектов
+ */
+updateExistingObjectsSpeed() {
+  // Обновляем скорость ворот
+  if (this.gateGroup) {
+    this.gateGroup.getChildren().forEach(gate => {
+      if (gate && gate.body) {
+        gate.body.velocity.x = -this.baseSpeed;
       }
-    }
-
-    if (gameManager.updateStats) {
-      gameManager.updateStats(
-        this.score,
-        this.level + 1,
-        this.wagons.length,
-        this.comboSystem?.maxCombo || 0,
-        this.collectedCoins,
-        0,
-        Math.floor(this.meters)
-      );
-    }
-
-    this.scene.start('levelComplete', {
-      world: this.world,
-      level: this.level,
-      score: this.score,
-      stars: stars,
-      coins: this.collectedCoins,
-      wagons: this.wagons.length,
-      newUnlock: this.level < 9
     });
   }
+  
+  // Обновляем скорость зон
+  if (this.scoreZones) {
+    this.scoreZones.forEach(zone => {
+      if (zone && zone.body) {
+        zone.body.velocity.x = -this.baseSpeed;
+      }
+    });
+  }
+  
+  // Обновляем скорость монет
+  if (this.coins) {
+    this.coins.forEach(coin => {
+      if (coin && coin.body && coin.active) {
+        coin.body.velocity.x = -this.currentSpeed;
+        coin.speed = this.currentSpeed;
+      }
+    });
+  }
+}
+
+/**
+ * Получение параметров сложности для текущего уровня
+ */
+getDifficulty() {
+  const level = Math.min(this.gameLevel, 20);
+  
+  // Базовая скорость для 0 уровня
+  const baseSpeed = 240;
+  // Увеличение на 10% каждый уровень
+  const speed = Math.floor(baseSpeed * Math.pow(1.1, level));
+  
+  // Плавное уменьшение зазора
+  const baseGap = 240;
+  const gap = Math.max(140, Math.floor(baseGap - level * 5));
+  
+  // Уменьшение задержки спавна
+  const baseDelay = 1500;
+  const spawnDelay = Math.max(500, baseDelay - level * 50);
+  
+  // Увеличение шансов
+  const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
+  const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
+  
+  // Добавляем случайность для разнообразия
+  return {
+    speed: speed + Phaser.Math.Between(-10, 10),
+    gap: gap + Phaser.Math.Between(-10, 10),
+    spawnDelay: spawnDelay + Phaser.Math.Between(-50, 50),
+    coinChance: 0.8,
+    asteroidChance: asteroidChance,
+    powerUpChance: powerUpChance
+  };
+}
+
+/**
+ * Проверка спавна станции
+ */
+checkStationSpawn() {
+  if (this.stationActive || this.dead) return;
+  if (this.level > 0 && this.level % 10 === 0 && !this.stationPlanet) {
+    this.spawnStation();
+  }
+}
+
+/**
+ * Спавн станции
+ */
+spawnStation() {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const x = w + 200;
+  const y = Phaser.Math.Between(100, h - 100);
+  this.stationPlanet = this.physics.add.image(x, y, 'station_planet')
+    .setImmovable(true)
+    .setScale(1.5)
+    .setDepth(-5)
+    .setVelocityX(-this.currentSpeed * 0.3);
+  if (this.stationPlanet.body) {
+    this.stationPlanet.body.setAllowGravity(false);
+  }
+  this.stationActive = true;
+  const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', {
+    fontSize: '16px',
+    fontFamily: "'Orbitron', monospace",
+    color: '#00ffff',
+    stroke: '#ff00ff',
+    strokeThickness: 2
+  }).setOrigin(0.5).setDepth(-4);
+  this.stationPlanet.label = label;
+  this.tweens.add({
+    targets: this.stationPlanet,
+    angle: 360,
+    duration: 8000,
+    repeat: -1,
+    ease: 'Linear'
+  });
+}
+
+/**
+ * Взаимодействие со станцией
+ */
+touchStation() {
+  if (!this.stationActive || !this.stationPlanet) return;
+  this.stationActive = false;
+  const bonus = this.wagons.length * 10;
+  this.crystals += bonus;
+  if (this.crystalText) {
+    this.crystalText.setText(`💎 ${this.crystals}`);
+  }
+  if (gameManager.data) {
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
+  }
+  this.particleManager.createBonusEffect('speed', this.stationPlanet.x, this.stationPlanet.y);
+  this.wagons.forEach(w => { if (w && w.destroy) w.destroy(); });
+  this.wagons = [];
+  this.targetPlayerX = 110;
+  if (this.wagonCountText) {
+    this.wagonCountText.setText(`🚃 0/${this.maxWagons}`);
+  }
+  this.updateCameraZoom();
+  const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, {
+    fontSize: '28px',
+    fontFamily: "'Orbitron', monospace",
+    color: '#ffaa00',
+    stroke: '#ff00ff',
+    strokeThickness: 4
+  }).setOrigin(0.5);
+  this.tweens.add({
+    targets: msg,
+    y: msg.y - 100,
+    alpha: 0,
+    duration: 1500,
+    onComplete: () => msg.destroy()
+  });
+  if (this.stationPlanet.label) this.stationPlanet.label.destroy();
+  this.stationPlanet.destroy();
+  this.stationPlanet = null;
+}
+
+/**
+ * Спавн монеты
+ */
+spawnCoin(x, y) {
+  if (Math.random() > 0.9) return;
+  let coinType = 'gold', texture = 'coin_gold';
+  const r = Math.random();
+  if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
+  else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
+  else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
+  else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
+  
+  const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
+    .setImmovable(true)
+    .setVelocityX(-this.currentSpeed)
+    .setAngularVelocity(200);
+  
+  coin.body.setAllowGravity(false);
+  coin.body.setGravityY(0);
+  coin.body.velocity.y = 0;
+  coin.speed = this.currentSpeed; // сохраняем скорость для восстановления
+  
+  coin.setScale(0.01);
+  coin.coinType = coinType;
+  coin.setBlendMode(Phaser.BlendModes.ADD);
+  coin.collected = false;
+  
+  this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
+  this.coins.push(coin);
+  this.coinGroup.add(coin);
+  
+  // Исправлено: collectCoin вместо collectCoinExtended
+  this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
+}
+
+/**
+ * Завершение уровня
+ */
+completeLevel() {
+  let stars = 1;
+  if (this.score >= (this.worldConfig?.goalScore || 500) * 1.5) stars = 2;
+  if (this.score >= (this.worldConfig?.goalScore || 500) * 2) stars = 3;
+  if (this.headHP === this.maxHeadHP) stars = Math.min(3, stars + 1);
+
+  if (gameManager.setLevelStars) {
+    gameManager.setLevelStars(this.world, this.level, stars);
+  }
+
+  if (this.level < 9 && gameManager.unlockLevel) {
+    gameManager.unlockLevel(this.world, this.level + 1);
+  }
+  if (this.level === 9 && this.world < 4 && gameManager.data) {
+    const worlds = gameManager.data.unlockedWorlds || [];
+    if (!worlds.includes(this.world + 1)) {
+      worlds.push(this.world + 1);
+      if (gameManager.save) gameManager.save();
+    }
+  }
+
+  if (gameManager.updateStats) {
+    gameManager.updateStats(
+      this.score,
+      this.level + 1,
+      this.wagons.length,
+      this.comboSystem?.maxCombo || 0,
+      this.collectedCoins,
+      0,
+      Math.floor(this.meters)
+    );
+  }
+
+  this.scene.start('levelComplete', {
+    world: this.world,
+    level: this.level,
+    score: this.score,
+    stars: stars,
+    coins: this.collectedCoins,
+    wagons: this.wagons.length,
+    newUnlock: this.level < 9
+  });
+}
 
   handleDeath() {
     if (this.upgradeSystem && this.upgradeSystem.upgrades && this.upgradeSystem.upgrades.revival > 0 && !this.dead) {
