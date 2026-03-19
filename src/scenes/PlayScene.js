@@ -3707,6 +3707,7 @@ updateExistingObjectsSpeed() {
     this.gateGroup.getChildren().forEach(gate => {
       if (gate && gate.body) {
         gate.body.velocity.x = -this.baseSpeed;
+        gate.body.velocity.y = 0; // Дополнительная защита
       }
     });
   }
@@ -3716,26 +3717,30 @@ updateExistingObjectsSpeed() {
     this.scoreZones.forEach(zone => {
       if (zone && zone.body) {
         zone.body.velocity.x = -this.baseSpeed;
+        zone.body.velocity.y = 0; // Дополнительная защита
       }
     });
   }
   
-  // Обновляем скорость монет - С ВОССТАНОВЛЕНИЕМ ВЕРТИКАЛЬНОЙ СКОРОСТИ
+  // Обновляем скорость монет - МАКСИМАЛЬНАЯ ЗАЩИТА ОТ ГРАВИТАЦИИ
   if (this.coins) {
     this.coins.forEach(coin => {
       if (coin && coin.body && coin.active) {
-        coin.body.velocity.x = -this.currentSpeed;
-        coin.body.velocity.y = 0; // ВАЖНО: держим вертикальную скорость на нуле
-        coin.body.setGravityY(0);  // ВАЖНО: отключаем гравитацию
+        coin.body.setAllowGravity(false);  // Принудительно отключаем гравитацию
+        coin.body.setGravityY(0);          // Обнуляем гравитацию
+        coin.body.velocity.x = -this.currentSpeed; // Горизонтальная скорость
+        coin.body.velocity.y = 0;           // Вертикальная скорость = 0
         coin.speed = this.currentSpeed;
       }
     });
   }
   
-  // Обновляем скорость монет в группе (на всякий случай)
+  // Обновляем скорость монет в группе
   if (this.coinGroup) {
     this.coinGroup.getChildren().forEach(coin => {
       if (coin && coin.body && coin.active) {
+        coin.body.setAllowGravity(false);
+        coin.body.setGravityY(0);
         coin.body.velocity.x = -this.currentSpeed;
         coin.body.velocity.y = 0;
       }
@@ -3802,6 +3807,7 @@ spawnStation() {
   if (this.stationPlanet.body) {
     this.stationPlanet.body.setAllowGravity(false);
     this.stationPlanet.body.setGravityY(0);
+    this.stationPlanet.body.velocity.y = 0;
   }
   this.stationActive = true;
   const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', {
@@ -3864,7 +3870,7 @@ touchStation() {
 }
 
 /**
- * Спавн монеты - ИСПРАВЛЕНО (монеты НЕ падают)
+ * Спавн монеты - ПОЛНОСТЬЮ ИСПРАВЛЕНО (монеты НЕ ПАДАЮТ)
  */
 spawnCoin(x, y) {
   if (Math.random() > 0.9) return;
@@ -3894,13 +3900,14 @@ spawnCoin(x, y) {
   
   const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
     .setImmovable(true)
-    .setVelocityX(-this.currentSpeed)
     .setAngularVelocity(200);
   
-  // ===== КРИТИЧЕСКИ ВАЖНО: ПОЛНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
-  coin.body.setAllowGravity(false);  // Отключаем гравитацию
-  coin.body.setGravityY(0);          // Обнуляем гравитацию по Y
-  coin.body.setVelocityY(0);         // Явно обнуляем вертикальную скорость
+  // ===== АБСОЛЮТНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
+  coin.body.setAllowGravity(false);  // 1. Отключаем гравитацию
+  coin.body.setGravityY(0);          // 2. Обнуляем гравитацию по Y
+  coin.body.setVelocityX(-this.currentSpeed); // 3. Задаем горизонтальную скорость
+  coin.body.setVelocityY(0);          // 4. Явно обнуляем вертикальную скорость
+  coin.body.acceleration.y = 0;       // 5. Обнуляем ускорение по Y
   
   // Сохраняем скорость для восстановления
   coin.speed = this.currentSpeed;
