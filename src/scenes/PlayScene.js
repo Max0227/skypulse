@@ -3653,7 +3653,7 @@ updateLevel() {
   const newLevel = Math.floor(this.meters / 1000);
   if (newLevel > this.gameLevel) {
     this.gameLevel = newLevel;
-    this.updateDifficulty(); // теперь这个方法 существует
+    this.updateDifficulty();
 
     const w = this.scale.width;
     const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
@@ -3695,7 +3695,6 @@ updateDifficulty() {
   // Обновляем скорость всех существующих объектов
   this.updateExistingObjectsSpeed();
   
-  // Отладочный вывод (можно удалить в продакшене)
   console.log(`Уровень ${this.gameLevel}: скорость ${this.baseSpeed}px/с, зазор ${this.gapSize}px`);
 }
 
@@ -3721,12 +3720,24 @@ updateExistingObjectsSpeed() {
     });
   }
   
-  // Обновляем скорость монет
+  // Обновляем скорость монет - С ВОССТАНОВЛЕНИЕМ ВЕРТИКАЛЬНОЙ СКОРОСТИ
   if (this.coins) {
     this.coins.forEach(coin => {
       if (coin && coin.body && coin.active) {
         coin.body.velocity.x = -this.currentSpeed;
+        coin.body.velocity.y = 0; // ВАЖНО: держим вертикальную скорость на нуле
+        coin.body.setGravityY(0);  // ВАЖНО: отключаем гравитацию
         coin.speed = this.currentSpeed;
+      }
+    });
+  }
+  
+  // Обновляем скорость монет в группе (на всякий случай)
+  if (this.coinGroup) {
+    this.coinGroup.getChildren().forEach(coin => {
+      if (coin && coin.body && coin.active) {
+        coin.body.velocity.x = -this.currentSpeed;
+        coin.body.velocity.y = 0;
       }
     });
   }
@@ -3755,7 +3766,6 @@ getDifficulty() {
   const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
   const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
   
-  // Добавляем случайность для разнообразия
   return {
     speed: speed + Phaser.Math.Between(-10, 10),
     gap: gap + Phaser.Math.Between(-10, 10),
@@ -3791,6 +3801,7 @@ spawnStation() {
     .setVelocityX(-this.currentSpeed * 0.3);
   if (this.stationPlanet.body) {
     this.stationPlanet.body.setAllowGravity(false);
+    this.stationPlanet.body.setGravityY(0);
   }
   this.stationActive = true;
   const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', {
@@ -3853,38 +3864,67 @@ touchStation() {
 }
 
 /**
- * Спавн монеты
+ * Спавн монеты - ИСПРАВЛЕНО (монеты НЕ падают)
  */
 spawnCoin(x, y) {
   if (Math.random() > 0.9) return;
+  
   let coinType = 'gold', texture = 'coin_gold';
   const r = Math.random();
-  if (this.level >= 1 && r < 0.15) { coinType='red'; texture='coin_red'; }
-  else if (this.level >= 2 && r < 0.28) { coinType='blue'; texture='coin_blue'; }
-  else if (this.level >= 3 && r < 0.40) { coinType='green'; texture='coin_green'; }
-  else if (this.level >= 4 && r < 0.50) { coinType='purple'; texture='coin_purple'; }
   
-  const coin = this.physics.add.image(x+Phaser.Math.Between(-20,20), y, texture)
+  // Шансы появления цветных монет
+  const redChance = 0.1 + (this.gameLevel * 0.02);
+  const blueChance = 0.1 + (this.gameLevel * 0.015);
+  const greenChance = 0.1 + (this.gameLevel * 0.01);
+  const purpleChance = 0.1 + (this.gameLevel * 0.005);
+  
+  if (this.gameLevel >= 1 && r < redChance) { 
+    coinType = 'red'; 
+    texture = 'coin_red'; 
+  } else if (this.gameLevel >= 2 && r < redChance + blueChance) { 
+    coinType = 'blue'; 
+    texture = 'coin_blue'; 
+  } else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) { 
+    coinType = 'green'; 
+    texture = 'coin_green'; 
+  } else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) { 
+    coinType = 'purple'; 
+    texture = 'coin_purple'; 
+  }
+  
+  const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
     .setImmovable(true)
     .setVelocityX(-this.currentSpeed)
     .setAngularVelocity(200);
   
-  coin.body.setAllowGravity(false);
-  coin.body.setGravityY(0);
-  coin.body.velocity.y = 0;
-  coin.speed = this.currentSpeed; // сохраняем скорость для восстановления
+  // ===== КРИТИЧЕСКИ ВАЖНО: ПОЛНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
+  coin.body.setAllowGravity(false);  // Отключаем гравитацию
+  coin.body.setGravityY(0);          // Обнуляем гравитацию по Y
+  coin.body.setVelocityY(0);         // Явно обнуляем вертикальную скорость
+  
+  // Сохраняем скорость для восстановления
+  coin.speed = this.currentSpeed;
   
   coin.setScale(0.01);
   coin.coinType = coinType;
   coin.setBlendMode(Phaser.BlendModes.ADD);
   coin.collected = false;
   
-  this.tweens.add({ targets: coin, scaleX:1, scaleY:1, duration:300, ease:'Back.out' });
+  // Анимация появления
+  this.tweens.add({ 
+    targets: coin, 
+    scaleX: 1, 
+    scaleY: 1, 
+    duration: 300, 
+    ease: 'Back.out' 
+  });
+  
+  // Добавляем в оба хранилища
   this.coins.push(coin);
   this.coinGroup.add(coin);
   
-  // Исправлено: collectCoin вместо collectCoinExtended
-  this.physics.add.overlap(this.player, coin, (p,c)=>this.collectCoin(c), null, this);
+  // Коллизия с игроком
+  this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
 }
 
 /**
