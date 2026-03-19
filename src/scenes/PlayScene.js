@@ -528,38 +528,40 @@ export class PlayScene extends Phaser.Scene {
   constructor() {
     super('play');
   }
-  // Добавьте этот метод в класс PlayScene
-flap() {
-  if (!this.player || !this.player.body || this.dead) return;
-  
-  this.player.body.setVelocityY(-this.jumpPower);
-  this.player.setScale(0.95);
-  
-  this.tweens.add({ 
-    targets: this.player, 
-    scaleX: 0.9, 
-    scaleY: 0.9, 
-    duration: 150, 
-    ease: 'Quad.out' 
-  });
-  
-  try { 
-    if (this.tapSound) this.tapSound.play(); 
-  } catch (e) {}
-  
-  try { 
-    if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
-  } catch (e) {}
-  
-  // Вибрация для Telegram
-  try { 
-    if (window.Telegram?.WebApp?.HapticFeedback?.selectionChanged) {
-      window.Telegram.WebApp.HapticFeedback.selectionChanged();
-    }
-  } catch (e) {}
-}
+
+  /**
+   * Метод прыжка
+   */
+  flap() {
+    if (!this.player || !this.player.body || this.dead) return;
+    
+    this.player.body.setVelocityY(-this.jumpPower);
+    this.player.setScale(0.95);
+    
+    this.tweens.add({ 
+      targets: this.player, 
+      scaleX: 0.9, 
+      scaleY: 0.9, 
+      duration: 150, 
+      ease: 'Quad.out' 
+    });
+    
+    // Звук
+    try { 
+      if (this.tapSound) this.tapSound.play(); 
+    } catch (e) {}
+    
+    // Вибрация (один раз)
+    try { 
+      if (window.Telegram?.WebApp?.HapticFeedback?.impactOccurred) {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+      }
+    } catch (e) {}
+  }
+
+  /**
+   * Создание эффекта комбо
+   */
   createComboEffect() {
     if (!this.comboSystem) return;
     
@@ -568,7 +570,6 @@ flap() {
     const combo = this.comboSystem.combo || 0;
 
     if (combo > 1 && combo % 5 === 0) {
-      // Только текст, без частиц
       const text = this.add.text(w / 2, h / 2 - 100, `x${combo}!`, {
         fontSize: '36px',
         fontFamily: "'Orbitron', monospace",
@@ -578,10 +579,8 @@ flap() {
         shadow: { blur: 10, color: '#ffff00', fill: true }
       }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
-      // Легкая тряска
       this.cameras.main.shake(100, 0.001);
 
-      // Анимация текста
       this.tweens.add({
         targets: text,
         y: text.y - 50,
@@ -591,10 +590,223 @@ flap() {
         onComplete: () => text.destroy()
       });
 
-      // Звук (если есть)
       try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
     }
   }
+
+  /**
+   * Сбор монеты
+   */
+  collectCoin(coin) {
+    if (!coin || !coin.active || coin.collected) return;
+    coin.collected = true;
+
+    let value = 1;
+    let bonusType = null;
+
+    switch (coin.coinType) {
+      case 'red':
+        value = 2;
+        bonusType = 'speed';
+        break;
+      case 'blue':
+        value = 1;
+        bonusType = 'shield';
+        break;
+      case 'green':
+        value = 1;
+        bonusType = 'magnet';
+        break;
+      case 'purple':
+        value = 1;
+        bonusType = 'slow';
+        break;
+      default:
+        value = 1;
+    }
+
+    if (this.bonusActive && this.bonusType === 'speed') value *= 2;
+    if (this.player?.doubleCrystals) value *= 2;
+
+    const multipliedValue = Math.floor(value * (this.comboSystem?.getMultiplier() || 1));
+    this.crystals += multipliedValue;
+
+    if (this.crystalText) {
+      this.crystalText.setText(`💎 ${this.crystals}`);
+    }
+
+    this.collectedCoins += multipliedValue;
+
+    if (this.comboSystem) {
+      this.comboSystem.add();
+    }
+
+    if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
+      this.addWagon();
+      this.collectedCoins -= this.coinsForWagon;
+    }
+
+    if (bonusType) {
+      this.activateBonus(bonusType);
+      this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.coinType);
+    } else {
+      try { if (this.coinSound) this.coinSound.play(); } catch (e) {}
+      this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
+    }
+
+    if (this.crystalText) {
+      this.tweens.add({
+        targets: this.crystalText,
+        scaleX: 1.3,
+        scaleY: 1.3,
+        duration: 100,
+        yoyo: true,
+        ease: 'Quad.out'
+      });
+    }
+
+    coin.destroy();
+
+    if (gameManager.data) {
+      gameManager.data.crystals = this.crystals;
+      gameManager.save();
+    }
+  }
+
+  /**
+   * Обновление параметров сложности
+   */
+  updateDifficulty() {
+    const diff = this.getDifficulty();
+    this.baseSpeed = diff.speed;
+    this.gapSize = diff.gap;
+    this.spawnDelay = diff.spawnDelay;
+    
+    if (!this.bonusActive) {
+      this.currentSpeed = this.baseSpeed;
+    }
+    
+    this.updateExistingObjectsSpeed();
+  }
+
+  /**
+   * Обновление скорости существующих объектов
+   */
+  updateExistingObjectsSpeed() {
+    // Обновляем скорость ворот
+    if (this.gateGroup) {
+      this.gateGroup.getChildren().forEach(gate => {
+        if (gate && gate.body) {
+          gate.body.velocity.x = -this.baseSpeed;
+          gate.body.velocity.y = 0;
+          gate.body.setGravityY(0);
+          gate.body.setAllowGravity(false);
+        }
+      });
+    }
+    
+    // Обновляем скорость зон
+    if (this.scoreZones) {
+      this.scoreZones.forEach(zone => {
+        if (zone && zone.body) {
+          zone.body.velocity.x = -this.baseSpeed;
+          zone.body.velocity.y = 0;
+          zone.body.setGravityY(0);
+          zone.body.setAllowGravity(false);
+        }
+      });
+    }
+    
+    // Обновляем скорость монет
+    if (this.coins) {
+      for (let i = 0; i < this.coins.length; i++) {
+        const coin = this.coins[i];
+        if (coin && coin.body && coin.active) {
+          coin.body.setAllowGravity(false);
+          coin.body.setGravityY(0);
+          coin.body.setVelocityY(0);
+          coin.body.setVelocityX(-this.currentSpeed);
+          coin.body.acceleration.y = 0;
+          coin.speed = this.currentSpeed;
+        }
+      }
+    }
+    
+    if (this.coinGroup) {
+      const coins = this.coinGroup.getChildren();
+      for (let i = 0; i < coins.length; i++) {
+        const coin = coins[i];
+        if (coin && coin.body && coin.active) {
+          coin.body.setAllowGravity(false);
+          coin.body.setGravityY(0);
+          coin.body.setVelocityY(0);
+          coin.body.setVelocityX(-this.currentSpeed);
+          coin.body.acceleration.y = 0;
+        }
+      }
+    }
+  }
+
+  /**
+   * Получение параметров сложности
+   */
+  getDifficulty() {
+    const level = Math.min(this.gameLevel, 20);
+    
+    const baseSpeed = 240;
+    const speed = Math.floor(baseSpeed * Math.pow(1.1, level));
+    
+    const baseGap = 240;
+    const gap = Math.max(140, Math.floor(baseGap - level * 5));
+    
+    const baseDelay = 1500;
+    const spawnDelay = Math.max(500, baseDelay - level * 50);
+    
+    const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
+    const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
+    
+    return {
+      speed: speed + Phaser.Math.Between(-10, 10),
+      gap: gap + Phaser.Math.Between(-10, 10),
+      spawnDelay: spawnDelay + Phaser.Math.Between(-50, 50),
+      coinChance: 0.8,
+      asteroidChance: asteroidChance,
+      powerUpChance: powerUpChance
+    };
+  }
+
+  /**
+   * Обновление уровня
+   */
+  updateLevel() {
+    const newLevel = Math.floor(this.meters / 1000);
+    if (newLevel > this.gameLevel) {
+      this.gameLevel = newLevel;
+      this.updateDifficulty();
+
+      const w = this.scale.width;
+      const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
+        fontSize: '24px',
+        fontFamily: "'Orbitron', sans-serif",
+        color: '#00ffff',
+        stroke: '#ff00ff',
+        strokeThickness: 3
+      }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+      this.tweens.add({
+        targets: levelText,
+        alpha: 0,
+        duration: 2000,
+        onComplete: () => levelText.destroy()
+      });
+
+      this.checkStationSpawn();
+      if (this.questSystem) {
+        this.questSystem.updateProgress('level', 1);
+      }
+    }
+  }
+
   create() {
     console.log('PlayScene: create started');
     const w = this.scale.width;
@@ -615,8 +827,7 @@ flap() {
     this.wagons = [];
     this.collectedCoins = 0;
     this.coinsForWagon = 15;
-    this.maxWagons =
-      12 + ((gameManager.data?.upgrades?.maxWagons) || 0) * 2;
+    this.maxWagons = 12 + ((gameManager.data?.upgrades?.maxWagons) || 0) * 2;
     this.wagonGap = 28 - ((gameManager.data?.upgrades?.wagonGap) || 0) * 2;
     this.wagonSpring = 0.25;
     this.targetPlayerX = 110;
@@ -660,11 +871,9 @@ flap() {
     this.bonusTimer = null;
     this.shieldActive = false;
     this.magnetActive = false;
-    this.magnetRange =
-      220 + ((gameManager.data?.upgrades?.magnetRange) || 0) * 40;
+    this.magnetRange = 220 + ((gameManager.data?.upgrades?.magnetRange) || 0) * 40;
     this.lastBonusTime = 0;
-    this.shieldDuration =
-      5 + ((gameManager.data?.upgrades?.shieldDuration) || 0) * 1.5;
+    this.shieldDuration = 5 + ((gameManager.data?.upgrades?.shieldDuration) || 0) * 1.5;
     this.powerUpActive = {};
     this.activePowerUps = [];
 
@@ -772,7 +981,7 @@ flap() {
     this.updateShips(delta);
     this.updateAsteroids(delta);
 
-    // Принудительно обнуляем вертикальную скорость для всех ворот
+    // ===== ПРИНУДИТЕЛЬНЫЙ КОНТРОЛЬ ГРАВИТАЦИИ =====
     if (this.gateGroup) {
       this.gateGroup.getChildren().forEach((gate) => {
         if (gate && gate.body) {
@@ -791,6 +1000,23 @@ flap() {
       });
     }
 
+    // ===== КОНТРОЛЬ МОНЕТ (чтобы не падали) =====
+    if (this.coins) {
+      for (let i = 0; i < this.coins.length; i++) {
+        const coin = this.coins[i];
+        if (coin && coin.body && coin.active) {
+          if (coin.body.velocity.y !== 0) {
+            coin.body.setVelocityY(0);
+          }
+          if (coin.body.velocity.x !== -this.currentSpeed) {
+            coin.body.setVelocityX(-this.currentSpeed);
+          }
+          coin.body.setAllowGravity(false);
+          coin.body.setGravityY(0);
+        }
+      }
+    }
+
     if (!this.started || this.dead || !this.player) return;
 
     // ===== ОБНОВЛЕНИЕ ОРУЖИЯ =====
@@ -803,10 +1029,7 @@ flap() {
       if (this.weaponCooldown <= 0) {
         const closestEnemy = this.waveManager.enemies[0];
         if (closestEnemy && closestEnemy.sprite && closestEnemy.sprite.active) {
-          this.firePlayerBullet(
-            closestEnemy.sprite.x,
-            closestEnemy.sprite.y
-          );
+          this.firePlayerBullet(closestEnemy.sprite.x, closestEnemy.sprite.y);
           this.weaponCooldown = this.weaponFireDelay;
         }
       }
@@ -814,21 +1037,15 @@ flap() {
     
     // ===== ОБНОВЛЕНИЕ ПОЗИЦИИ ИГРОКА =====
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
-    this.player.x +=
-      (this.targetPlayerX - this.player.x) * this.playerXSpeed;
+    this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
 
     const body = this.player.body;
     if (body) {
-      this.player.setAngle(
-        Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75)
-      );
+      this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
     }
 
     // ===== ПРОВЕРКА СМЕРТИ =====
-    if (
-      !this.shieldActive &&
-      (this.player.y < -50 || this.player.y > this.scale.height + 50)
-    ) {
+    if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
       this.handleDeath();
     }
 
@@ -861,11 +1078,7 @@ flap() {
     this.cleanupObjects();
 
     // ===== СТАНЦИЯ =====
-    if (
-      this.stationPlanet &&
-      this.stationPlanet.active &&
-      this.stationActive
-    ) {
+    if (this.stationPlanet && this.stationPlanet.active && this.stationActive) {
       const dist = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
@@ -3707,7 +3920,9 @@ updateExistingObjectsSpeed() {
     this.gateGroup.getChildren().forEach(gate => {
       if (gate && gate.body) {
         gate.body.velocity.x = -this.baseSpeed;
-        gate.body.velocity.y = 0; // Дополнительная защита
+        gate.body.velocity.y = 0;
+        gate.body.setGravityY(0);
+        gate.body.setAllowGravity(false);
       }
     });
   }
@@ -3717,34 +3932,43 @@ updateExistingObjectsSpeed() {
     this.scoreZones.forEach(zone => {
       if (zone && zone.body) {
         zone.body.velocity.x = -this.baseSpeed;
-        zone.body.velocity.y = 0; // Дополнительная защита
+        zone.body.velocity.y = 0;
+        zone.body.setGravityY(0);
+        zone.body.setAllowGravity(false);
       }
     });
   }
   
-  // Обновляем скорость монет - МАКСИМАЛЬНАЯ ЗАЩИТА ОТ ГРАВИТАЦИИ
+  // Обновляем скорость монет - ПРИНУДИТЕЛЬНО
   if (this.coins) {
-    this.coins.forEach(coin => {
+    for (let i = 0; i < this.coins.length; i++) {
+      const coin = this.coins[i];
       if (coin && coin.body && coin.active) {
-        coin.body.setAllowGravity(false);  // Принудительно отключаем гравитацию
-        coin.body.setGravityY(0);          // Обнуляем гравитацию
-        coin.body.velocity.x = -this.currentSpeed; // Горизонтальная скорость
-        coin.body.velocity.y = 0;           // Вертикальная скорость = 0
+        coin.body.setAllowGravity(false);
+        coin.body.setGravityY(0);
+        coin.body.setVelocityY(0);
+        coin.body.setVelocityX(-this.currentSpeed);
+        coin.body.acceleration.y = 0;
+        coin.body.moves = true;
         coin.speed = this.currentSpeed;
       }
-    });
+    }
   }
   
   // Обновляем скорость монет в группе
   if (this.coinGroup) {
-    this.coinGroup.getChildren().forEach(coin => {
+    const coins = this.coinGroup.getChildren();
+    for (let i = 0; i < coins.length; i++) {
+      const coin = coins[i];
       if (coin && coin.body && coin.active) {
         coin.body.setAllowGravity(false);
         coin.body.setGravityY(0);
-        coin.body.velocity.x = -this.currentSpeed;
-        coin.body.velocity.y = 0;
+        coin.body.setVelocityY(0);
+        coin.body.setVelocityX(-this.currentSpeed);
+        coin.body.acceleration.y = 0;
+        coin.body.moves = true;
       }
-    });
+    }
   }
 }
 
@@ -3870,7 +4094,7 @@ touchStation() {
 }
 
 /**
- * Спавн монеты - ПОЛНОСТЬЮ ИСПРАВЛЕНО (монеты НЕ ПАДАЮТ)
+ * Спавн монеты - ПОЛНОСТЬЮ ПЕРЕРАБОТАНО
  */
 spawnCoin(x, y) {
   if (Math.random() > 0.9) return;
@@ -3898,19 +4122,28 @@ spawnCoin(x, y) {
     texture = 'coin_purple'; 
   }
   
+  // ===== СОЗДАНИЕ МОНЕТЫ С АБСОЛЮТНЫМ КОНТРОЛЕМ =====
   const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
     .setImmovable(true)
     .setAngularVelocity(200);
   
-  // ===== АБСОЛЮТНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
-  coin.body.setAllowGravity(false);  // 1. Отключаем гравитацию
-  coin.body.setGravityY(0);          // 2. Обнуляем гравитацию по Y
-  coin.body.setVelocityX(-this.currentSpeed); // 3. Задаем горизонтальную скорость
-  coin.body.setVelocityY(0);          // 4. Явно обнуляем вертикальную скорость
-  coin.body.acceleration.y = 0;       // 5. Обнуляем ускорение по Y
+  // ШАГ 1: Полное отключение гравитации
+  coin.body.setAllowGravity(false);
+  coin.body.setGravityY(0);
   
-  // Сохраняем скорость для восстановления
+  // ШАГ 2: Принудительная установка скорости
+  coin.body.setVelocityX(-this.currentSpeed);
+  coin.body.setVelocityY(0);
+  
+  // ШАГ 3: Отключение всех внешних сил
+  coin.body.acceleration.y = 0;
+  coin.body.mass = 0.0001; // Минимальная масса
+  coin.body.drag.y = 0;
+  coin.body.bounce.y = 0;
+  
+  // ШАГ 4: Сохраняем параметры
   coin.speed = this.currentSpeed;
+  coin.startY = y; // Запоминаем начальную Y-позицию
   
   coin.setScale(0.01);
   coin.coinType = coinType;
