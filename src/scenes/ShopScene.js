@@ -247,7 +247,7 @@ export class ShopScene extends Phaser.Scene {
 
     // Основной заголовок
     this.title = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '42px',
+      fontSize: '36px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#00ffff',
@@ -256,7 +256,7 @@ export class ShopScene extends Phaser.Scene {
         offsetX: 0, 
         offsetY: 0, 
         color: '#00ffff', 
-        blur: 25, 
+        blur: 20, 
         fill: true,
         stroke: true
       }
@@ -264,11 +264,11 @@ export class ShopScene extends Phaser.Scene {
 
     // Копия для свечения
     this.titleGlow = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '42px',
+      fontSize: '36px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#ff00ff',
-      strokeThickness: 3,
+      strokeThickness: 2,
       alpha: 0.5
     }).setOrigin(0.5);
 
@@ -285,10 +285,8 @@ export class ShopScene extends Phaser.Scene {
   }
 
   createBalanceDisplay() {
-    const w = this.scale.width;
-
-    // Контейнер для баланса
-    const balanceContainer = this.add.container(w / 2, 90);
+  const w = this.scale.width;
+  const balanceContainer = this.add.container(w / 2, 120); // Было 90, теперь 120
 
     // Фон
     const balanceBg = this.add.rectangle(0, 0, 280, 45, 0x0a0a1a, 0.9)
@@ -344,8 +342,8 @@ export class ShopScene extends Phaser.Scene {
   createScrollableUpgradesList() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const listTop = 130;
-    const listHeight = h - 200;
+    const listTop = 160;
+    const listHeight = h - 230;
 
     // Маска
     const maskArea = this.add.graphics();
