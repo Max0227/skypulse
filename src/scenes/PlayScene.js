@@ -1133,17 +1133,6 @@ export class PlayScene extends Phaser.Scene {
     if (this.weaponCooldown > 0) {
       this.weaponCooldown -= delta;
     }
-
-    // Автоматическая стрельба
-    if (this.level >= 1 && this.waveManager && this.waveManager.enemies && this.waveManager.enemies.length > 0) {
-      if (this.weaponCooldown <= 0) {
-        const closestEnemy = this.waveManager.enemies[0];
-        if (closestEnemy && closestEnemy.sprite && closestEnemy.sprite.active) {
-          this.firePlayerBullet(closestEnemy.sprite.x, closestEnemy.sprite.y);
-          this.weaponCooldown = this.weaponFireDelay;
-        }
-      }
-    }
     
     // ===== ОБНОВЛЕНИЕ ПОЗИЦИИ ИГРОКА =====
     this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
@@ -1272,149 +1261,89 @@ export class PlayScene extends Phaser.Scene {
     this.checkQuests();
     this.updateRealTimeStats();
     this.checkLevelCompletion();
-    this.updateDifficultyInRealTime();
     this.checkMaxCombo();
     this.checkPerformance();
     this.optimizeMemory();
+    // ===== ПРОВЕРКИ И ОБНОВЛЕНИЯ =====
+this.checkAchievements();
+if (this.level >= 1 && this.waveManager) {
+  this.waveManager.update(time, delta, this.player);
+}
+if (this.specialEventManager) {
+  this.specialEventManager.update(delta);
+}
+this.checkLevelProgression();
+
+// ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
+const distDelta = (this.currentSpeed * delta) / 1000 / 10;
+
+// Общий метраж (для статистики)
+this.meters += distanceDelta;
+
+// Прогресс в текущем уровне мира
+this.levelProgress += distanceDelta;
+
+if (this.meterText) {
+  this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
+}
+
+// ===== ОБНОВЛЕНИЕ ПРОГРЕССА УРОВНЯ =====
+this.updateWorldProgress();
+
+// ===== ОБНОВЛЕНИЕ ПУЛЬ =====
+if (this.playerBullets) {
+  this.playerBullets.getChildren().forEach((b) => {
+    if (b && b.x > this.scale.width + 100) b.destroy();
+  });
+}
+if (this.enemyBullets) {
+  this.enemyBullets.getChildren().forEach((b) => {
+    if (b && (b.x < -100 || b.y < -100 || b.y > this.scale.height + 100)) b.destroy();
+  });
+}
+
+// ===== ОБНОВЛЕНИЕ АСТЕРОИДОВ =====
+for (let i = this.asteroids.length - 1; i >= 0; i--) {
+  const asteroid = this.asteroids[i];
+  if (!asteroid || typeof asteroid.update !== 'function') {
+    this.asteroids.splice(i, 1);
+    continue;
   }
-
-  // =========================================================================
-  // МЕТОДЫ ДЛЯ СТРЕЛЬБЫ
-  // =========================================================================
-
-  /**
-   * Атака врагов
-   */
-  attackEnemies() {
-    if (this.weaponCooldown > 0) return;
-    if (!this.waveManager || this.waveManager.enemies.length === 0) return;
-
-    this.weaponCooldown = this.weaponFireDelay;
-
-    const bullet = this.playerBullets.create(
-      this.player.x + 30,
-      this.player.y,
-      'laser_player'
-    );
-
-    if (!bullet || !bullet.body) return;
-    
-    bullet.setScale(1.5);
-    bullet.damage = this.weaponDamage;
-    bullet.setVelocityX(this.weaponBulletSpeed);
-    bullet.setVelocityY(0);
-    bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0);
-    bullet.setDepth(20);
-
-    this.playSound('tap_sound', 0.3);
-
-    if (this.attackButton) {
-      this.tweens.add({
-        targets: this.attackButton,
-        scaleX: 0.8,
-        scaleY: 0.8,
-        duration: 100,
-        yoyo: true
-      });
-    }
-
-    this.particleManager.createAttackEffect(
-      this.player.x + 30,
-      this.player.y
-    );
+  if (!asteroid.update()) {
+    this.asteroids.splice(i, 1);
   }
+}
 
-  /**
-   * Выстрел по врагу
-   */
-  firePlayerBullet(targetX, targetY) {
-    if (!this.player || !this.player.active) return;
-    
-    const bullet = this.playerBullets.create(
-      this.player.x + 30,
-      this.player.y,
-      'laser_player'
-    );
-
-    if (!bullet || !bullet.body) return;
-    
-    bullet.setScale(1.5);
-    bullet.damage = this.weaponDamage;
-
-    const angle = Phaser.Math.Angle.Between(
-      this.player.x,
-      this.player.y,
-      targetX,
-      targetY
-    );
-    const speed = this.weaponBulletSpeed;
-
-    bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0);
-    bullet.body.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed
-    );
-    bullet.setDepth(20);
-
-    try {
-      if (this.tapSound) this.tapSound.play();
-    } catch (e) {}
+// ===== ОБНОВЛЕНИЕ УСИЛИТЕЛЕЙ =====
+for (let i = this.powerUps.length - 1; i >= 0; i--) {
+  const powerUp = this.powerUps[i];
+  if (!powerUp || typeof powerUp.update !== 'function') {
+    this.powerUps.splice(i, 1);
+    continue;
   }
-
-  /**
-   * Выстрел врага
-   */
-  fireEnemyBullet(enemy, playerPos) {
-    if (!enemy || !enemy.sprite || !enemy.sprite.active || !playerPos) return;
-    
-    const bullet = this.enemyBullets.create(
-      enemy.sprite.x - 20,
-      enemy.sprite.y,
-      'laser_enemy'
-    );
-    
-    if (!bullet || !bullet.body) return;
-    
-    bullet.setScale(1.5);
-    bullet.damage = enemy.config.bulletDamage || 1;
-    bullet.body.setAllowGravity(false);
-    bullet.body.setGravityY(0);
-
-    const angle = Phaser.Math.Angle.Between(
-      enemy.sprite.x,
-      enemy.sprite.y,
-      playerPos.x,
-      playerPos.y
-    );
-    const speed = enemy.config.bulletSpeed || 400;
-
-    bullet.body.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed
-    );
-    bullet.setDepth(20);
+  if (!powerUp.update()) {
+    this.powerUps.splice(i, 1);
   }
+}
 
-  /**
-   * Воспроизведение звука
-   */
-  playSound(key, volume = 0.5) {
-    if (!gameManager.data?.soundEnabled) return;
-    try {
-      if (!this.sounds) this.sounds = {};
-      if (!this.sounds[key]) {
-        if (this.cache.audio.has(key)) {
-          this.sounds[key] = this.sound.add(key, { volume });
-        } else {
-          return;
-        }
-      }
-      if (this.sounds[key]) this.sounds[key].play();
-    } catch (e) {
-      // Тихо игнорируем ошибки звука
-    }
+// ===== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ =====
+if (this.updatePlayerEffects) this.updatePlayerEffects();
+if (this.updateMultiplier) this.updateMultiplier();
+if (this.checkWaveAchievements) this.checkWaveAchievements();
+if (this.createComboEffect) this.createComboEffect();
+if (this.checkNewRecords) this.checkNewRecords();
+if (this.checkQuests) this.checkQuests();
+if (this.updateRealTimeStats) this.updateRealTimeStats();
+
+// ВАЖНО: закомментируйте checkLevelCompletion, если не хотите завершать уровень по очкам
+// if (this.checkLevelCompletion) this.checkLevelCompletion();
+
+if (this.checkMaxCombo) this.checkMaxCombo();
+if (this.checkPerformance) this.checkPerformance();
+if (this.optimizeMemory) this.optimizeMemory();
+
+// ===== КОНЕЦ БЛОКА UPDATE =====
+// Далее идут другие методы класса, например attackEnemies()
   }
 
   // =========================================================================
@@ -3050,30 +2979,48 @@ updatePlayerVisuals() {
     }
   }
 
-  /**
-   * Метод для проверки условий завершения уровня
-   */
-  checkLevelCompletion() {
-    if (!this.started || this.dead || !this.worldConfig) return;
-
-    const goalScore = this.worldConfig.goalScore || 500;
-    if (this.score >= goalScore) {
-      this.completeLevel();
-    }
-  }
 
   /**
-   * Метод для обновления сложности в реальном времени
-   */
-  updateDifficultyInRealTime() {
-    const newGameLevel = Math.floor(this.meters / 1000);
-    if (newGameLevel > this.gameLevel) {
-      this.gameLevel = newGameLevel;
-      this.updateDifficulty();
-      this.createLevelEffect();
-      this.checkWaveAchievements();
-    }
+ * Метод для обновления сложности в реальном времени
+ */
+updateDifficultyInRealTime() {
+  // Этот метод больше не нужен, так как мы используем updateWorldProgress()
+  // Оставляем пустым или удаляем
+  return;
+  
+  /* Старый код закомментирован
+  const newGameLevel = Math.floor(this.meters / 1000);
+  if (newGameLevel > this.gameLevel) {
+    this.gameLevel = newGameLevel;
+    this.updateDifficulty();
+    this.createLevelEffect();
+    this.checkWaveAchievements();
   }
+  */
+}/**
+ * Обновление прогресса уровня мира
+ */
+updateWorldProgress() {
+  if (!this.started || this.dead) return;
+
+  // Обновляем gameLevel каждые 1000 метров
+  const newGameLevel = Math.floor(this.levelProgress / 1000);
+  if (newGameLevel > this.gameLevel) {
+    this.gameLevel = newGameLevel;
+    this.updateDifficulty(); // увеличиваем скорость
+    
+    // Легкий эффект при повышении сложности (без надписи)
+    this.cameras.main.flash(50, 100, 100, 255, false);
+    try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
+    
+    this.checkWaveAchievements();
+  }
+
+  // Проверяем завершение уровня мира (10 км)
+  if (this.levelProgress >= this.levelGoal) {
+    this.completeWorldLevel();
+  }
+}
 
     /**
    * Метод для проверки максимального комбо - ЛЕГКАЯ ВЕРСИЯ
@@ -3508,12 +3455,6 @@ updatePlayerVisuals() {
       .on('pointerdown', () => this.confirmExit())
       .on('pointerover', () => this.menuButton.setScale(1.1))
       .on('pointerout', () => this.menuButton.setScale(1));
-
-    this.attackButton = this.add.image(50, h - 35, 'attack_button')
-      .setInteractive().setDepth(20).setScrollFactor(0)
-      .on('pointerdown', () => this.attackEnemies())
-      .on('pointerover', () => this.attackButton.setScale(1.1))
-      .on('pointerout', () => this.attackButton.setScale(1));
 
     this.createGameOverBox();
 
@@ -4702,7 +4643,6 @@ completeLevel() {
     if (this.pauseButton) this.pauseButton.setPosition(w - 35, h - 35);
     if (this.shopButton) this.shopButton.setPosition(w - 90, h - 35);
     if (this.menuButton) this.menuButton.setPosition(w - 145, h - 35);
-    if (this.attackButton) this.attackButton.setPosition(50, h - 35);
     if (!this.started) {
       if (this.introText) this.introText.setPosition(w / 2, h * 0.40);
       if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.50);
@@ -4734,8 +4674,6 @@ completeLevel() {
     if (this.shopElements) {
       this.shopElements.forEach(el => { if (el && el.destroy) el.destroy(); });
     }
-    if (this.playerBullets) this.playerBullets.clear(true, true);
-    if (this.enemyBullets) this.enemyBullets.clear(true, true);
     if (this.comboSystem && typeof this.comboSystem.destroy === 'function') this.comboSystem.destroy();
     if (this.specialEventManager && typeof this.specialEventManager.destroy === 'function') this.specialEventManager.destroy();
   }
