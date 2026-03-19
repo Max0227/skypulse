@@ -1,7 +1,7 @@
 export class ParticleEffectManager {
   constructor(scene) {
     this.scene = scene;
-    this.maxParticles = 300; // Увеличил лимит
+    this.maxParticles = 150; // Увеличил лимит
     this.activeEmitters = [];
     this.particleCount = 0;
     this.particlePools = {}; // Пулы для переиспользования частиц
