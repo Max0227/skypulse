@@ -551,7 +551,7 @@ export class PlayScene extends Phaser.Scene {
       if (this.tapSound) this.tapSound.play(); 
     } catch (e) {}
     
-    // Вибрация (один раз)
+    // Вибрация
     try { 
       if (window.Telegram?.WebApp?.HapticFeedback?.impactOccurred) {
         window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
@@ -595,7 +595,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * Сбор монеты
+   * Сбор монеты (БЕЗ ИЗМЕНЕНИЙ)
    */
   collectCoin(coin) {
     if (!coin || !coin.active || coin.collected) return;
@@ -674,7 +674,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * Обновление параметров сложности
+   * Обновление параметров сложности на основе gameLevel
    */
   updateDifficulty() {
     const diff = this.getDifficulty();
@@ -748,23 +748,30 @@ export class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * Получение параметров сложности
+   * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
    */
   getDifficulty() {
+    // Базовая скорость мира (240 для космоса, +20 за каждый следующий мир)
+    const worldBase = 240 + this.world * 20;
+    
+    // Внутренний уровень сложности (0-20)
     const level = Math.min(this.gameLevel, 20);
-    
-    const baseSpeed = 240;
-    const speed = Math.floor(baseSpeed * Math.pow(1.1, level));
-    
+
+    // Увеличение на 10% каждый внутренний уровень ОТ БАЗЫ МИРА
+    const speed = Math.floor(worldBase * Math.pow(1.1, level));
+
+    // Зазор: уменьшается с внутренним уровнем
     const baseGap = 240;
     const gap = Math.max(140, Math.floor(baseGap - level * 5));
-    
+
+    // Задержка спавна
     const baseDelay = 1500;
     const spawnDelay = Math.max(500, baseDelay - level * 50);
-    
+
+    // Шансы
     const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
     const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
-    
+
     return {
       speed: speed + Phaser.Math.Between(-10, 10),
       gap: gap + Phaser.Math.Between(-10, 10),
@@ -776,21 +783,46 @@ export class PlayScene extends Phaser.Scene {
   }
 
   /**
-   * Обновление уровня
+   * Обновление прогресса уровня мира (НОВЫЙ МЕТОД)
    */
-  updateLevel() {
-    const newLevel = Math.floor(this.meters / 1000);
-    if (newLevel > this.gameLevel) {
-      this.gameLevel = newLevel;
-      this.updateDifficulty();
+  updateWorldProgress() {
+    if (!this.started || this.dead) return;
 
+    // Обновляем gameLevel каждые 1000 метров (без показа надписи)
+    const newGameLevel = Math.floor(this.levelProgress / 1000);
+    if (newGameLevel > this.gameLevel) {
+      this.gameLevel = newGameLevel;
+      this.updateDifficulty(); // скорость увеличивается
+    }
+
+    // Проверяем завершение уровня мира (10 км)
+    if (this.levelProgress >= this.levelGoal) {
+      this.completeWorldLevel();
+    }
+  }
+
+  /**
+   * Завершение текущего уровня мира (НОВЫЙ МЕТОД)
+   */
+  completeWorldLevel() {
+    if (this.level < 9) { // максимум 10 уровней в мире (0-9)
+      this.level++;
+      this.levelProgress = 0;
+      this.gameLevel = 0; // сбрасываем внутренний уровень
+
+      // Обновляем конфигурацию уровня
+      if (this.levelManager) {
+        this.levelManager.switchLevel(this.level);
+      }
+
+      // Показываем сообщение о новом уровне мира
       const w = this.scale.width;
-      const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
-        fontSize: '24px',
+      const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ МИРА ${this.level + 1}`, {
+        fontSize: '28px',
         fontFamily: "'Orbitron', sans-serif",
         color: '#00ffff',
         stroke: '#ff00ff',
-        strokeThickness: 3
+        strokeThickness: 4
       }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
 
       this.tweens.add({
@@ -800,10 +832,81 @@ export class PlayScene extends Phaser.Scene {
         onComplete: () => levelText.destroy()
       });
 
+      // Бонус за прохождение уровня
+      this.crystals += 50;
+      if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
+      if (gameManager.data) {
+        gameManager.data.crystals = this.crystals;
+        gameManager.save();
+      }
+
       this.checkStationSpawn();
+      
       if (this.questSystem) {
         this.questSystem.updateProgress('level', 1);
       }
+    } else {
+      // Достигнут последний уровень мира - переходим к следующему миру
+      this.completeWorld();
+    }
+  }
+
+  /**
+   * Завершение мира, переход к следующему (НОВЫЙ МЕТОД)
+   */
+  completeWorld() {
+    if (this.world < 4) { // максимум 5 миров (0-4)
+      this.world++;
+      this.level = 0;
+      this.levelProgress = 0;
+      this.gameLevel = 0;
+
+      // Обновляем конфигурацию мира
+      this.worldConfig = LEVEL_CONFIG[this.world] || LEVEL_CONFIG[0];
+      
+      if (this.levelManager) {
+        this.levelManager.switchLevel(0);
+      }
+
+      // Обновляем текстуры ворот
+      this.gateTextures = this.worldConfig.gateColors || [
+        'gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'
+      ];
+
+      // Показываем сообщение о новом мире
+      const worldName = this.worldConfig.name || `МИР ${this.world + 1}`;
+      const w = this.scale.width;
+      const worldText = this.add.text(w / 2, 200, worldName, {
+        fontSize: '32px',
+        fontFamily: "'Orbitron', sans-serif",
+        color: '#ff00ff',
+        stroke: '#00ffff',
+        strokeThickness: 4
+      }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+      this.tweens.add({
+        targets: worldText,
+        alpha: 0,
+        duration: 2000,
+        onComplete: () => worldText.destroy()
+      });
+
+      // Бонус за прохождение мира
+      this.crystals += 200;
+      if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
+      if (gameManager.data) {
+        gameManager.data.crystals = this.crystals;
+        gameManager.save();
+      }
+
+      // Сохраняем прогресс
+      if (gameManager.setCurrentWorld) {
+        gameManager.setCurrentWorld(this.world);
+      }
+      if (gameManager.setCurrentLevel) {
+        gameManager.setCurrentLevel(this.level);
+      }
+      gameManager.save();
     }
   }
 
@@ -815,12 +918,17 @@ export class PlayScene extends Phaser.Scene {
     // ===== ИНИЦИАЛИЗАЦИЯ ОСНОВНЫХ ПАРАМЕТРОВ =====
     this.world = gameManager.getCurrentWorld?.() || 0;
     this.level = gameManager.getCurrentLevel?.() || 0;
+    
+    // НОВЫЕ ПАРАМЕТРЫ ДЛЯ ПРОГРЕССИИ
+    this.levelGoal = 10000;  // 10 км для прохождения уровня мира
+    this.levelProgress = 0;   // прогресс в текущем уровне мира
+
     this.worldConfig = LEVEL_CONFIG[this.world] || LEVEL_CONFIG[0];
 
     // Основные параметры игры
     this.score = 0;
     this.crystals = gameManager.data?.crystals || 0;
-    this.meters = 0;
+    this.meters = 0;          // общий метраж (для статистики)
     this.best = Number(localStorage.getItem('skypulse_best') || 0);
 
     // ===== ПАРАМЕТРЫ ВАГОНОВ =====
@@ -837,7 +945,7 @@ export class PlayScene extends Phaser.Scene {
     // ===== СОСТОЯНИЯ ИГРЫ =====
     this.started = false;
     this.dead = false;
-    this.gameLevel = 0;
+    this.gameLevel = 0;        // внутренний уровень сложности (0-20)
     this.isPaused = false;
     this.pauseOverlay = null;
     this.pauseTexts = [];
@@ -851,11 +959,13 @@ export class PlayScene extends Phaser.Scene {
     this.wagonBaseHP = 1 + ((gameManager.data?.upgrades?.wagonHP) || 0);
 
     // ===== СКОРОСТЬ И СЛОЖНОСТЬ =====
-    this.baseSpeed = 240;
-    this.currentSpeed = this.baseSpeed;
+    this.baseSpeed = 240;       // будет обновлено в getDifficulty
+    this.currentSpeed = 240;
     this.gapSize = 240;
     this.spawnDelay = 1300;
-    this.gateTextures = [
+    
+    // Текстуры ворот из конфига мира
+    this.gateTextures = this.worldConfig.gateColors || [
       'gate_blue',
       'gate_green',
       'gate_yellow',
@@ -1000,7 +1110,7 @@ export class PlayScene extends Phaser.Scene {
       });
     }
 
-    // ===== КОНТРОЛЬ МОНЕТ (чтобы не падали) =====
+    // ===== КОНТРОЛЬ МОНЕТ (БЕЗ ИЗМЕНЕНИЙ) =====
     if (this.coins) {
       for (let i = 0; i < this.coins.length; i++) {
         const coin = this.coins[i];
@@ -1098,11 +1208,21 @@ export class PlayScene extends Phaser.Scene {
     }
     this.checkLevelProgression();
 
-    // ===== МЕТРАЖ =====
-    this.meters += (this.currentSpeed * delta) / 1000 / 10;
+    // ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
+    const distanceDelta = (this.currentSpeed * delta) / 1000 / 10;
+    
+    // Общий метраж (для статистики)
+    this.meters += distanceDelta;
+    
+    // Прогресс в текущем уровне мира
+    this.levelProgress += distanceDelta;
+    
     if (this.meterText) {
       this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
     }
+
+    // ===== ОБНОВЛЕНИЕ ПРОГРЕССА УРОВНЯ (НОВОЕ) =====
+    this.updateWorldProgress();
 
     // ===== ОБНОВЛЕНИЕ ПУЛЬ =====
     if (this.playerBullets) {
@@ -1140,8 +1260,8 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
-    // ===== ОБНОВЛЕНИЕ УРОВНЯ =====
-    this.updateLevel();
+    // ===== СТАРЫЙ МЕТОД updateLevel БОЛЬШЕ НЕ ВЫЗЫВАЕТСЯ =====
+    // this.updateLevel(); - УДАЛЕН
 
     // Дополнительные методы
     this.updatePlayerEffects();
