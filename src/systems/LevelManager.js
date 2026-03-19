@@ -7,9 +7,19 @@ export class LevelManager {
     this.currentWorld = 0;
     this.levelConfig = LEVEL_CONFIG;
     this.difficultyMultiplier = 1;
+    
+    // Добавляем хранение созданных эффектов для их очистки
+    this.activeEffects = {
+      lights: [],
+      shadows: [],
+      blackHoleRings: []
+    };
   }
 
   setWorld(world) {
+    // Очищаем эффекты предыдущего мира
+    this.clearWorldEffects();
+    
     this.currentWorld = world;
     this.applyWorldTheme();
   }
@@ -23,6 +33,7 @@ export class LevelManager {
     const config = this.levelConfig[this.currentWorld];
     if (!config) return;
     
+    // Применяем базовую тему
     this.scene.cameras.main.setBackgroundColor(config.bgColor);
     this.scene.gateColors = config.gateColors;
     this.scene.currentWorldConfig = config;
@@ -47,7 +58,7 @@ export class LevelManager {
   }
 
   applyNeonEffect() {
-    // Добавляем неоновые огни
+    // Включаем освещение
     this.scene.lights.enable();
     this.scene.lights.setAmbientColor(0x1a0a2a);
     
@@ -55,7 +66,11 @@ export class LevelManager {
     for (let i = 0; i < 5; i++) {
       const x = Phaser.Math.Between(100, this.scene.scale.width - 100);
       const y = Phaser.Math.Between(100, this.scene.scale.height - 100);
-      this.scene.lights.addLight(x, y, 200).setColor(0xff00ff).setIntensity(1.5);
+      const light = this.scene.lights.addLight(x, y, 200)
+        .setColor(0xff00ff)
+        .setIntensity(1.5);
+      
+      this.activeEffects.lights.push(light);
     }
   }
 
@@ -69,8 +84,8 @@ export class LevelManager {
       const y = Phaser.Math.Between(0, this.scene.scale.height);
       const shadow = this.scene.add.circle(x, y, 50, 0x000000, 0.3);
       shadow.setDepth(-20);
-      this.scene.shadows = this.scene.shadows || [];
-      this.scene.shadows.push(shadow);
+      
+      this.activeEffects.shadows.push(shadow);
     }
   }
 
@@ -88,12 +103,22 @@ export class LevelManager {
     const centerY = this.scene.scale.height / 2;
     
     for (let i = 0; i < 5; i++) {
-      const ring = this.scene.add.circle(centerX, centerY, 100 + i * 30, 0x000000, 0);
+      const radius = 100 + i * 30;
+      const ring = this.scene.add.circle(centerX, centerY, radius, 0x000000, 0);
       ring.setStrokeStyle(2, 0x660066, 1 - i * 0.15);
       ring.setDepth(-30);
       ring.setScrollFactor(0);
-      this.scene.blackHoleRings = this.scene.blackHoleRings || [];
-      this.scene.blackHoleRings.push(ring);
+      
+      this.activeEffects.blackHoleRings.push(ring);
+      
+      // Добавляем анимацию вращения
+      this.scene.tweens.add({
+        targets: ring,
+        angle: 360,
+        duration: 10000 + i * 2000,
+        repeat: -1,
+        ease: 'Linear'
+      });
     }
   }
 
@@ -108,9 +133,41 @@ export class LevelManager {
     this.scene.asteroidChance = Math.min(0.8, 0.3 * this.difficultyMultiplier);
     this.scene.powerUpChance = Math.min(0.5, 0.1 * this.difficultyMultiplier);
     
+    // Обновляем скорость, если нет активного бонуса
     if (!this.scene.bonusActive) {
       this.scene.currentSpeed = this.scene.baseSpeed;
     }
+    
+    // Обновляем существующие объекты
+    if (this.scene.updateExistingObjectsSpeed) {
+      this.scene.updateExistingObjectsSpeed();
+    }
+  }
+
+  /**
+   * Очищает все эффекты предыдущего мира
+   */
+  clearWorldEffects() {
+    // Очищаем источники света
+    this.activeEffects.lights.forEach(light => {
+      if (light) light.setIntensity(0);
+    });
+    this.activeEffects.lights = [];
+    
+    // Очищаем тени
+    this.activeEffects.shadows.forEach(shadow => {
+      if (shadow && shadow.destroy) shadow.destroy();
+    });
+    this.activeEffects.shadows = [];
+    
+    // Очищаем кольца черной дыры
+    this.activeEffects.blackHoleRings.forEach(ring => {
+      if (ring && ring.destroy) ring.destroy();
+    });
+    this.activeEffects.blackHoleRings = [];
+    
+    // Сбрасываем параметры
+    this.scene.baseAsteroidChance = undefined;
   }
 
   getCurrentTheme() {
@@ -118,7 +175,8 @@ export class LevelManager {
   }
 
   getLevelName() {
-    return `${this.levelConfig[this.currentWorld]?.name} - Уровень ${this.currentLevel + 1}`;
+    const worldName = this.levelConfig[this.currentWorld]?.name || 'Неизвестный мир';
+    return `${worldName} - Уровень ${this.currentLevel + 1}`;
   }
 
   getWorldName() {
@@ -130,7 +188,8 @@ export class LevelManager {
   }
 
   getGoalScore() {
-    return this.levelConfig[this.currentWorld]?.goalScore * (this.currentLevel + 1) || 500;
+    const baseGoal = this.levelConfig[this.currentWorld]?.goalScore || 500;
+    return baseGoal * (this.currentLevel + 1);
   }
 
   getEnemyTypes() {
@@ -158,5 +217,33 @@ export class LevelManager {
 
   isBossLevel() {
     return this.currentLevel === 9;
+  }
+
+  /**
+   * Получить текущий множитель сложности
+   */
+  getDifficultyMultiplier() {
+    return this.difficultyMultiplier;
+  }
+
+  /**
+   * Получить текущую базовую скорость
+   */
+  getBaseSpeed() {
+    return 240 * this.difficultyMultiplier;
+  }
+
+  /**
+   * Получить текущий уровень мира
+   */
+  getCurrentLevel() {
+    return this.currentLevel;
+  }
+
+  /**
+   * Получить текущий мир
+   */
+  getCurrentWorld() {
+    return this.currentWorld;
   }
 }
