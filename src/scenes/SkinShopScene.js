@@ -618,163 +618,162 @@ export class SkinShopScene extends Phaser.Scene {
   // =========================================================================
 
   createScrollableSkinList() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const listTop = 150;
-    const listHeight = h - 220;
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const listTop = 150;
+  const listHeight = h - 220;
 
-    // Создаем маску для области прокрутки
-    const maskArea = this.add.graphics();
-    maskArea.fillStyle(0xffffff);
-    maskArea.fillRect(10, listTop, w - 20, listHeight);
-    const mask = maskArea.createGeometryMask();
+  // Создаем маску для области прокрутки
+  const maskArea = this.add.graphics();
+  maskArea.fillStyle(0xffffff);
+  maskArea.fillRect(10, listTop, w - 20, listHeight);
+  const mask = maskArea.createGeometryMask();
 
-    // Основной контейнер для всех карточек
-    const container = this.add.container(0, listTop);
-    container.setMask(mask);
+  // Основной контейнер для всех карточек
+  const container = this.add.container(0, listTop);
+  container.setMask(mask);
 
-    // Сортируем скины по редкости
-    const rarityOrder = { 'COMMON': 0, 'RARE': 1, 'EPIC': 2, 'LEGENDARY': 3 };
-    const sortedSkins = [...SKINS].sort((a, b) => {
-      if (rarityOrder[a.rarity] !== rarityOrder[b.rarity]) {
-        return rarityOrder[a.rarity] - rarityOrder[b.rarity];
-      }
-      return a.price - b.price;
-    });
+  // Сортируем скины по редкости
+  const rarityOrder = { 'COMMON': 0, 'RARE': 1, 'EPIC': 2, 'LEGENDARY': 3 };
+  const sortedSkins = [...SKINS].sort((a, b) => {
+    if (rarityOrder[a.rarity] !== rarityOrder[b.rarity]) {
+      return rarityOrder[a.rarity] - rarityOrder[b.rarity];
+    }
+    return a.price - b.price;
+  });
 
-    let currentY = 10;
-    const cardSpacing = 150;
-    const cards = [];
+  let currentY = 10;
+  const cardSpacing = 150;
+  const cards = [];
 
-    // Группируем скины по редкости для отображения разделителей
-    let currentRarity = null;
+  // Группируем скины по редкости для отображения разделителей
+  let currentRarity = null;
 
-    sortedSkins.forEach((skin) => {
-      // Добавляем разделитель при смене редкости
-      if (skin.rarity !== currentRarity) {
-        currentRarity = skin.rarity;
-        
-        const rarityColors = {
-          'COMMON': '#aaaaaa',
-          'RARE': '#44aaff',
-          'EPIC': '#ff44aa',
-          'LEGENDARY': '#ffaa00'
-        };
-        
-        const separator = this.add.text(w / 2, currentY, `⚡ ${skin.rarity} TIER ⚡`, {
-          fontSize: '18px',
-          fontFamily: '"Audiowide", sans-serif',
-          color: rarityColors[skin.rarity],
-          stroke: '#000000',
-          strokeThickness: 3,
-          shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
-        }).setOrigin(0.5);
-        
-        container.add(separator);
-        currentY += 40;
-      }
-
-      const owned = gameManager.getOwnedSkins().includes(skin.id);
-      const selected = gameManager.getCurrentSkin() === skin.id;
-      const canAfford = gameManager.data.crystals >= skin.price;
-
-      // Создаем карточку скина
-      const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
-      container.add(card.elements);
-      cards.push(card);
+  sortedSkins.forEach((skin) => {
+    // Добавляем разделитель при смене редкости
+    if (skin.rarity !== currentRarity) {
+      currentRarity = skin.rarity;
       
-      currentY += cardSpacing;
-    });
+      const rarityColors = {
+        'COMMON': '#aaaaaa',
+        'RARE': '#44aaff',
+        'EPIC': '#ff44aa',
+        'LEGENDARY': '#ffaa00'
+      };
+      
+      const separator = this.add.text(w / 2, currentY, `⚡ ${skin.rarity} TIER ⚡`, {
+        fontSize: '18px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: rarityColors[skin.rarity],
+        stroke: '#000000',
+        strokeThickness: 3,
+        shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
+      }).setOrigin(0.5);
+      
+      container.add(separator);
+      currentY += 40;
+    }
 
-    // Добавляем отступ внизу
-    const bottomPadding = this.add.rectangle(0, currentY, 10, 30, 0x000000, 0);
-    container.add(bottomPadding);
+    const owned = gameManager.getOwnedSkins().includes(skin.id);
+    const selected = gameManager.getCurrentSkin() === skin.id;
+    const canAfford = gameManager.data.crystals >= skin.price;
 
-    // Система прокрутки с инерцией
-    const scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
-    let startY = 0;
-    let startContainerY = 0;
-    let velocity = 0;
-    let lastY = 0;
-    let isDragging = false;
+    // Создаем карточку скина
+    const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
+    container.add(card.elements);
+    cards.push(card);
+    
+    currentY += cardSpacing;
+  });
 
-    scrollZone.on('pointerdown', (pointer) => {
-      startY = pointer.y;
-      startContainerY = container.y;
-      lastY = pointer.y;
-      isDragging = true;
-      velocity = 0;
-    });
+  // Добавляем отступ внизу
+  const bottomPadding = this.add.rectangle(0, currentY, 10, 30, 0x000000, 0);
+  container.add(bottomPadding);
 
-    scrollZone.on('pointermove', (pointer) => {
-      if (!pointer.isDown || !isDragging) return;
-      
-      const deltaY = pointer.y - lastY;
-      velocity = deltaY * 0.5;
-      
-      let newY = container.y + deltaY;
-      
-      // Ограничиваем прокрутку с резиновым эффектом
-      const minY = -(currentY - listHeight + 50);
-      const maxY = listTop;
-      
-      if (newY < minY) {
-        newY = minY + (newY - minY) * 0.2;
-      } else if (newY > maxY) {
-        newY = maxY + (newY - maxY) * 0.2;
-      }
-      
-      container.y = newY;
-      lastY = pointer.y;
-    });
+  // Система прокрутки с инерцией
+  const scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
+  let startY = 0;
+  let startContainerY = 0;
+  let velocity = 0;
+  let lastY = 0;
+  let isDragging = false;
 
-    scrollZone.on('pointerup', () => {
-      isDragging = false;
-      
-      // Инерция
-      if (Math.abs(velocity) > 1) {
-        this.tweens.add({
-          targets: container,
-          y: container.y + velocity * 5,
-          duration: 500,
-          ease: 'Power2.easeOut',
-          onUpdate: (tween) => {
-            const minY = -(currentY - listHeight + 50);
-            const maxY = listTop;
-            container.y = Phaser.Math.Clamp(container.y, minY, maxY);
-          }
-        });
-      }
-    });
+  // ОПРЕДЕЛЯЕМ ГРАНИЦЫ ЗДЕСЬ, ЧТОБЫ ОНИ БЫЛИ ДОСТУПНЫ ВО ВСЕХ КОЛЛБЭКАХ
+  const minY = -(currentY - listHeight + 50);
+  const maxY = listTop;
 
-    // Индикатор прокрутки
-    if (currentY > listHeight) {
-      const scrollTrack = this.add.graphics();
-      scrollTrack.fillStyle(0x333333, 0.5);
-      scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
-      
-      const indicatorHeight = (listHeight - 20) * (listHeight) / currentY;
-      const indicator = this.add.graphics();
-      indicator.fillStyle(0x00ffff, 0.8);
-      indicator.fillRoundedRect(w - 20, listTop + 10, 6, indicatorHeight, 3);
-      
-      // Анимация индикатора
+  scrollZone.on('pointerdown', (pointer) => {
+    startY = pointer.y;
+    startContainerY = container.y;
+    lastY = pointer.y;
+    isDragging = true;
+    velocity = 0;
+  });
+
+  scrollZone.on('pointermove', (pointer) => {
+    if (!pointer.isDown || !isDragging) return;
+    
+    const deltaY = pointer.y - lastY;
+    velocity = deltaY * 0.5;
+    
+    let newY = container.y + deltaY;
+    
+    // Ограничиваем прокрутку с резиновым эффектом
+    if (newY < minY) {
+      newY = minY + (newY - minY) * 0.2;
+    } else if (newY > maxY) {
+      newY = maxY + (newY - maxY) * 0.2;
+    }
+    
+    container.y = newY;
+    lastY = pointer.y;
+  });
+
+  scrollZone.on('pointerup', () => {
+    isDragging = false;
+    
+    // Инерция
+    if (Math.abs(velocity) > 1) {
       this.tweens.add({
-        targets: indicator,
-        alpha: 0.5,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1
-      });
-      
-      // Обновление позиции индикатора
-      this.events.on('update', () => {
-        const scrollPercent = (container.y - listTop) / (minY - listTop);
-        const indicatorY = listTop + 10 + (listHeight - 20 - indicatorHeight) * scrollPercent;
-        indicator.y = indicatorY;
+        targets: container,
+        y: container.y + velocity * 5,
+        duration: 500,
+        ease: 'Power2.easeOut',
+        onUpdate: (tween) => {
+          container.y = Phaser.Math.Clamp(container.y, minY, maxY);
+        }
       });
     }
+  });
+
+  // Индикатор прокрутки
+  if (currentY > listHeight) {
+    const scrollTrack = this.add.graphics();
+    scrollTrack.fillStyle(0x333333, 0.5);
+    scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
+    
+    const indicatorHeight = (listHeight - 20) * (listHeight) / currentY;
+    const indicator = this.add.graphics();
+    indicator.fillStyle(0x00ffff, 0.8);
+    indicator.fillRoundedRect(w - 20, listTop + 10, 6, indicatorHeight, 3);
+    
+    // Анимация индикатора
+    this.tweens.add({
+      targets: indicator,
+      alpha: 0.5,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1
+    });
+    
+    // Обновление позиции индикатора
+    this.events.on('update', () => {
+      const scrollPercent = (container.y - listTop) / (minY - listTop);
+      const indicatorY = listTop + 10 + (listHeight - 20 - indicatorHeight) * scrollPercent;
+      indicator.y = indicatorY;
+    });
   }
+}
 
   // =========================================================================
   // СОЗДАНИЕ КАРТОЧКИ СКИНА
