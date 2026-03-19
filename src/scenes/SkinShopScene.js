@@ -16,15 +16,18 @@ const SKINS = [
     price: 0, 
     rarity: 'COMMON',
     description: 'Классическое жёлтое такси',
+    lore: 'Первое такси, с которого всё началось. Надёжный друг на все времена.',
     stats: {
       speedBonus: 0,
       armorBonus: 0,
       handlingBonus: 0,
-      jumpBonus: 0
+      jumpBonus: 0,
+      special: 'Нет'
     },
     color: 0xffaa00,
     glowColor: 0xffaa00,
-    effects: 'none'
+    effects: 'none',
+    visualEffects: ['none']
   },
   { 
     id: 'taxi_blue', 
@@ -33,15 +36,18 @@ const SKINS = [
     price: 50, 
     rarity: 'COMMON',
     description: 'Синее такси',
+    lore: 'Спокойный синий цвет помогает сохранять концентрацию во время полёта.',
     stats: {
       speedBonus: 2,
       armorBonus: 1,
       handlingBonus: 1,
-      jumpBonus: 0
+      jumpBonus: 0,
+      special: 'Нет'
     },
     color: 0x3366ff,
     glowColor: 0x44aaff,
-    effects: 'none'
+    effects: 'none',
+    visualEffects: ['none']
   },
   { 
     id: 'taxi_green', 
@@ -50,51 +56,60 @@ const SKINS = [
     price: 50, 
     rarity: 'COMMON',
     description: 'Зелёное такси',
+    lore: 'Экологичный транспорт будущего. Ну, почти.',
     stats: {
       speedBonus: 2,
       armorBonus: 1,
       handlingBonus: 1,
-      jumpBonus: 0
+      jumpBonus: 0,
+      special: 'Нет'
     },
     color: 0x33aa33,
     glowColor: 0x44ff44,
-    effects: 'none'
+    effects: 'none',
+    visualEffects: ['none']
   },
 
   // ===== РЕДКИЕ (RARE) =====
   { 
     id: 'police', 
-    name: 'POLICE', 
+    name: 'POLICE INTERCEPTOR', 
     texture: 'player_police',
     price: 200, 
     rarity: 'RARE',
     description: 'Полицейский перехватчик',
+    lore: 'Специально обученное такси для поимки нарушителей скоростного режима.',
     stats: {
       speedBonus: 10,
       armorBonus: 5,
       handlingBonus: 5,
-      jumpBonus: 2
+      jumpBonus: 2,
+      special: 'Мигалки'
     },
     color: 0x2244aa,
     glowColor: 0x3366ff,
-    effects: 'siren'
+    effects: 'siren',
+    visualEffects: ['siren', 'flashing']
   },
   { 
     id: 'ambulance', 
-    name: 'AMBULANCE', 
+    name: 'MEDIC RESPONDER', 
     texture: 'player_ambulance',
     price: 250, 
     rarity: 'RARE',
     description: 'Скорая помощь',
+    lore: 'Спешит на помощь ко всем, кто пострадал от слишком быстрых полётов.',
     stats: {
       speedBonus: 8,
       armorBonus: 10,
       handlingBonus: 2,
-      jumpBonus: 3
+      jumpBonus: 3,
+      special: 'Регенерация'
     },
     color: 0xff4444,
     glowColor: 0xff6666,
-    effects: 'siren'
+    effects: 'siren',
+    visualEffects: ['siren', 'heal']
   },
   { 
     id: 'taxi_neon_blue', 
@@ -103,15 +118,18 @@ const SKINS = [
     price: 300, 
     rarity: 'RARE',
     description: 'Неоновое синее такси',
+    lore: 'Подсветка снизу создаёт иллюзию парения над дорогой.',
     stats: {
       speedBonus: 12,
       armorBonus: 3,
       handlingBonus: 8,
-      jumpBonus: 4
+      jumpBonus: 4,
+      special: 'Свечение'
     },
     color: 0x00aaff,
     glowColor: 0x44ddff,
-    effects: 'neon'
+    effects: 'neon',
+    visualEffects: ['neon', 'glow']
   },
 
   // ===== ЭПИЧЕСКИЕ (EPIC) =====
@@ -122,15 +140,18 @@ const SKINS = [
     price: 400, 
     rarity: 'EPIC',
     description: 'Спортивный красный',
+    lore: 'Сделан из чистого адреналина и красной краски. Очень быстро.',
     stats: {
       speedBonus: 20,
       armorBonus: 8,
       handlingBonus: 15,
-      jumpBonus: 10
+      jumpBonus: 10,
+      special: 'Огненный след'
     },
     color: 0xff3333,
     glowColor: 0xff5500,
-    effects: 'flames'
+    effects: 'flames',
+    visualEffects: ['flames', 'trail']
   },
   { 
     id: 'sport_blue', 
@@ -139,49 +160,58 @@ const SKINS = [
     price: 450, 
     rarity: 'EPIC',
     description: 'Спортивный синий',
+    lore: 'Ночной хищник, рассекающий темноту с грацией ниндзя.',
     stats: {
       speedBonus: 18,
       armorBonus: 10,
       handlingBonus: 20,
-      jumpBonus: 8
+      jumpBonus: 8,
+      special: 'Невидимость'
     },
     color: 0x3366ff,
     glowColor: 0x44aaff,
-    effects: 'glow'
+    effects: 'glow',
+    visualEffects: ['glow', 'stealth']
   },
   { 
     id: 'fire_truck', 
-    name: 'PYRO', 
+    name: 'PYRO UNIT', 
     texture: 'player_firetruck',
     price: 350, 
     rarity: 'EPIC',
     description: 'Пожарная машина',
+    lore: 'Красный, большой, грозный. Пожарные — настоящие герои.',
     stats: {
       speedBonus: 12,
       armorBonus: 25,
       handlingBonus: 5,
-      jumpBonus: 5
+      jumpBonus: 5,
+      special: 'Огнеупорность'
     },
     color: 0xff3333,
     glowColor: 0xff5555,
-    effects: 'flames'
+    effects: 'flames',
+    visualEffects: ['flames', 'heavy']
   },
   { 
     id: 'taxi_neon', 
-    name: 'NEON', 
+    name: 'NEON DRIFTER', 
     texture: 'player_taxi_neon',
     price: 500, 
     rarity: 'EPIC',
     description: 'Неоновое такси',
+    lore: 'Светится в темноте так ярко, что видно из космоса.',
     stats: {
       speedBonus: 15,
       armorBonus: 12,
       handlingBonus: 15,
-      jumpBonus: 10
+      jumpBonus: 10,
+      special: 'Неон'
     },
     color: 0x00ffff,
     glowColor: 0x88ffff,
-    effects: 'neon'
+    effects: 'neon',
+    visualEffects: ['neon', 'pulse']
   },
   { 
     id: 'taxi_neon_pink', 
@@ -190,15 +220,18 @@ const SKINS = [
     price: 550, 
     rarity: 'EPIC',
     description: 'Розовое неоновое такси',
+    lore: 'Для тех, кто хочет выделяться даже в неоне.',
     stats: {
       speedBonus: 16,
       armorBonus: 10,
       handlingBonus: 18,
-      jumpBonus: 12
+      jumpBonus: 12,
+      special: 'Розовое свечение'
     },
     color: 0xff44aa,
     glowColor: 0xff88cc,
-    effects: 'neon'
+    effects: 'neon',
+    visualEffects: ['neon', 'pulse']
   },
 
   // ===== ЛЕГЕНДАРНЫЕ (LEGENDARY) =====
@@ -209,15 +242,18 @@ const SKINS = [
     price: 600, 
     rarity: 'LEGENDARY',
     description: 'Монстр-трак',
+    lore: 'Создан для уничтожения всего на своём пути. Препятствия? Какие препятствия?',
     stats: {
       speedBonus: 25,
       armorBonus: 40,
       handlingBonus: 5,
-      jumpBonus: 15
+      jumpBonus: 15,
+      special: 'Крушитель'
     },
     color: 0xcc6600,
     glowColor: 0xff8800,
-    effects: 'monster'
+    effects: 'monster',
+    visualEffects: ['monster', 'heavy', 'crush']
   },
   { 
     id: 'formula', 
@@ -226,66 +262,78 @@ const SKINS = [
     price: 800, 
     rarity: 'LEGENDARY',
     description: 'Формула-1',
+    lore: 'Сверхзвуковой болид, способный обогнать даже собственный звук.',
     stats: {
       speedBonus: 50,
       armorBonus: 5,
       handlingBonus: 30,
-      jumpBonus: 25
+      jumpBonus: 25,
+      special: 'Сверхзвук'
     },
     color: 0xff6600,
     glowColor: 0xffaa00,
-    effects: 'formula'
+    effects: 'formula',
+    visualEffects: ['speed', 'trail', 'boost']
   },
   { 
     id: 'taxi_gold', 
-    name: 'GOLDEN', 
+    name: 'GOLDEN GOD', 
     texture: 'player_taxi_gold',
     price: 1000, 
     rarity: 'LEGENDARY',
     description: 'Золотое такси',
+    lore: 'Для настоящих королей дорог. Сделано из чистого золота (очень тяжёлое).',
     stats: {
       speedBonus: 40,
       armorBonus: 30,
       handlingBonus: 30,
-      jumpBonus: 20
+      jumpBonus: 20,
+      special: 'Золотой дождь'
     },
     color: 0xffaa00,
     glowColor: 0xffdd44,
-    effects: 'gold'
+    effects: 'gold',
+    visualEffects: ['gold', 'sparkle', 'wealth']
   },
   { 
     id: 'cyber_taxi', 
-    name: 'CYBER', 
+    name: 'CYBER CAB 2077', 
     texture: 'player_cyber',
     price: 1200, 
     rarity: 'LEGENDARY',
     description: 'Кибертакси 2077',
+    lore: 'Из будущего. С искусственным интеллектом и встроенным кофеваркой.',
     stats: {
       speedBonus: 60,
       armorBonus: 25,
       handlingBonus: 40,
-      jumpBonus: 30
+      jumpBonus: 30,
+      special: 'Киберпанк'
     },
     color: 0xaa44ff,
     glowColor: 0xcc88ff,
-    effects: 'cyber'
+    effects: 'cyber',
+    visualEffects: ['cyber', 'glitch', 'neon']
   },
   { 
     id: 'void_car', 
-    name: 'VOID', 
+    name: 'VOID REAVER', 
     texture: 'player_void',
     price: 1500, 
     rarity: 'LEGENDARY',
     description: 'Пожиратель пустоты',
+    lore: 'Сделан из тёмной материи. Поглощает свет и надежды врагов.',
     stats: {
       speedBonus: 75,
       armorBonus: 35,
       handlingBonus: 35,
-      jumpBonus: 40
+      jumpBonus: 40,
+      special: 'Поглощение'
     },
     color: 0x4400aa,
     glowColor: 0x8800ff,
-    effects: 'void'
+    effects: 'void',
+    visualEffects: ['void', 'absorb', 'darkness']
   }
 ];
 
@@ -301,6 +349,13 @@ export class SkinShopScene extends Phaser.Scene {
     this.hoverSoundTimer = null;
     this.lastHoverTime = 0;
     this.gridOffset = 0;
+    this.scrollVelocity = 0;
+    this.isDragging = false;
+    this.lastScrollY = 0;
+    this.scrollDeceleration = 0.95;
+    this.minScrollY = 0;
+    this.maxScrollY = 0;
+    this.optimizeLowEnd = false;
   }
 
   create() {
@@ -309,14 +364,19 @@ export class SkinShopScene extends Phaser.Scene {
 
     console.log('SkinShop: create started');
 
+    // Определяем производительность устройства
+    this.checkPerformance();
+
     // Создаём все текстуры скинов
     this.createAllSkinTextures();
 
     // ===== ЭПИЧЕСКИЙ КИБЕРПАНК-ФОН =====
     this.createCyberpunkBackground();
 
-    // ===== ПАРЯЩИЕ НЕОНОВЫЕ ЧАСТИЦЫ =====
-    this.createFloatingParticles();
+    // ===== ПАРЯЩИЕ НЕОНОВЫЕ ЧАСТИЦЫ (отключаем на слабых устройствах) =====
+    if (!this.optimizeLowEnd) {
+      this.createFloatingParticles();
+    }
 
     // ===== АНИМИРОВАННАЯ СЕТКА =====
     this.createAnimatedGrid();
@@ -352,6 +412,23 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
+  // ОПТИМИЗАЦИЯ ПРОИЗВОДИТЕЛЬНОСТИ
+  // =========================================================================
+
+  checkPerformance() {
+    // Проверяем, слабое ли устройство
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const lowMemory = navigator.deviceMemory ? navigator.deviceMemory < 4 : false;
+    const lowEnd = isMobile || lowMemory;
+    
+    this.optimizeLowEnd = lowEnd;
+    
+    if (lowEnd) {
+      console.log('Low-end device detected, optimizing performance');
+    }
+  }
+
+  // =========================================================================
   // СОЗДАНИЕ ФОНА
   // =========================================================================
 
@@ -362,8 +439,9 @@ export class SkinShopScene extends Phaser.Scene {
     // Базовый черный фон
     this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
 
-    // Многослойный градиент для глубины
-    const gradientLayers = [0.1, 0.15, 0.2, 0.25];
+    // Многослойный градиент для глубины (уменьшаем слои на слабых устройствах)
+    const gradientLayers = this.optimizeLowEnd ? [0.15, 0.25] : [0.1, 0.15, 0.2, 0.25];
+    
     gradientLayers.forEach((alpha, index) => {
       const gradient = this.make.graphics({ x: 0, y: 0, add: false });
       gradient.fillGradientStyle(
@@ -380,15 +458,17 @@ export class SkinShopScene extends Phaser.Scene {
       const gradientImage = this.add.image(0, 0, `shop_gradient_${index}`).setOrigin(0);
       gradientImage.setAlpha(0.8);
       
-      // Легкое движение градиента
-      this.tweens.add({
-        targets: gradientImage,
-        y: index * 5,
-        duration: 8000 + index * 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      if (!this.optimizeLowEnd) {
+        // Легкое движение градиента
+        this.tweens.add({
+          targets: gradientImage,
+          y: index * 5,
+          duration: 8000 + index * 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
     });
 
     // Добавляем размытые неоновые круги по углам
@@ -404,15 +484,17 @@ export class SkinShopScene extends Phaser.Scene {
       blur.setBlendMode(Phaser.BlendModes.ADD);
       blur.setOrigin(corner.x === 0 ? 0 : 1, corner.y === 0 ? 0 : 1);
       
-      this.tweens.add({
-        targets: blur,
-        alpha: 0.02,
-        scale: 1.2,
-        duration: 3000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
+      if (!this.optimizeLowEnd) {
+        this.tweens.add({
+          targets: blur,
+          alpha: 0.02,
+          scale: 1.2,
+          duration: 3000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut'
+        });
+      }
     });
   }
 
@@ -422,34 +504,41 @@ export class SkinShopScene extends Phaser.Scene {
 
     this.grid = this.add.graphics();
     
-    this.tweens.add({
-      targets: this,
-      gridOffset: 20,
-      duration: 3000,
-      yoyo: true,
-      repeat: -1,
-      onUpdate: () => this.updateGrid()
-    });
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: this,
+        gridOffset: 20,
+        duration: 3000,
+        yoyo: true,
+        repeat: -1,
+        onUpdate: () => this.updateGrid()
+      });
+    }
     
     this.updateGrid();
 
-    // Точки на пересечениях
-    for (let i = 0; i < w; i += 40) {
-      for (let j = 0; j < h; j += 40) {
-        if (Math.random() > 0.7) {
-          const dot = this.add.circle(i, j, 2, 0x00ffff, 0.3);
-          dot.setBlendMode(Phaser.BlendModes.ADD);
-          
-          this.tweens.add({
-            targets: dot,
-            alpha: 0.1,
-            scale: 2,
-            duration: 2000,
-            yoyo: true,
-            repeat: -1,
-            delay: Math.random() * 1000
-          });
-        }
+    // Точки на пересечениях (уменьшаем на слабых устройствах)
+    const dotCount = this.optimizeLowEnd ? 30 : 70;
+    
+    for (let i = 0; i < dotCount; i++) {
+      const x = Phaser.Math.Between(0, w);
+      const y = Phaser.Math.Between(0, h);
+      const size = Phaser.Math.Between(1, 3);
+      const color = Phaser.Utils.Array.GetRandom([0x00ffff, 0xff00ff, 0xffff00, 0x00ff00]);
+      
+      const dot = this.add.circle(x, y, size, color, 0.3);
+      dot.setBlendMode(Phaser.BlendModes.ADD);
+      
+      if (!this.optimizeLowEnd) {
+        this.tweens.add({
+          targets: dot,
+          alpha: 0.1,
+          scale: 2,
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+          delay: Math.random() * 1000
+        });
       }
     }
   }
@@ -507,8 +596,9 @@ export class SkinShopScene extends Phaser.Scene {
   createStars() {
     const w = this.scale.width;
     const h = this.scale.height;
+    const starCount = this.optimizeLowEnd ? 80 : 150;
 
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < starCount; i++) {
       const star = this.add.image(
         Phaser.Math.Between(0, w),
         Phaser.Math.Between(0, h),
@@ -566,15 +656,17 @@ export class SkinShopScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // Анимация заголовка
-    this.tweens.add({
-      targets: [this.title, this.titleGlow],
-      scaleX: 1.02,
-      scaleY: 1.02,
-      duration: 1500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: [this.title, this.titleGlow],
+        scaleX: 1.02,
+        scaleY: 1.02,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
   }
 
   createBalanceDisplay() {
@@ -592,13 +684,15 @@ export class SkinShopScene extends Phaser.Scene {
       fontSize: '32px'
     }).setOrigin(0.5);
 
-    this.tweens.add({
-      targets: crystalIcon,
-      angle: 360,
-      duration: 4000,
-      repeat: -1,
-      ease: 'Linear'
-    });
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: crystalIcon,
+        angle: 360,
+        duration: 4000,
+        repeat: -1,
+        ease: 'Linear'
+      });
+    }
 
     // Текст баланса
     this.balanceText = this.add.text(20, 0, `${gameManager.data.crystals}`, {
@@ -619,19 +713,21 @@ export class SkinShopScene extends Phaser.Scene {
     balanceContainer.add([balanceBg, crystalIcon, this.balanceText, creditsLabel]);
 
     // Пульсация рамки
-    this.tweens.add({
-      targets: balanceBg,
-      strokeWidth: 4,
-      alpha: 1,
-      duration: 1500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: balanceBg,
+        strokeWidth: 4,
+        alpha: 1,
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
   }
 
   // =========================================================================
-  // СОЗДАНИЕ ПРОКРУЧИВАЕМОГО СПИСКА СКИНОВ
+  // СОЗДАНИЕ ПРОКРУЧИВАЕМОГО СПИСКА СКИНОВ (ОПТИМИЗИРОВАНО)
   // =========================================================================
 
   createScrollableSkinList() {
@@ -678,6 +774,9 @@ export class SkinShopScene extends Phaser.Scene {
       'LEGENDARY': '#ffaa00'
     };
 
+    // Сохраняем ссылки на карточки для оптимизации
+    this.skinCards = [];
+
     sortedSkins.forEach((skin) => {
       // Разделитель при смене редкости
       if (skin.rarity !== currentRarity) {
@@ -703,6 +802,7 @@ export class SkinShopScene extends Phaser.Scene {
       // Создаем карточку
       const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
       this.skinContainer.add(card.elements);
+      this.skinCards.push(card);
       
       currentY += cardSpacing;
     });
@@ -710,7 +810,7 @@ export class SkinShopScene extends Phaser.Scene {
     // Отступ внизу
     this.skinContainer.add(this.add.rectangle(0, currentY, 10, 30, 0x000000, 0));
 
-    // Система прокрутки
+    // Система прокрутки с инерцией
     this.setupScrolling(listTop, listHeight, currentY);
   }
 
@@ -720,13 +820,16 @@ export class SkinShopScene extends Phaser.Scene {
     // Цвета в зависимости от статуса
     let borderColor = 0x666666;
     let bgColor = 0x0a0a1a;
+    let textColor = '#ffffff';
     
     if (selected) {
       borderColor = 0x00ff00;
       bgColor = 0x1a3a1a;
+      textColor = '#88ff88';
     } else if (owned) {
       borderColor = 0x00ffff;
       bgColor = 0x1a2a3a;
+      textColor = '#88ccff';
     } else if (skin.price === 0) {
       borderColor = 0xffaa00;
     } else if (canAfford) {
@@ -746,7 +849,7 @@ export class SkinShopScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     // Название
-    const nameText = this.add.text(120, y + 30, skin.name, {
+    const nameText = this.add.text(120, y + 25, skin.name, {
       fontSize: '18px',
       fontFamily: '"Orbitron", sans-serif',
       color: '#ffffff',
@@ -767,14 +870,14 @@ export class SkinShopScene extends Phaser.Scene {
       'EPIC': '#ff44aa',
       'LEGENDARY': '#ffaa00'
     };
-    const rarityText = this.add.text(120, y + 55, `[${rarityNames[skin.rarity]}]`, {
+    const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
       fontSize: '11px',
       fontFamily: '"Share Tech Mono", monospace',
       color: rarityColors[skin.rarity]
     }).setOrigin(0, 0.5);
 
     // Статы
-    const statsText = this.add.text(120, y + 85, 
+    const statsText = this.add.text(120, y + 80, 
       `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
       {
         fontSize: '11px',
@@ -782,6 +885,16 @@ export class SkinShopScene extends Phaser.Scene {
         color: '#88ff88'
       }
     ).setOrigin(0, 0.5);
+
+    // Специальная способность
+    if (skin.stats.special !== 'Нет') {
+      const specialText = this.add.text(120, y + 100, `✨ ${skin.stats.special}`, {
+        fontSize: '10px',
+        fontFamily: '"Share Tech Mono", monospace',
+        color: '#ffaa00'
+      }).setOrigin(0, 0.5);
+      elements.push(specialText);
+    }
 
     // Статус/цена (русский текст)
     let statusText = '';
@@ -807,6 +920,26 @@ export class SkinShopScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 2
     }).setOrigin(1, 0.5);
+
+    // Индикатор эффектов
+    if (skin.effects !== 'none') {
+      const effectIcons = {
+        'siren': '🚨',
+        'neon': '💡',
+        'flames': '🔥',
+        'monster': '👣',
+        'formula': '⚡',
+        'gold': '👑',
+        'cyber': '🤖',
+        'void': '🌌'
+      };
+      const effectIcon = effectIcons[skin.effects] || '✨';
+      
+      const effectText = this.add.text(w - 40, y + 90, effectIcon, {
+        fontSize: '20px'
+      }).setOrigin(1, 0.5);
+      elements.push(effectText);
+    }
 
     elements.push(bg, preview, nameText, rarityText, statsText, status);
 
@@ -841,93 +974,84 @@ export class SkinShopScene extends Phaser.Scene {
     });
 
     elements.push(hitArea);
-    return { elements };
+    return { elements, skin, y };
   }
 
   setupScrolling(listTop, listHeight, totalHeight) {
     const w = this.scale.width;
     
-    const scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
-    let startY = 0;
-    let startContainerY = 0;
-    let velocity = 0;
-    let lastY = 0;
-    let isDragging = false;
+    this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
+    
+    this.minScrollY = -(totalHeight - listHeight + 50);
+    this.maxScrollY = listTop;
 
-    const minY = -(totalHeight - listHeight + 50);
-    const maxY = listTop;
+    // Переменные для инерции
+    this.scrollVelocity = 0;
+    this.isDragging = false;
+    this.lastScrollY = 0;
+    this.scrollDeceleration = 0.95;
 
-    scrollZone.on('pointerdown', (pointer) => {
-      startY = pointer.y;
-      startContainerY = this.skinContainer.y;
-      lastY = pointer.y;
-      isDragging = true;
-      velocity = 0;
+    // Обработчики событий
+    this.scrollZone.on('pointerdown', (pointer) => {
+      this.isDragging = true;
+      this.lastScrollY = pointer.y;
+      this.scrollVelocity = 0;
+      this.startDragY = this.skinContainer.y;
+      this.startPointerY = pointer.y;
     });
 
-    scrollZone.on('pointermove', (pointer) => {
-      if (!pointer.isDown || !isDragging) return;
+    this.scrollZone.on('pointermove', (pointer) => {
+      if (!this.isDragging) return;
       
-      const deltaY = pointer.y - lastY;
-      velocity = deltaY * 0.5;
+      const deltaY = pointer.y - this.lastScrollY;
+      this.scrollVelocity = deltaY * 0.5;
       
       let newY = this.skinContainer.y + deltaY;
       
-      if (newY < minY) {
-        newY = minY + (newY - minY) * 0.2;
-      } else if (newY > maxY) {
-        newY = maxY + (newY - maxY) * 0.2;
+      // Резиновый эффект на границах
+      if (newY < this.minScrollY) {
+        newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
+      } else if (newY > this.maxScrollY) {
+        newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
       }
       
       this.skinContainer.y = newY;
-      lastY = pointer.y;
+      this.lastScrollY = pointer.y;
     });
 
-    scrollZone.on('pointerup', () => {
-      isDragging = false;
-      
-      if (Math.abs(velocity) > 1) {
-        this.tweens.add({
-          targets: this.skinContainer,
-          y: this.skinContainer.y + velocity * 5,
-          duration: 500,
-          ease: 'Power2.easeOut',
-          onUpdate: () => {
-            this.skinContainer.y = Phaser.Math.Clamp(this.skinContainer.y, minY, maxY);
-          }
-        });
-      }
+    this.scrollZone.on('pointerup', () => {
+      this.isDragging = false;
+    });
+
+    this.scrollZone.on('pointerout', () => {
+      this.isDragging = false;
     });
 
     // Индикатор прокрутки
     if (totalHeight > listHeight) {
-      const scrollTrack = this.add.graphics();
-      scrollTrack.fillStyle(0x333333, 0.5);
-      scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
+      this.scrollTrack = this.add.graphics();
+      this.scrollTrack.fillStyle(0x333333, 0.5);
+      this.scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
       
-      const indicatorHeight = (listHeight - 20) * listHeight / totalHeight;
-      const indicator = this.add.graphics();
-      indicator.fillStyle(0x00ffff, 0.8);
-      indicator.fillRoundedRect(w - 20, listTop + 10, 6, indicatorHeight, 3);
+      this.indicatorHeight = (listHeight - 20) * listHeight / totalHeight;
+      this.scrollIndicator = this.add.graphics();
+      this.scrollIndicator.fillStyle(0x00ffff, 0.8);
+      this.scrollIndicator.fillRoundedRect(w - 20, listTop + 10, 6, this.indicatorHeight, 3);
       
-      this.tweens.add({
-        targets: indicator,
-        alpha: 0.5,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1
-      });
-      
-      this.events.on('update', () => {
-        const scrollPercent = (this.skinContainer.y - listTop) / (minY - listTop);
-        const indicatorY = listTop + 10 + (listHeight - 20 - indicatorHeight) * scrollPercent;
-        indicator.y = indicatorY;
-      });
+      if (!this.optimizeLowEnd) {
+        this.tweens.add({
+          targets: this.scrollIndicator,
+          alpha: 0.5,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1
+        });
+      }
     }
   }
 
   // =========================================================================
-  // ДЕТАЛЬНОЕ ОКНО СКИНА
+  // ДЕТАЛЬНОЕ ОКНО СКИНА (КРАСИВОЕ, СОВРЕМЕННОЕ)
   // =========================================================================
 
   openSkinDetail(skin) {
@@ -938,53 +1062,92 @@ export class SkinShopScene extends Phaser.Scene {
     const selected = gameManager.getCurrentSkin() === skin.id;
     const canAfford = gameManager.data.crystals >= skin.price;
 
-    // Затемнение фона
-    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+    // Затемнение фона с анимацией
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0)
       .setDepth(50)
       .setScrollFactor(0)
       .setInteractive();
 
-    // Панель
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.9,
+      duration: 300,
+      ease: 'Power2.easeOut'
+    });
+
+    // Основная панель с анимацией
     const panel = this.add.graphics();
-    panel.fillStyle(0x0a0a1a, 0.95);
-    panel.fillRoundedRect(w / 2 - 200, h / 2 - 200, 400, 400, 20);
+    panel.fillStyle(0x0a0a1a, 0.98);
+    panel.fillRoundedRect(w / 2 - 200, h / 2 - 250, 400, 500, 20);
     panel.lineStyle(4, skin.rarity === 'LEGENDARY' ? 0xffaa00 : 0x00ffff, 1);
-    panel.strokeRoundedRect(w / 2 - 200, h / 2 - 200, 400, 400, 20);
+    panel.strokeRoundedRect(w / 2 - 200, h / 2 - 250, 400, 500, 20);
     panel.setDepth(51);
 
-    // Превью с анимацией
-    const preview = this.add.image(w / 2, h / 2 - 80, skin.texture)
-      .setScale(2.5)
+    // Превью с анимацией вращения
+    const preview = this.add.image(w / 2, h / 2 - 130, skin.texture)
+      .setScale(3.0)
       .setDepth(52)
       .setScrollFactor(0);
 
     this.tweens.add({
       targets: preview,
       angle: 360,
-      duration: 8000,
+      duration: 10000,
       repeat: -1,
       ease: 'Linear'
     });
 
-    // Название
-    this.add.text(w / 2, h / 2, skin.name, {
-      fontSize: '24px',
-      fontFamily: '"Orbitron", sans-serif',
+    // Название с неоновым эффектом
+    const nameText = this.add.text(w / 2, h / 2 - 30, skin.name, {
+      fontSize: '28px',
+      fontFamily: '"Audiowide", sans-serif',
       color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3
+      stroke: skin.rarity === 'LEGENDARY' ? '#ffaa00' : '#00ffff',
+      strokeThickness: 4,
+      shadow: { blur: 15, color: skin.rarity === 'LEGENDARY' ? '#ffaa00' : '#00ffff', fill: true }
+    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+
+    // Редкость
+    const rarityNames = {
+      'COMMON': 'ОБЫЧНЫЙ',
+      'RARE': 'РЕДКИЙ',
+      'EPIC': 'ЭПИЧЕСКИЙ',
+      'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+    };
+    const rarityColors = {
+      'COMMON': '#aaaaaa',
+      'RARE': '#44aaff',
+      'EPIC': '#ff44aa',
+      'LEGENDARY': '#ffaa00'
+    };
+    
+    const rarityText = this.add.text(w / 2, h / 2 + 5, `[${rarityNames[skin.rarity]}]`, {
+      fontSize: '16px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: rarityColors[skin.rarity]
     }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
     // Описание
-    this.add.text(w / 2, h / 2 + 30, skin.description, {
-      fontSize: '14px',
-      fontFamily: '"Share Tech Mono", monospace',
+    const descText = this.add.text(w / 2, h / 2 + 35, skin.description, {
+      fontSize: '16px',
+      fontFamily: '"Orbitron", sans-serif',
       color: '#aaccff',
       align: 'center',
-      wordWrap: { width: 300 }
+      wordWrap: { width: 320 }
     }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
 
-    // Характеристики (русские подписи)
+    // Лор (история)
+    const loreText = this.add.text(w / 2, h / 2 + 85, `"${skin.lore}"`, {
+      fontSize: '14px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#88aaff',
+      align: 'center',
+      wordWrap: { width: 320 },
+      fontStyle: 'italic'
+    }).setOrigin(0.5).setDepth(52).setScrollFactor(0);
+
+    // Характеристики (красивые карточки)
+    const statsY = h / 2 + 140;
     const stats = [
       { label: 'СКОРОСТЬ', value: skin.stats.speedBonus, icon: '⚡', color: 0xffff00 },
       { label: 'БРОНЯ', value: skin.stats.armorBonus, icon: '🛡️', color: 0x00ffff },
@@ -992,99 +1155,210 @@ export class SkinShopScene extends Phaser.Scene {
       { label: 'ПРЫЖОК', value: skin.stats.jumpBonus, icon: '🚀', color: 0xff8800 }
     ];
 
-    let yPos = h / 2 + 70;
-    stats.forEach(stat => {
-      this.add.text(w / 2 - 100, yPos, `${stat.icon} ${stat.label}:`, {
+    stats.forEach((stat, index) => {
+      const y = statsY + index * 30;
+      
+      // Фон для статистики с градиентом
+      const statBg = this.add.graphics();
+      statBg.fillStyle(0x1a1a2a, 0.8);
+      statBg.fillRoundedRect(w / 2 - 150, y - 12, 300, 28, 14);
+      statBg.lineStyle(2, stat.color, 0.5);
+      statBg.strokeRoundedRect(w / 2 - 150, y - 12, 300, 28, 14);
+      statBg.setDepth(52);
+      
+      const iconText = this.add.text(w / 2 - 140, y, stat.icon, {
+        fontSize: '18px'
+      }).setOrigin(0, 0.5).setDepth(53).setScrollFactor(0);
+      
+      const labelText = this.add.text(w / 2 - 120, y, stat.label, {
         fontSize: '14px',
         fontFamily: '"Share Tech Mono", monospace',
         color: '#ffffff'
-      }).setOrigin(0, 0.5).setDepth(52).setScrollFactor(0);
-
-      const sign = stat.value >= 0 ? '+' : '';
-      const color = stat.value >= 0 ? '#88ff88' : '#ff8888';
-      this.add.text(w / 2 + 100, yPos, `${sign}${stat.value}`, {
+      }).setOrigin(0, 0.5).setDepth(53).setScrollFactor(0);
+      
+      // Прогресс-бар
+      const barBg = this.add.graphics();
+      barBg.fillStyle(0x333333, 0.5);
+      barBg.fillRoundedRect(w / 2 + 20, y - 8, 100, 16, 8);
+      barBg.setDepth(52);
+      
+      const barFill = this.add.graphics();
+      barFill.fillStyle(stat.color, 0.8);
+      barFill.fillRoundedRect(w / 2 + 20, y - 8, Math.min(100, stat.value * 2), 16, 8);
+      barFill.setDepth(52);
+      
+      const valueText = this.add.text(w / 2 + 130, y, `+${stat.value}`, {
         fontSize: '16px',
         fontFamily: '"Audiowide", sans-serif',
-        color: color
-      }).setOrigin(1, 0.5).setDepth(52).setScrollFactor(0);
-      yPos += 25;
+        color: Phaser.Display.Color.ValueToColor(stat.color).rgba
+      }).setOrigin(1, 0.5).setDepth(53).setScrollFactor(0);
     });
 
-    // Кнопки
-    const buttonY = h / 2 + 170;
+    // Специальная способность
+    const specialY = statsY + 130;
+    if (skin.stats.special !== 'Нет') {
+      const specialBg = this.add.graphics();
+      specialBg.fillStyle(0x2a1a2a, 0.8);
+      specialBg.fillRoundedRect(w / 2 - 150, specialY - 15, 300, 40, 20);
+      specialBg.lineStyle(2, 0xffaa00, 0.7);
+      specialBg.strokeRoundedRect(w / 2 - 150, specialY - 15, 300, 40, 20);
+      specialBg.setDepth(52);
+      
+      this.add.text(w / 2 - 140, specialY, '✨ ОСОБОЕ:', {
+        fontSize: '12px',
+        fontFamily: '"Share Tech Mono", monospace',
+        color: '#ffaa00'
+      }).setOrigin(0, 0.5).setDepth(53).setScrollFactor(0);
+      
+      this.add.text(w / 2 + 100, specialY, skin.stats.special, {
+        fontSize: '14px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: '#ffaa00'
+      }).setOrigin(1, 0.5).setDepth(53).setScrollFactor(0);
+    }
+
+    // Цена
+    const priceY = h / 2 + 190;
     if (!owned) {
-      const buyBtn = this.createDetailButton(w / 2 - 80, buttonY, 'КУПИТЬ', '#00ff00', '#00aa00');
-      buyBtn.setDepth(52).setScrollFactor(0);
+      const priceBg = this.add.graphics();
+      priceBg.fillStyle(0x2a2a1a, 0.9);
+      priceBg.fillRoundedRect(w / 2 - 80, priceY - 15, 160, 40, 20);
+      priceBg.lineStyle(3, canAfford ? 0xffaa00 : 0xff4444, 0.8);
+      priceBg.strokeRoundedRect(w / 2 - 80, priceY - 15, 160, 40, 20);
+      priceBg.setDepth(52);
+
+      const priceText = this.add.text(w / 2 - 20, priceY, `${skin.price}`, {
+        fontSize: '28px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: canAfford ? '#ffaa00' : '#ff4444'
+      }).setOrigin(1, 0.5).setDepth(53).setScrollFactor(0);
+
+      const crystalIcon = this.add.text(w / 2 + 10, priceY, '💎', {
+        fontSize: '28px'
+      }).setOrigin(0, 0.5).setDepth(53).setScrollFactor(0);
+
+      if (!this.optimizeLowEnd) {
+        this.tweens.add({
+          targets: [priceText, crystalIcon],
+          scaleX: 1.1,
+          scaleY: 1.1,
+          duration: 500,
+          yoyo: true,
+          repeat: -1
+        });
+      }
+    }
+
+    // Кнопки
+    const buttonY = h / 2 + 200;
+    const buttonSpacing = 120;
+
+    if (!owned) {
+      // Кнопка покупки
+      const buyBtn = this.createDetailButton(
+        w / 2 - buttonSpacing, 
+        buttonY + 20, 
+        'КУПИТЬ', 
+        canAfford ? '#00ff00' : '#ff4444',
+        canAfford ? '#00aa00' : '#aa0000'
+      );
+      buyBtn.setDepth(53).setScrollFactor(0);
       
       buyBtn.on('pointerdown', () => {
         if (canAfford) {
-          overlay.destroy();
-          panel.destroy();
-          preview.destroy();
-          buyBtn.destroy();
+          this.closeDetailWithAnimation(overlay, panel, preview, nameText, rarityText, descText, loreText, buyBtn);
           this.confirmPurchase(skin);
         } else {
           this.showNoFunds();
         }
       });
     } else if (!selected) {
-      const selectBtn = this.createDetailButton(w / 2 - 80, buttonY, 'ВЫБРАТЬ', '#00ffff', '#0088aa');
-      selectBtn.setDepth(52).setScrollFactor(0);
+      // Кнопка выбора
+      const selectBtn = this.createDetailButton(
+        w / 2 - buttonSpacing, 
+        buttonY + 20, 
+        'ВЫБРАТЬ', 
+        '#00ffff',
+        '#0088aa'
+      );
+      selectBtn.setDepth(53).setScrollFactor(0);
       
       selectBtn.on('pointerdown', () => {
         this.selectSkin(skin);
-        overlay.destroy();
-        panel.destroy();
-        preview.destroy();
-        selectBtn.destroy();
+        this.closeDetailWithAnimation(overlay, panel, preview, nameText, rarityText, descText, loreText, selectBtn);
       });
     } else {
-      this.add.text(w / 2, buttonY, 'ВЫБРАНО', {
-        fontSize: '18px',
+      // Уже выбрано
+      const equippedBg = this.add.graphics();
+      equippedBg.fillStyle(0x1a3a1a, 0.9);
+      equippedBg.fillRoundedRect(w / 2 - 80, buttonY, 160, 50, 25);
+      equippedBg.lineStyle(3, 0x00ff00, 1);
+      equippedBg.strokeRoundedRect(w / 2 - 80, buttonY, 160, 50, 25);
+      equippedBg.setDepth(52);
+
+      this.add.text(w / 2, buttonY + 25, '✓ ВЫБРАНО', {
+        fontSize: '20px',
         fontFamily: '"Audiowide", sans-serif',
-        color: '#00ff00',
-        backgroundColor: '#1a3a1a',
-        padding: { x: 20, y: 10 }
-      }).setDepth(52).setScrollFactor(0).setOrigin(0.5);
+        color: '#00ff00'
+      }).setOrigin(0.5).setDepth(53).setScrollFactor(0);
     }
 
-    // Кнопка закрытия
-    const closeBtn = this.add.text(w - 40, h / 2 - 180, '✕', {
-      fontSize: '32px',
+    // Кнопка закрытия (красивый крестик)
+    const closeBtn = this.add.text(w - 50, 100, '✕', {
+      fontSize: '40px',
       fontFamily: 'sans-serif',
-      color: '#ff4444'
-    }).setInteractive().setDepth(52).setScrollFactor(0).setOrigin(0.5);
+      color: '#ff4444',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setInteractive({ useHandCursor: true }).setDepth(53).setScrollFactor(0).setOrigin(0.5);
 
-    closeBtn.on('pointerover', () => closeBtn.setStyle({ color: '#ff8888' }));
-    closeBtn.on('pointerout', () => closeBtn.setStyle({ color: '#ff4444' }));
+    closeBtn.on('pointerover', () => {
+      closeBtn.setStyle({ color: '#ff8888', scale: 1.2 });
+      this.playHoverSound();
+    });
+
+    closeBtn.on('pointerout', () => {
+      closeBtn.setStyle({ color: '#ff4444', scale: 1 });
+    });
+
     closeBtn.on('pointerdown', () => {
-      overlay.destroy();
-      panel.destroy();
-      preview.destroy();
-      closeBtn.destroy();
+      this.playClickSound();
+      this.closeDetailWithAnimation(overlay, panel, preview, nameText, rarityText, descText, loreText, closeBtn);
+    });
+  }
+
+  closeDetailWithAnimation(...objects) {
+    objects.forEach(obj => {
+      if (obj && obj.destroy) {
+        this.tweens.add({
+          targets: obj,
+          alpha: 0,
+          scale: 0.5,
+          duration: 200,
+          onComplete: () => obj.destroy()
+        });
+      }
     });
   }
 
   createDetailButton(x, y, text, color, hoverColor) {
     const btn = this.add.text(x, y, text, {
-      fontSize: '18px',
+      fontSize: '22px',
       fontFamily: '"Audiowide", sans-serif',
       color: '#ffffff',
       backgroundColor: '#1a1a3a',
-      padding: { x: 20, y: 10 },
+      padding: { x: 30, y: 15 },
       stroke: color,
-      strokeThickness: 2
+      strokeThickness: 3
     }).setInteractive({ useHandCursor: true }).setOrigin(0.5);
 
     btn.on('pointerover', () => {
-      btn.setStyle({ color: '#ffffff', backgroundColor: hoverColor });
-      btn.setScale(1.1);
+      btn.setStyle({ backgroundColor: hoverColor, scale: 1.1 });
       this.playHoverSound();
     });
 
     btn.on('pointerout', () => {
-      btn.setStyle({ color: '#ffffff', backgroundColor: '#1a1a3a', stroke: color });
-      btn.setScale(1);
+      btn.setStyle({ backgroundColor: '#1a1a3a', scale: 1, stroke: color });
     });
 
     return btn;
@@ -1110,8 +1384,14 @@ export class SkinShopScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.95)
+    const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0)
       .setDepth(50).setScrollFactor(0);
+
+    this.tweens.add({
+      targets: overlay,
+      alpha: 0.95,
+      duration: 300
+    });
 
     const panel = this.add.graphics();
     panel.fillStyle(0x0a0a1a, 0.98);
@@ -1170,25 +1450,39 @@ export class SkinShopScene extends Phaser.Scene {
         this.showMessage('✓ ПОКУПКА УСПЕШНА!', '#00ff00');
         
         this.time.delayedCall(1000, () => {
-          overlay.destroy();
-          panel.destroy();
-          preview.destroy();
-          priceText.destroy();
-          yesBtn.destroy();
-          noBtn.destroy();
-          this.scene.restart();
+          this.tweens.add({
+            targets: [overlay, panel, preview, priceText, yesBtn, noBtn],
+            alpha: 0,
+            duration: 300,
+            onComplete: () => {
+              overlay.destroy();
+              panel.destroy();
+              preview.destroy();
+              priceText.destroy();
+              yesBtn.destroy();
+              noBtn.destroy();
+              this.scene.restart();
+            }
+          });
         });
       }
     });
 
     noBtn.on('pointerdown', () => {
       this.playClickSound();
-      overlay.destroy();
-      panel.destroy();
-      preview.destroy();
-      priceText.destroy();
-      yesBtn.destroy();
-      noBtn.destroy();
+      this.tweens.add({
+        targets: [overlay, panel, preview, priceText, yesBtn, noBtn],
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          overlay.destroy();
+          panel.destroy();
+          preview.destroy();
+          priceText.destroy();
+          yesBtn.destroy();
+          noBtn.destroy();
+        }
+      });
     });
   }
 
@@ -1213,7 +1507,7 @@ export class SkinShopScene extends Phaser.Scene {
       color: '#88aaff'
     }).setOrigin(0, 0.5);
 
-    // Кнопка назад
+    // Кнопка назад с неоновым эффектом
     const backBtn = this.add.text(w / 2, h - 30, '⏎ НАЗАД В МЕНЮ', {
       fontSize: '22px',
       fontFamily: '"Audiowide", sans-serif',
@@ -1255,15 +1549,17 @@ export class SkinShopScene extends Phaser.Scene {
       const light = this.add.circle(x, h - 30, 5, 0x00ffff, 0.5);
       light.setBlendMode(Phaser.BlendModes.ADD);
       
-      this.tweens.add({
-        targets: light,
-        alpha: 0.2,
-        scale: 1.5,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        delay: side === -1 ? 0 : 500
-      });
+      if (!this.optimizeLowEnd) {
+        this.tweens.add({
+          targets: light,
+          alpha: 0.2,
+          scale: 1.5,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          delay: side === -1 ? 0 : 500
+        });
+      }
     });
   }
 
@@ -1659,27 +1955,56 @@ export class SkinShopScene extends Phaser.Scene {
         const time = Date.now() / 1000;
         this.stars.forEach(star => {
           star.sprite.alpha = star.baseAlpha + Math.sin(time * 5 * star.speed) * 0.3;
-          star.sprite.rotation += 0.001;
+          if (!this.optimizeLowEnd) {
+            star.sprite.rotation += 0.001;
+          }
         });
       },
       loop: true
     });
 
-    // Сканирующая линия
-    const scanLine = this.add.graphics();
-    let y = 0;
-    this.tweens.add({
-      targets: { y: 0 },
-      y: this.scale.height,
-      duration: 3000,
-      repeat: -1,
-      onUpdate: (tween) => {
-        y = tween.getValue();
-        scanLine.clear();
-        scanLine.lineStyle(2, 0x00ffff, 0.2);
-        scanLine.lineBetween(0, y, this.scale.width, y);
+    // Сканирующая линия (отключаем на слабых устройствах)
+    if (!this.optimizeLowEnd) {
+      const scanLine = this.add.graphics();
+      let y = 0;
+      this.tweens.add({
+        targets: { y: 0 },
+        y: this.scale.height,
+        duration: 3000,
+        repeat: -1,
+        onUpdate: (tween) => {
+          y = tween.getValue();
+          scanLine.clear();
+          scanLine.lineStyle(2, 0x00ffff, 0.2);
+          scanLine.lineBetween(0, y, this.scale.width, y);
+        }
+      });
+    }
+  }
+
+  update(time, delta) {
+    // Плавная инерция для прокрутки
+    if (!this.isDragging && Math.abs(this.scrollVelocity) > 0.01) {
+      let newY = this.skinContainer.y + this.scrollVelocity;
+      
+      if (newY < this.minScrollY) {
+        newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
+        this.scrollVelocity *= 0.5;
+      } else if (newY > this.maxScrollY) {
+        newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
+        this.scrollVelocity *= 0.5;
       }
-    });
+      
+      this.skinContainer.y = newY;
+      this.scrollVelocity *= this.scrollDeceleration;
+    }
+
+    // Обновление позиции индикатора прокрутки
+    if (this.scrollIndicator) {
+      const scrollPercent = (this.skinContainer.y - this.maxScrollY) / (this.minScrollY - this.maxScrollY);
+      const indicatorY = this.maxScrollY + 10 + (this.scrollIndicator.parentContainer?.height || 0) * scrollPercent;
+      this.scrollIndicator.y = indicatorY;
+    }
   }
 
   cleanupBeforeExit() {
