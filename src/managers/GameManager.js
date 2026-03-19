@@ -7,6 +7,35 @@ export class GameManager {
     this.eventListeners = {};
     this.skinStatsCache = new Map();
     this.upgradeCache = new Map();
+    this.achievementProgress = new Map();
+    this.dailyRewardTimer = null;
+    this.autoSaveTimer = null;
+    this.sessionStartTime = Date.now();
+    this.isInitialized = false;
+  }
+
+  // =========================================================================
+  // ИНИЦИАЛИЗАЦИЯ
+  // =========================================================================
+
+  init() {
+    if (this.isInitialized) return;
+    
+    this.startAutoSave();
+    this.checkDailyReward();
+    this.updateLastPlayed();
+    this.isInitialized = true;
+    
+    console.log('GameManager initialized', this.getGameSummary());
+  }
+
+  startAutoSave() {
+    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+    this.autoSaveTimer = setInterval(() => {
+      if (this.getSetting('autoSave')) {
+        this.save();
+      }
+    }, 60000); // Автосохранение каждую минуту
   }
 
   // =========================================================================
@@ -41,12 +70,23 @@ export class GameManager {
       data.currentLevel = data.currentLevel ?? 0;
       data.totalPlayTime = data.totalPlayTime ?? 0;
       data.lastPlayed = data.lastPlayed ?? null;
-      data.skinStats = data.skinStats || {}; // Кэш статистики по скинам
-      data.selectedEffects = data.selectedEffects || {}; // Выбранные эффекты
-      data.favoriteSkins = data.favoriteSkins || []; // Избранные скины
-      data.skinUsage = data.skinUsage || {}; // Статистика использования скинов
+      data.skinStats = data.skinStats || {};
+      data.selectedEffects = data.selectedEffects || {};
+      data.favoriteSkins = data.favoriteSkins || [];
+      data.skinUsage = data.skinUsage || {};
       data.completedAchievements = data.completedAchievements || [];
       data.secretAchievements = data.secretAchievements || [];
+      data.purchasedItems = data.purchasedItems || {};
+      data.consumables = data.consumables || {};
+      data.dailyQuests = data.dailyQuests || this.generateDailyQuests();
+      data.weeklyQuests = data.weeklyQuests || this.generateWeeklyQuests();
+      data.eventProgress = data.eventProgress || {};
+      data.seasonPass = data.seasonPass || this.getDefaultSeasonPass();
+      data.goldenTickets = data.goldenTickets || 0;
+      data.prestigeLevel = data.prestigeLevel || 0;
+      data.prestigePoints = data.prestigePoints || 0;
+      data.achievementPoints = data.achievementPoints || 0;
+      data.collectionScore = data.collectionScore || 0;
       
       return data;
     } catch (e) {
@@ -58,6 +98,11 @@ export class GameManager {
   getDefaultData() {
     return {
       crystals: 0,
+      goldenTickets: 0,
+      prestigeLevel: 0,
+      prestigePoints: 0,
+      achievementPoints: 0,
+      collectionScore: 0,
       unlockedWorlds: [0],
       unlockedLevels: { '0': [0] },
       levelStars: {},
@@ -85,6 +130,12 @@ export class GameManager {
       achievements: {},
       completedAchievements: [],
       secretAchievements: [],
+      purchasedItems: {},
+      consumables: {},
+      dailyQuests: [],
+      weeklyQuests: [],
+      eventProgress: {},
+      seasonPass: {},
       soundEnabled: true,
       musicEnabled: true,
       vibrationEnabled: true,
@@ -112,6 +163,11 @@ export class GameManager {
         longestSession: 0,
         bestCombo: 0,
         favoriteSkin: 'taxi_classic',
+        totalPerfectGames: 0,
+        totalNoHitRuns: 0,
+        totalSpeedRuns: 0,
+        fastestCompletion: 999999,
+        longestCombo: 0,
       }
     };
   }
@@ -155,6 +211,19 @@ export class GameManager {
       screenShake: true,
       hapticFeedback: true,
       cloudSave: false,
+      showNotifications: true,
+      reduceMotion: false,
+      highContrast: false,
+    };
+  }
+
+  getDefaultSeasonPass() {
+    return {
+      level: 0,
+      xp: 0,
+      claimedRewards: [],
+      premium: false,
+      premiumClaimed: []
     };
   }
 
@@ -185,14 +254,17 @@ export class GameManager {
   clearCaches() {
     this.skinStatsCache.clear();
     this.upgradeCache.clear();
+    this.achievementProgress.clear();
   }
 
   exportData() {
     return JSON.stringify({
       data: this.data,
-      version: '2.0.0',
+      version: '3.0.0',
       timestamp: Date.now(),
-      gameVersion: this.getVersion()
+      gameVersion: this.getVersion(),
+      platform: navigator.platform,
+      userAgent: navigator.userAgent
     });
   }
 
@@ -211,6 +283,17 @@ export class GameManager {
       console.error('Failed to import data', e);
       return false;
     }
+  }
+
+  backup() {
+    const backup = this.exportData();
+    const blob = new Blob([backup], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skypulse_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // =========================================================================
@@ -287,6 +370,9 @@ export class GameManager {
     this.data.levelStars[`${world}-${level}`] = Math.min(3, stars);
     this.save();
     this.emit('starsUpdated', { world, level, stars });
+    
+    // Проверяем достижения при получении звезд
+    this.checkStarAchievements();
   }
 
   getStarsForWorld(world) {
@@ -311,6 +397,22 @@ export class GameManager {
     if (totalStars >= 50) this.unlockAchievement('star_collector_3');
     if (totalStars >= 100) this.unlockAchievement('star_collector_4');
     if (totalStars >= 150) this.unlockAchievement('star_collector_5');
+  }
+
+  checkStarAchievements() {
+    // Проверка на 3 звезды во всех уровнях мира
+    for (let w = 0; w < 5; w++) {
+      let allThree = true;
+      for (let l = 0; l < 10; l++) {
+        if (this.getLevelStars(w, l) < 3) {
+          allThree = false;
+          break;
+        }
+      }
+      if (allThree) {
+        this.unlockAchievement(`world_${w}_perfect`);
+      }
+    }
   }
 
   getTotalStars() {
@@ -372,6 +474,9 @@ export class GameManager {
     
     // Обновляем статистику использования
     this.data.skinUsage[skinId] = 0;
+    
+    // Обновляем счет коллекции
+    this.updateCollectionScore();
     
     this.save();
     this.clearCaches();
@@ -487,6 +592,39 @@ export class GameManager {
     return this.getOwnedSkinsByRarity(rarity).length;
   }
 
+  updateCollectionScore() {
+    let score = 0;
+    
+    // Базовые очки за каждый скин
+    score += this.getOwnedSkinsCount() * 10;
+    
+    // Бонус за редкость
+    score += this.getOwnedRarityCount('RARE') * 20;
+    score += this.getOwnedRarityCount('EPIC') * 50;
+    score += this.getOwnedRarityCount('LEGENDARY') * 100;
+    
+    // Бонус за полные коллекции
+    if (this.getOwnedRarityCount('COMMON') === this.getRarityCount('COMMON')) {
+      score += 100;
+      this.unlockAchievement('complete_common');
+    }
+    if (this.getOwnedRarityCount('RARE') === this.getRarityCount('RARE')) {
+      score += 200;
+      this.unlockAchievement('complete_rare');
+    }
+    if (this.getOwnedRarityCount('EPIC') === this.getRarityCount('EPIC')) {
+      score += 500;
+      this.unlockAchievement('complete_epic');
+    }
+    if (this.getOwnedRarityCount('LEGENDARY') === this.getRarityCount('LEGENDARY')) {
+      score += 1000;
+      this.unlockAchievement('complete_legendary');
+    }
+    
+    this.data.collectionScore = score;
+    this.save();
+  }
+
   checkSkinCollectionAchievements() {
     const owned = this.getOwnedSkinsCount();
     
@@ -559,6 +697,10 @@ export class GameManager {
       this.clearCaches();
       this.save();
       this.emit('upgrade', { key, level: this.data.upgrades[key] });
+      
+      // Проверяем достижения за прокачку
+      this.checkUpgradeAchievements();
+      
       return true;
     }
     return false;
@@ -613,28 +755,44 @@ export class GameManager {
     return Object.values(this.data.upgrades).reduce((a, b) => a + b, 0);
   }
 
+  getUpgradeProgress() {
+    const total = this.getTotalUpgradeLevels();
+    const maxTotal = Object.keys(UPGRADE_COSTS).length * 20; // Примерный максимум
+    return (total / maxTotal) * 100;
+  }
+
+  checkUpgradeAchievements() {
+    const total = this.getTotalUpgradeLevels();
+    
+    if (total >= 10) this.unlockAchievement('upgrader_1');
+    if (total >= 25) this.unlockAchievement('upgrader_2');
+    if (total >= 50) this.unlockAchievement('upgrader_3');
+    if (total >= 100) this.unlockAchievement('upgrader_4');
+    if (total >= 200) this.unlockAchievement('upgrader_5');
+  }
+
   // =========================================================================
   // КРИСТАЛЛЫ С РАСШИРЕННОЙ СТАТИСТИКОЙ
   // =========================================================================
 
-  addCrystals(amount) {
+  addCrystals(amount, source = 'unknown') {
     if (amount > 0) {
       this.data.crystals += amount;
       this.data.stats.totalCrystalsEarned += amount;
       this.save();
-      this.emit('crystalsChanged', this.data.crystals);
+      this.emit('crystalsChanged', { amount: this.data.crystals, added: amount, source });
       return true;
     }
     return false;
   }
 
-  spendCrystals(amount) {
+  spendCrystals(amount, reason = 'unknown') {
     if (amount <= this.data.crystals) {
       this.data.crystals -= amount;
       this.data.stats.totalPurchases += amount;
       this.data.stats.totalCrystalsSpent += amount;
       this.save();
-      this.emit('crystalsChanged', this.data.crystals);
+      this.emit('crystalsChanged', { amount: this.data.crystals, spent: amount, reason });
       return true;
     }
     return false;
@@ -652,25 +810,43 @@ export class GameManager {
     return this.data.stats.totalCrystalsSpent || 0;
   }
 
+  getCrystalBalance() {
+    return {
+      current: this.getCrystals(),
+      earned: this.getTotalCrystalsEarned(),
+      spent: this.getTotalCrystalsSpent(),
+      net: this.getTotalCrystalsEarned() - this.getTotalCrystalsSpent()
+    };
+  }
+
   // =========================================================================
   // ДОСТИЖЕНИЯ С ПРОГРЕССОМ
   // =========================================================================
 
   unlockAchievement(id) {
     if (!this.data.achievements[id]) {
+      const achievement = ACHIEVEMENTS[id];
+      const reward = achievement?.reward || 0;
+      
       this.data.achievements[id] = { 
         unlockedAt: Date.now(),
         claimed: false 
       };
       
-      const achievement = ACHIEVEMENTS[id];
-      if (achievement?.reward) {
-        this.addCrystals(achievement.reward);
+      if (reward > 0) {
+        this.addCrystals(reward, 'achievement');
+        this.data.achievementPoints += reward;
       }
       
       this.data.completedAchievements.push(id);
+      
+      // Проверка на секретное достижение
+      if (achievement?.secret) {
+        this.data.secretAchievements.push(id);
+      }
+      
       this.save();
-      this.emit('achievementUnlocked', { id, achievement });
+      this.emit('achievementUnlocked', { id, achievement, reward });
       return true;
     }
     return false;
@@ -702,7 +878,8 @@ export class GameManager {
       id,
       ...ACHIEVEMENTS[id],
       unlocked: this.isAchievementUnlocked(id),
-      progress: this.getAchievementProgress(id)
+      progress: this.getAchievementProgress(id),
+      unlockedAt: this.data.achievements[id]?.unlockedAt
     }));
   }
 
@@ -712,6 +889,14 @@ export class GameManager {
 
   getTotalAchievements() {
     return Object.keys(ACHIEVEMENTS).length;
+  }
+
+  getAchievementPoints() {
+    return this.data.achievementPoints || 0;
+  }
+
+  getAchievementProgressPercentage() {
+    return (this.getCompletedAchievementsCount() / this.getTotalAchievements()) * 100;
   }
 
   // =========================================================================
@@ -730,8 +915,22 @@ export class GameManager {
     s.totalEnemiesKilled += enemies;
     s.totalDistance += distance;
     
+    // Проверка на идеальную игру (без смертей)
+    if (this.data.stats.totalDeaths === 0) {
+      s.totalPerfectGames++;
+    }
+    
+    // Проверка на быстрое прохождение
+    const currentTime = Date.now() - this.sessionStartTime;
+    if (currentTime < s.fastestCompletion) {
+      s.fastestCompletion = currentTime;
+    }
+    
     this.save();
     this.emit('statsUpdated', s);
+    
+    // Проверяем статистические достижения
+    this.checkStatsAchievements();
   }
 
   addDeath() {
@@ -748,6 +947,9 @@ export class GameManager {
     }
     
     this.save();
+    
+    // Проверяем достижения за время
+    this.checkTimeAchievements();
   }
 
   addGatePassed() {
@@ -772,7 +974,49 @@ export class GameManager {
       longestSessionFormatted: this.formatTime(s.longestSession),
       averageScorePerGame: s.totalGames ? Math.floor(s.maxScore / s.totalGames) : 0,
       crystalsPerGame: s.totalGames ? Math.floor(this.getTotalCrystalsEarned() / s.totalGames) : 0,
+      gatesPerGame: s.totalGames ? Math.floor(s.totalGatesPassed / s.totalGames) : 0,
+      enemiesPerGame: s.totalGames ? Math.floor(s.totalEnemiesKilled / s.totalGames) : 0,
+      deathsPerGame: s.totalGames ? (s.totalDeaths / s.totalGames).toFixed(2) : 0,
+      winRate: s.totalGames ? ((s.totalGames - s.totalDeaths) / s.totalGames * 100).toFixed(1) : 0
     };
+  }
+
+  checkStatsAchievements() {
+    const s = this.data.stats;
+    
+    if (s.totalGames >= 10) this.unlockAchievement('veteran_1');
+    if (s.totalGames >= 50) this.unlockAchievement('veteran_2');
+    if (s.totalGames >= 100) this.unlockAchievement('veteran_3');
+    if (s.totalGames >= 500) this.unlockAchievement('veteran_4');
+    if (s.totalGames >= 1000) this.unlockAchievement('veteran_5');
+    
+    if (s.maxScore >= 1000) this.unlockAchievement('score_1k');
+    if (s.maxScore >= 5000) this.unlockAchievement('score_5k');
+    if (s.maxScore >= 10000) this.unlockAchievement('score_10k');
+    if (s.maxScore >= 50000) this.unlockAchievement('score_50k');
+    
+    if (s.totalDistance >= 10000) this.unlockAchievement('distance_10k');
+    if (s.totalDistance >= 50000) this.unlockAchievement('distance_50k');
+    if (s.totalDistance >= 100000) this.unlockAchievement('distance_100k');
+    
+    if (s.bestCombo >= 10) this.unlockAchievement('combo_10');
+    if (s.bestCombo >= 25) this.unlockAchievement('combo_25');
+    if (s.bestCombo >= 50) this.unlockAchievement('combo_50');
+    if (s.bestCombo >= 100) this.unlockAchievement('combo_100');
+    
+    if (s.totalPerfectGames >= 1) this.unlockAchievement('perfect_1');
+    if (s.totalPerfectGames >= 10) this.unlockAchievement('perfect_10');
+    if (s.totalPerfectGames >= 50) this.unlockAchievement('perfect_50');
+  }
+
+  checkTimeAchievements() {
+    const totalTime = this.data.totalPlayTime;
+    
+    if (totalTime >= 3600) this.unlockAchievement('time_1h');
+    if (totalTime >= 36000) this.unlockAchievement('time_10h');
+    if (totalTime >= 86400) this.unlockAchievement('time_24h');
+    if (totalTime >= 604800) this.unlockAchievement('time_7d');
+    if (totalTime >= 2592000) this.unlockAchievement('time_30d');
   }
 
   // =========================================================================
@@ -798,7 +1042,7 @@ export class GameManager {
       reward.available = true;
       
       const rewardAmount = reward.rewards[reward.streak - 1] || 10;
-      this.addCrystals(rewardAmount);
+      this.addCrystals(rewardAmount, 'daily');
       this.save();
       this.emit('dailyRewardClaimed', { streak: reward.streak, amount: rewardAmount });
       
@@ -829,6 +1073,100 @@ export class GameManager {
   }
 
   // =========================================================================
+  // КВЕСТЫ
+  // =========================================================================
+
+  generateDailyQuests() {
+    const quests = [
+      { id: 'daily_1', type: 'score', target: 1000, reward: 50, progress: 0, completed: false },
+      { id: 'daily_2', type: 'distance', target: 5000, reward: 75, progress: 0, completed: false },
+      { id: 'daily_3', type: 'combo', target: 20, reward: 100, progress: 0, completed: false },
+      { id: 'daily_4', type: 'crystals', target: 50, reward: 150, progress: 0, completed: false },
+      { id: 'daily_5', type: 'gates', target: 30, reward: 80, progress: 0, completed: false }
+    ];
+    
+    // Случайный выбор 3 квестов на день
+    return this.shuffleArray(quests).slice(0, 3);
+  }
+
+  generateWeeklyQuests() {
+    const quests = [
+      { id: 'weekly_1', type: 'score', target: 10000, reward: 300, progress: 0, completed: false },
+      { id: 'weekly_2', type: 'distance', target: 50000, reward: 500, progress: 0, completed: false },
+      { id: 'weekly_3', type: 'combo', target: 100, reward: 750, progress: 0, completed: false },
+      { id: 'weekly_4', type: 'crystals', target: 500, reward: 1000, progress: 0, completed: false },
+      { id: 'weekly_5', type: 'games', target: 20, reward: 400, progress: 0, completed: false },
+      { id: 'weekly_6', type: 'perfect', target: 5, reward: 600, progress: 0, completed: false },
+      { id: 'weekly_7', type: 'no_hit', target: 3, reward: 800, progress: 0, completed: false }
+    ];
+    
+    // Случайный выбор 5 квестов на неделю
+    return this.shuffleArray(quests).slice(0, 5);
+  }
+
+  shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  updateQuestProgress(type, amount) {
+    // Дневные квесты
+    this.data.dailyQuests.forEach(quest => {
+      if (quest.type === type && !quest.completed) {
+        quest.progress = Math.min(quest.progress + amount, quest.target);
+        if (quest.progress >= quest.target) {
+          quest.completed = true;
+          this.emit('questCompleted', quest);
+        }
+      }
+    });
+    
+    // Недельные квесты
+    this.data.weeklyQuests.forEach(quest => {
+      if (quest.type === type && !quest.completed) {
+        quest.progress = Math.min(quest.progress + amount, quest.target);
+        if (quest.progress >= quest.target) {
+          quest.completed = true;
+          this.emit('questCompleted', quest);
+        }
+      }
+    });
+    
+    this.save();
+  }
+
+  claimQuestReward(questId, isDaily = true) {
+    const quests = isDaily ? this.data.dailyQuests : this.data.weeklyQuests;
+    const quest = quests.find(q => q.id === questId);
+    
+    if (quest && quest.completed && !quest.claimed) {
+      quest.claimed = true;
+      this.addCrystals(quest.reward, 'quest');
+      this.save();
+      this.emit('questClaimed', quest);
+      return true;
+    }
+    return false;
+  }
+
+  getActiveQuests() {
+    return {
+      daily: this.data.dailyQuests.filter(q => !q.completed),
+      weekly: this.data.weeklyQuests.filter(q => !q.completed)
+    };
+  }
+
+  getCompletedQuests() {
+    return {
+      daily: this.data.dailyQuests.filter(q => q.completed && !q.claimed),
+      weekly: this.data.weeklyQuests.filter(q => q.completed && !q.claimed)
+    };
+  }
+
+  // =========================================================================
   // ЛИДЕРБОРД
   // =========================================================================
 
@@ -842,7 +1180,8 @@ export class GameManager {
       skin: skinId || this.getCurrentSkin(),
       timestamp: Date.now(),
       date: new Date().toLocaleDateString('ru-RU'),
-      playerName: 'Player'
+      playerName: 'Player',
+      prestige: this.data.prestigeLevel || 0
     };
     
     this.data.leaderboard.unshift(entry);
@@ -866,10 +1205,57 @@ export class GameManager {
     return Math.max(...skinEntries.map(e => e.score), 0);
   }
 
+  getLeaderboardRank(score) {
+    const entries = this.data.leaderboard || [];
+    const sorted = [...entries].sort((a, b) => b.score - a.score);
+    const index = sorted.findIndex(e => e.score <= score);
+    return index === -1 ? sorted.length + 1 : index + 1;
+  }
+
   clearLeaderboard() {
     this.data.leaderboard = [];
     this.save();
     this.emit('leaderboardUpdated', []);
+  }
+
+  // =========================================================================
+  // ПРЕСТИЖ
+  // =========================================================================
+
+  canPrestige() {
+    return this.getTotalStars() >= 150; // Все звезды во всех мирах
+  }
+
+  prestige() {
+    if (!this.canPrestige()) return false;
+    
+    this.data.prestigeLevel += 1;
+    this.data.prestigePoints += 100 * this.data.prestigeLevel;
+    
+    // Сброс прогресса, но сохранение скинов и кристаллов
+    const oldCrystals = this.data.crystals;
+    const oldSkins = this.data.ownedSkins;
+    const oldPrestige = this.data.prestigeLevel;
+    const oldPoints = this.data.prestigePoints;
+    
+    this.data = this.getDefaultData();
+    this.data.crystals = oldCrystals + 1000; // Бонус за престиж
+    this.data.ownedSkins = oldSkins;
+    this.data.prestigeLevel = oldPrestige;
+    this.data.prestigePoints = oldPoints;
+    
+    this.save();
+    this.emit('prestige', this.data.prestigeLevel);
+    
+    return true;
+  }
+
+  getPrestigeBonus() {
+    return {
+      crystalMultiplier: 1 + (this.data.prestigeLevel * 0.1),
+      scoreMultiplier: 1 + (this.data.prestigeLevel * 0.05),
+      luckMultiplier: 1 + (this.data.prestigeLevel * 0.02)
+    };
   }
 
   // =========================================================================
@@ -977,7 +1363,7 @@ export class GameManager {
   // =========================================================================
 
   getVersion() {
-    return '2.0.0';
+    return '3.0.0';
   }
 
   getLastPlayed() {
@@ -1025,15 +1411,62 @@ export class GameManager {
       collectionProgress: this.getCollectionProgress().percentage,
       completedAchievements: this.getCompletedAchievementsCount(),
       totalAchievements: this.getTotalAchievements(),
+      achievementProgress: this.getAchievementProgressPercentage(),
       totalGames: this.data.stats.totalGames,
       maxScore: this.data.stats.maxScore,
       maxCombo: this.data.stats.maxCombo,
       totalDistance: this.data.stats.totalDistance,
       totalPlayTime: this.formatTime(this.getTotalPlayTime()),
       favoriteSkin: this.data.stats.favoriteSkin,
+      prestigeLevel: this.data.prestigeLevel,
+      collectionScore: this.data.collectionScore,
+      achievementPoints: this.getAchievementPoints(),
+      dailyStreak: this.getDailyRewardStreak()
+    };
+  }
+
+  getFullPlayerProfile() {
+    return {
+      general: {
+        crystals: this.getCrystals(),
+        prestige: this.data.prestigeLevel,
+        playTime: this.formatTime(this.getTotalPlayTime()),
+        lastPlayed: this.data.lastPlayed ? new Date(this.data.lastPlayed).toLocaleString() : 'Никогда'
+      },
+      progression: {
+        worlds: this.getTotalProgress() + '%',
+        stars: this.getTotalStars(),
+        levelsUnlocked: Object.values(this.data.unlockedLevels).flat().length,
+        currentWorld: this.getCurrentWorld() + 1,
+        currentLevel: this.getCurrentLevel() + 1
+      },
+      collection: {
+        skins: this.getOwnedSkinsCount() + '/' + this.getTotalSkins(),
+        favorites: this.getFavoriteSkins().length,
+        collectionScore: this.data.collectionScore,
+        byRarity: {
+          common: this.getOwnedRarityCount('COMMON') + '/' + this.getRarityCount('COMMON'),
+          rare: this.getOwnedRarityCount('RARE') + '/' + this.getRarityCount('RARE'),
+          epic: this.getOwnedRarityCount('EPIC') + '/' + this.getRarityCount('EPIC'),
+          legendary: this.getOwnedRarityCount('LEGENDARY') + '/' + this.getRarityCount('LEGENDARY')
+        }
+      },
+      achievements: {
+        completed: this.getCompletedAchievementsCount() + '/' + this.getTotalAchievements(),
+        points: this.getAchievementPoints(),
+        progress: this.getAchievementProgressPercentage().toFixed(1) + '%'
+      },
+      stats: this.getFormattedStats()
     };
   }
 }
 
 export const gameManager = new GameManager();
 window.gameManager = gameManager;
+
+// Автоматическая инициализация при загрузке
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    gameManager.init();
+  });
+}
