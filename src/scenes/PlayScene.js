@@ -1647,8 +1647,7 @@ flap() {
     });
   }
 
-    /**
-   * Активация бонуса от монет - УЛУЧШЕННАЯ ВЕРСИЯ
+      /** * Активация бонуса от монет - УЛУЧШЕННАЯ ВЕРСИЯ
    */
   activateBonus(type) {
     const now = Date.now();
@@ -1672,6 +1671,9 @@ flap() {
           
           // Эффект скоростных линий
           this.createSpeedLines();
+          
+          // Орбитальные частицы для скорости (желтые)
+          this.createOrbitalEffect('speed', 0xffff00, 40, 6);
           
           // Пульсация игрока
           this.tweens.add({
@@ -1702,6 +1704,9 @@ flap() {
           
           // Эффект вращающегося щита
           this.createShieldEffect();
+          
+          // Орбитальные частицы для щита (голубые) - больше частиц
+          this.createOrbitalEffect('shield', 0x00ffff, 45, 8);
         }
         if (this.bonusText) {
           this.bonusText.setColor('#00ffff').setText(`🛡️ ${Math.ceil(this.bonusTime)}с`);
@@ -1721,6 +1726,9 @@ flap() {
           
           // Искрящиеся частицы вокруг игрока
           this.createMagnetParticles();
+          
+          // Орбитальные частицы для магнита (фиолетовые)
+          this.createOrbitalEffect('magnet', 0xff00ff, 50, 6);
         }
         if (this.bonusText) {
           this.bonusText.setColor('#ff00ff').setText(`🧲 ${Math.ceil(this.bonusTime)}с`);
@@ -1736,6 +1744,9 @@ flap() {
           
           // Эффект замедления времени
           this.createSlowMotionEffect();
+          
+          // Орбитальные частицы для замедления (оранжевые) - медленнее вращаются
+          this.createOrbitalEffect('slow', 0xff8800, 40, 6, true);
         }
         if (this.bonusText) {
           this.bonusText.setColor('#ff8800').setText(`⏳ ${Math.ceil(this.bonusTime)}с`);
@@ -1770,6 +1781,56 @@ flap() {
     
     // Звуковой эффект для бонуса
     this.playBonusSound(type);
+  }
+
+  /**
+   * Создание орбитальных частиц для бонусов
+   */
+  createOrbitalEffect(type, color, radius, count = 6, isSlow = false) {
+    const particleKey = `${type}OrbitalParticles`;
+    
+    // Очищаем предыдущие частицы этого типа
+    if (this[particleKey]) {
+      this[particleKey].forEach(p => p.destroy());
+    }
+
+    // Создаем новые частицы
+    this[particleKey] = [];
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const particle = this.add.circle(
+        this.player.x + Math.cos(angle) * radius,
+        this.player.y + Math.sin(angle) * radius,
+        type === 'shield' ? 4 : 3, 
+        color, 
+        0.7
+      );
+      particle.setDepth(14);
+      this[particleKey].push(particle);
+    }
+
+    // Анимация вращения
+    const tweenKey = `${type}OrbitalTween`;
+    const duration = isSlow ? 3000 : 2000;
+    
+    this[tweenKey] = this.tweens.add({
+      targets: {},
+      duration: duration,
+      repeat: -1,
+      onUpdate: () => {
+        if (!this[particleKey] || !this.player) return;
+        const time = Date.now() * 0.002 * (isSlow ? 0.5 : 1);
+        
+        this[particleKey].forEach((p, i) => {
+          if (p && p.active) {
+            const angle = (i / this[particleKey].length) * Math.PI * 2 + time;
+            p.x = this.player.x + Math.cos(angle) * radius;
+            p.y = this.player.y + Math.sin(angle) * radius;
+          }
+        });
+      }
+    });
   }
 
   /**
@@ -1833,18 +1894,16 @@ flap() {
         3, 0x00ffff, 0.8
       );
       particle.setDepth(14);
-      particle.angle = angle;
-      particle.speed = 0.02;
       this.shieldParticles.push(particle);
     }
     
     // Анимация вращения частиц
     this.shieldRotationTween = this.tweens.add({
-      targets: { dummy: 0 },
+      targets: {},
       duration: 2000,
       repeat: -1,
       onUpdate: () => {
-        if (!this.shieldParticles) return;
+        if (!this.shieldParticles || !this.player) return;
         const time = Date.now() * 0.002;
         this.shieldParticles.forEach((p, i) => {
           if (p && p.active) {
@@ -1873,8 +1932,9 @@ flap() {
       duration: 800,
       yoyo: true,
       repeat: -1,
-      onUpdate: (tween, target) => {
+      onUpdate: (tween) => {
         if (!this.magnetGraphics || !this.player) return;
+        const target = tween.targets[0];
         
         this.magnetGraphics.clear();
         
@@ -1942,7 +2002,7 @@ flap() {
     
     // Эффект "ряби" времени
     this.slowMotionTween = this.tweens.add({
-      targets: { time: 0 },
+      targets: {},
       duration: 1000,
       repeat: -1,
       onUpdate: () => {
@@ -2157,6 +2217,22 @@ flap() {
       this.shieldParticles.forEach(p => p.destroy());
       this.shieldParticles = null;
     }
+    
+    // Очищаем орбитальные частицы для всех типов
+    const types = ['speed', 'shield', 'magnet', 'slow'];
+    types.forEach(type => {
+      const particleKey = `${type}OrbitalParticles`;
+      if (this[particleKey]) {
+        this[particleKey].forEach(p => p.destroy());
+        this[particleKey] = null;
+      }
+      
+      const tweenKey = `${type}OrbitalTween`;
+      if (this[tweenKey]) {
+        this[tweenKey].stop();
+        this[tweenKey] = null;
+      }
+    });
   }
 
   /**
