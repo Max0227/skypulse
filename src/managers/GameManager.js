@@ -5,6 +5,8 @@ export class GameManager {
     this.data = this.loadData();
     this.bgMusic = null;
     this.eventListeners = {};
+    this.skinStatsCache = new Map();
+    this.upgradeCache = new Map();
   }
 
   // =========================================================================
@@ -17,28 +19,34 @@ export class GameManager {
       const data = saved ? JSON.parse(saved) : this.getDefaultData();
       
       // Миграции для новых полей
-      if (!data.unlockedWorlds) data.unlockedWorlds = [0];
-      if (!data.unlockedLevels) data.unlockedLevels = { '0': [0] };
-      if (!data.levelStars) data.levelStars = {};
-      if (!data.upgrades) data.upgrades = this.getDefaultData().upgrades;
-      if (!data.ownedSkins) data.ownedSkins = ['default'];
-      if (!data.currentSkin) data.currentSkin = 'default';
-      if (!data.achievements) data.achievements = {};
-      if (!data.stats) data.stats = this.getDefaultData().stats;
-      if (data.crystals === undefined) data.crystals = 0;
-      if (!data.soundEnabled) data.soundEnabled = true;
-      if (!data.musicEnabled) data.musicEnabled = true;
-      if (!data.vibrationEnabled) data.vibrationEnabled = true;
-      if (!data.tutorialCompleted) data.tutorialCompleted = false;
-      if (!data.levelPrices) data.levelPrices = this.getDefaultLevelPrices();
-      if (!data.worldProgress) data.worldProgress = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
-      if (!data.dailyReward) data.dailyReward = this.getDefaultDailyReward();
-      if (!data.leaderboard) data.leaderboard = [];
-      if (!data.settings) data.settings = this.getDefaultSettings();
-      if (!data.currentWorld) data.currentWorld = 0;
-      if (!data.currentLevel) data.currentLevel = 0;
-      if (!data.totalPlayTime) data.totalPlayTime = 0;
-      if (!data.lastPlayed) data.lastPlayed = null;
+      data.unlockedWorlds = data.unlockedWorlds || [0];
+      data.unlockedLevels = data.unlockedLevels || { '0': [0] };
+      data.levelStars = data.levelStars || {};
+      data.upgrades = data.upgrades || this.getDefaultData().upgrades;
+      data.ownedSkins = data.ownedSkins || ['taxi_classic'];
+      data.currentSkin = data.currentSkin || 'taxi_classic';
+      data.achievements = data.achievements || {};
+      data.stats = data.stats || this.getDefaultData().stats;
+      data.crystals = data.crystals ?? 0;
+      data.soundEnabled = data.soundEnabled ?? true;
+      data.musicEnabled = data.musicEnabled ?? true;
+      data.vibrationEnabled = data.vibrationEnabled ?? true;
+      data.tutorialCompleted = data.tutorialCompleted ?? false;
+      data.levelPrices = data.levelPrices || this.getDefaultLevelPrices();
+      data.worldProgress = data.worldProgress || { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+      data.dailyReward = data.dailyReward || this.getDefaultDailyReward();
+      data.leaderboard = data.leaderboard || [];
+      data.settings = data.settings || this.getDefaultSettings();
+      data.currentWorld = data.currentWorld ?? 0;
+      data.currentLevel = data.currentLevel ?? 0;
+      data.totalPlayTime = data.totalPlayTime ?? 0;
+      data.lastPlayed = data.lastPlayed ?? null;
+      data.skinStats = data.skinStats || {}; // Кэш статистики по скинам
+      data.selectedEffects = data.selectedEffects || {}; // Выбранные эффекты
+      data.favoriteSkins = data.favoriteSkins || []; // Избранные скины
+      data.skinUsage = data.skinUsage || {}; // Статистика использования скинов
+      data.completedAchievements = data.completedAchievements || [];
+      data.secretAchievements = data.secretAchievements || [];
       
       return data;
     } catch (e) {
@@ -68,9 +76,15 @@ export class GameManager {
         weaponSpeed: 0,
         weaponFireRate: 0,
       },
-      ownedSkins: ['default'],
-      currentSkin: 'default',
+      ownedSkins: ['taxi_classic'],
+      currentSkin: 'taxi_classic',
+      favoriteSkins: [],
+      skinUsage: {},
+      skinStats: {},
+      selectedEffects: {},
       achievements: {},
+      completedAchievements: [],
+      secretAchievements: [],
       soundEnabled: true,
       musicEnabled: true,
       vibrationEnabled: true,
@@ -91,6 +105,13 @@ export class GameManager {
         totalDistance: 0,
         totalDeaths: 0,
         totalPurchases: 0,
+        totalCrystalsEarned: 0,
+        totalCrystalsSpent: 0,
+        totalGatesPassed: 0,
+        totalPowerupsCollected: 0,
+        longestSession: 0,
+        bestCombo: 0,
+        favoriteSkin: 'taxi_classic',
       }
     };
   }
@@ -115,7 +136,7 @@ export class GameManager {
       lastClaimDate: '',
       streak: 0,
       available: true,
-      rewards: [10, 20, 30, 50, 75, 100, 150]
+      rewards: [10, 20, 30, 50, 75, 100, 150, 200, 250, 300]
     };
   }
 
@@ -128,6 +149,12 @@ export class GameManager {
       difficulty: 'normal',
       autoSave: true,
       showTutorial: true,
+      highQualityEffects: true,
+      showFPS: false,
+      autoCollect: true,
+      screenShake: true,
+      hapticFeedback: true,
+      cloudSave: false,
     };
   }
 
@@ -146,6 +173,7 @@ export class GameManager {
     try {
       localStorage.removeItem('skypulse_data');
       this.data = this.getDefaultData();
+      this.clearCaches();
       this.emit('reset');
       return true;
     } catch (e) {
@@ -154,11 +182,17 @@ export class GameManager {
     }
   }
 
+  clearCaches() {
+    this.skinStatsCache.clear();
+    this.upgradeCache.clear();
+  }
+
   exportData() {
     return JSON.stringify({
       data: this.data,
-      version: '1.0.0',
-      timestamp: Date.now()
+      version: '2.0.0',
+      timestamp: Date.now(),
+      gameVersion: this.getVersion()
     });
   }
 
@@ -167,8 +201,9 @@ export class GameManager {
       const imported = JSON.parse(jsonString);
       if (imported.data) {
         this.data = imported.data;
+        this.clearCaches();
         this.save();
-        this.emit('import');
+        this.emit('import', imported);
         return true;
       }
       return false;
@@ -217,6 +252,10 @@ export class GameManager {
       
       this.save();
       this.emit('levelUnlocked', { world, level });
+      
+      // Проверяем достижения за уровни
+      this.checkLevelAchievements();
+      
       return true;
     }
     return false;
@@ -230,6 +269,7 @@ export class GameManager {
 
     this.data.crystals -= price;
     this.data.stats.totalPurchases += price;
+    this.data.stats.totalCrystalsSpent += price;
     this.unlockLevel(world, level);
     return true;
   }
@@ -264,37 +304,103 @@ export class GameManager {
     return progress < 9 ? progress + 1 : null;
   }
 
+  checkLevelAchievements() {
+    const totalStars = this.getTotalStars();
+    if (totalStars >= 10) this.unlockAchievement('star_collector_1');
+    if (totalStars >= 25) this.unlockAchievement('star_collector_2');
+    if (totalStars >= 50) this.unlockAchievement('star_collector_3');
+    if (totalStars >= 100) this.unlockAchievement('star_collector_4');
+    if (totalStars >= 150) this.unlockAchievement('star_collector_5');
+  }
+
+  getTotalStars() {
+    let total = 0;
+    for (let w = 0; w < 5; w++) {
+      total += this.getStarsForWorld(w);
+    }
+    return total;
+  }
+
   // =========================================================================
-  // СКИНЫ
+  // СКИНЫ - РАСШИРЕННАЯ СИСТЕМА
   // =========================================================================
 
   getOwnedSkins() { 
-    return this.data.ownedSkins || ['default']; 
+    return this.data.ownedSkins || ['taxi_classic']; 
   }
   
   getCurrentSkin() { 
-    return this.data.currentSkin || 'default'; 
+    return this.data.currentSkin || 'taxi_classic'; 
+  }
+
+  getSkinById(skinId) {
+    return SKINS.find(s => s.id === skinId);
+  }
+
+  getSkinStats(skinId) {
+    if (this.skinStatsCache.has(skinId)) {
+      return this.skinStatsCache.get(skinId);
+    }
+    
+    const skin = this.getSkinById(skinId);
+    const defaultStats = {
+      speedBonus: 0,
+      armorBonus: 0,
+      handlingBonus: 0,
+      jumpBonus: 0
+    };
+    
+    const stats = skin ? { ...defaultStats, ...skin.stats } : defaultStats;
+    this.skinStatsCache.set(skinId, stats);
+    return stats;
+  }
+
+  getCurrentSkinStats() {
+    return this.getSkinStats(this.getCurrentSkin());
   }
 
   purchaseSkin(skinId) {
-    const skin = SKINS.find(s => s.id === skinId);
+    const skin = this.getSkinById(skinId);
     if (!skin) return false;
     if (this.data.ownedSkins.includes(skinId)) return false;
     if (this.data.crystals < skin.price) return false;
     
     this.data.crystals -= skin.price;
     this.data.stats.totalPurchases += skin.price;
+    this.data.stats.totalCrystalsSpent += skin.price;
     this.data.ownedSkins.push(skinId);
+    
+    // Обновляем статистику использования
+    this.data.skinUsage[skinId] = 0;
+    
     this.save();
+    this.clearCaches();
     this.emit('skinPurchased', skinId);
+    
+    // Проверяем достижения за коллекцию скинов
+    this.checkSkinCollectionAchievements();
+    
     return true;
   }
 
   selectSkin(skinId) {
     if (this.data.ownedSkins.includes(skinId)) {
+      const oldSkin = this.data.currentSkin;
       this.data.currentSkin = skinId;
+      
+      // Обновляем статистику использования
+      this.data.skinUsage[skinId] = (this.data.skinUsage[skinId] || 0) + 1;
+      
+      // Обновляем любимый скин
+      this.updateFavoriteSkin();
+      
       this.save();
-      this.emit('skinSelected', skinId);
+      this.clearCaches();
+      this.emit('skinSelected', { skinId, oldSkin });
+      
+      // Проверяем достижения за выбор скинов
+      this.checkSkinSelectionAchievements();
+      
       return true;
     }
     return false;
@@ -304,8 +410,139 @@ export class GameManager {
     return this.data.ownedSkins.includes(skinId);
   }
 
+  toggleFavoriteSkin(skinId) {
+    if (!this.isSkinOwned(skinId)) return false;
+    
+    const index = this.data.favoriteSkins.indexOf(skinId);
+    if (index === -1) {
+      this.data.favoriteSkins.push(skinId);
+    } else {
+      this.data.favoriteSkins.splice(index, 1);
+    }
+    
+    this.save();
+    this.emit('favoritesUpdated', this.data.favoriteSkins);
+    return true;
+  }
+
+  isFavoriteSkin(skinId) {
+    return this.data.favoriteSkins.includes(skinId);
+  }
+
+  getFavoriteSkins() {
+    return this.data.favoriteSkins || [];
+  }
+
+  updateFavoriteSkin() {
+    const usage = this.data.skinUsage || {};
+    let maxUsage = 0;
+    let favorite = 'taxi_classic';
+    
+    Object.entries(usage).forEach(([skinId, count]) => {
+      if (count > maxUsage) {
+        maxUsage = count;
+        favorite = skinId;
+      }
+    });
+    
+    this.data.stats.favoriteSkin = favorite;
+  }
+
+  getSkinUsage(skinId) {
+    return this.data.skinUsage[skinId] || 0;
+  }
+
+  getTotalSkins() {
+    return SKINS.length;
+  }
+
+  getOwnedSkinsCount() {
+    return this.data.ownedSkins.length;
+  }
+
+  getCollectionProgress() {
+    return {
+      owned: this.getOwnedSkinsCount(),
+      total: this.getTotalSkins(),
+      percentage: (this.getOwnedSkinsCount() / this.getTotalSkins()) * 100
+    };
+  }
+
+  getSkinsByRarity(rarity) {
+    return SKINS.filter(s => s.rarity === rarity);
+  }
+
+  getOwnedSkinsByRarity(rarity) {
+    return this.data.ownedSkins.filter(skinId => {
+      const skin = this.getSkinById(skinId);
+      return skin && skin.rarity === rarity;
+    });
+  }
+
+  getRarityCount(rarity) {
+    return this.getSkinsByRarity(rarity).length;
+  }
+
+  getOwnedRarityCount(rarity) {
+    return this.getOwnedSkinsByRarity(rarity).length;
+  }
+
+  checkSkinCollectionAchievements() {
+    const owned = this.getOwnedSkinsCount();
+    
+    if (owned >= 5) this.unlockAchievement('skin_collector_1');
+    if (owned >= 10) this.unlockAchievement('skin_collector_2');
+    if (owned >= 15) this.unlockAchievement('skin_collector_3');
+    if (owned >= 20) this.unlockAchievement('skin_collector_4');
+    if (owned >= 25) this.unlockAchievement('skin_collector_5');
+    
+    // Проверка на коллекционирование по редкости
+    if (this.getOwnedRarityCount('LEGENDARY') >= 1) {
+      this.unlockAchievement('legendary_collector_1');
+    }
+    if (this.getOwnedRarityCount('LEGENDARY') >= 3) {
+      this.unlockAchievement('legendary_collector_2');
+    }
+    if (this.getOwnedRarityCount('LEGENDARY') >= 5) {
+      this.unlockAchievement('legendary_collector_3');
+    }
+  }
+
+  checkSkinSelectionAchievements() {
+    const totalSelections = Object.values(this.data.skinUsage || {}).reduce((a, b) => a + b, 0);
+    
+    if (totalSelections >= 10) this.unlockAchievement('skin_selector_1');
+    if (totalSelections >= 50) this.unlockAchievement('skin_selector_2');
+    if (totalSelections >= 100) this.unlockAchievement('skin_selector_3');
+    if (totalSelections >= 500) this.unlockAchievement('skin_selector_4');
+    if (totalSelections >= 1000) this.unlockAchievement('skin_selector_5');
+  }
+
   // =========================================================================
-  // ПРОКАЧКИ
+  // ЭФФЕКТЫ СКИНОВ
+  // =========================================================================
+
+  getSkinEffect(skinId) {
+    const skin = this.getSkinById(skinId);
+    return skin?.effects || 'none';
+  }
+
+  getCurrentSkinEffect() {
+    return this.getSkinEffect(this.getCurrentSkin());
+  }
+
+  enableSkinEffect(skinId, effect) {
+    if (!this.data.selectedEffects) this.data.selectedEffects = {};
+    this.data.selectedEffects[skinId] = effect;
+    this.save();
+  }
+
+  getEnabledSkinEffect(skinId) {
+    return this.data.selectedEffects?.[skinId];
+  }
+
+  // =========================================================================
+  // ПРОКАЧКИ С КЭШИРОВАНИЕМ
   // =========================================================================
 
   getUpgradeLevel(key) { 
@@ -317,7 +554,9 @@ export class GameManager {
     if (this.data.crystals >= cost) {
       this.data.crystals -= cost;
       this.data.stats.totalPurchases += cost;
+      this.data.stats.totalCrystalsSpent += cost;
       this.data.upgrades[key] = this.getUpgradeLevel(key) + 1;
+      this.clearCaches();
       this.save();
       this.emit('upgrade', { key, level: this.data.upgrades[key] });
       return true;
@@ -333,22 +572,32 @@ export class GameManager {
   }
 
   getUpgradeValue(key) {
-    const level = this.getUpgradeLevel(key);
-    switch(key) {
-      case 'jumpPower': return 300 + level * 25;
-      case 'gravity': return 1300 - level * 60;
-      case 'headHP': return 3 + level;
-      case 'magnetRange': return 220 + level * 40;
-      case 'wagonHP': return 1 + level;
-      case 'maxWagons': return 12 + level * 2;
-      case 'wagonGap': return 28 - level * 2;
-      case 'shieldDuration': return 5 + level * 1.5;
-      case 'weaponDamage': return 1 + level;
-      case 'weaponSpeed': return 400 + level * 20;
-      case 'weaponFireRate': return Math.max(100, 500 - level * 20);
-      case 'revival': return level;
-      default: return 0;
+    const cacheKey = `${key}-${this.getUpgradeLevel(key)}`;
+    if (this.upgradeCache.has(cacheKey)) {
+      return this.upgradeCache.get(cacheKey);
     }
+    
+    const level = this.getUpgradeLevel(key);
+    let value;
+    
+    switch(key) {
+      case 'jumpPower': value = 300 + level * 25; break;
+      case 'gravity': value = 1300 - level * 60; break;
+      case 'headHP': value = 3 + level; break;
+      case 'magnetRange': value = 220 + level * 40; break;
+      case 'wagonHP': value = 1 + level; break;
+      case 'maxWagons': value = 12 + level * 2; break;
+      case 'wagonGap': value = 28 - level * 2; break;
+      case 'shieldDuration': value = 5 + level * 1.5; break;
+      case 'weaponDamage': value = 1 + level; break;
+      case 'weaponSpeed': value = 400 + level * 20; break;
+      case 'weaponFireRate': value = Math.max(100, 500 - level * 20); break;
+      case 'revival': value = level; break;
+      default: value = 0;
+    }
+    
+    this.upgradeCache.set(cacheKey, value);
+    return value;
   }
 
   getAllUpgrades() {
@@ -360,13 +609,18 @@ export class GameManager {
     }));
   }
 
+  getTotalUpgradeLevels() {
+    return Object.values(this.data.upgrades).reduce((a, b) => a + b, 0);
+  }
+
   // =========================================================================
-  // КРИСТАЛЛЫ
+  // КРИСТАЛЛЫ С РАСШИРЕННОЙ СТАТИСТИКОЙ
   // =========================================================================
 
   addCrystals(amount) {
     if (amount > 0) {
       this.data.crystals += amount;
+      this.data.stats.totalCrystalsEarned += amount;
       this.save();
       this.emit('crystalsChanged', this.data.crystals);
       return true;
@@ -378,6 +632,7 @@ export class GameManager {
     if (amount <= this.data.crystals) {
       this.data.crystals -= amount;
       this.data.stats.totalPurchases += amount;
+      this.data.stats.totalCrystalsSpent += amount;
       this.save();
       this.emit('crystalsChanged', this.data.crystals);
       return true;
@@ -389,8 +644,16 @@ export class GameManager {
     return this.data.crystals || 0;
   }
 
+  getTotalCrystalsEarned() {
+    return this.data.stats.totalCrystalsEarned || 0;
+  }
+
+  getTotalCrystalsSpent() {
+    return this.data.stats.totalCrystalsSpent || 0;
+  }
+
   // =========================================================================
-  // ДОСТИЖЕНИЯ
+  // ДОСТИЖЕНИЯ С ПРОГРЕССОМ
   // =========================================================================
 
   unlockAchievement(id) {
@@ -399,12 +662,15 @@ export class GameManager {
         unlockedAt: Date.now(),
         claimed: false 
       };
-      const reward = ACHIEVEMENTS[id]?.reward || 0;
-      if (reward > 0) {
-        this.addCrystals(reward);
+      
+      const achievement = ACHIEVEMENTS[id];
+      if (achievement?.reward) {
+        this.addCrystals(achievement.reward);
       }
+      
+      this.data.completedAchievements.push(id);
       this.save();
-      this.emit('achievementUnlocked', { id, reward });
+      this.emit('achievementUnlocked', { id, achievement });
       return true;
     }
     return false;
@@ -423,6 +689,11 @@ export class GameManager {
       this.data.achievements[id] = { progress: 0 };
     }
     this.data.achievements[id].progress = Math.min(progress, 100);
+    
+    if (progress >= 100) {
+      this.unlockAchievement(id);
+    }
+    
     this.save();
   }
 
@@ -435,8 +706,16 @@ export class GameManager {
     }));
   }
 
+  getCompletedAchievementsCount() {
+    return this.data.completedAchievements.length;
+  }
+
+  getTotalAchievements() {
+    return Object.keys(ACHIEVEMENTS).length;
+  }
+
   // =========================================================================
-  // СТАТИСТИКА
+  // СТАТИСТИКА С РАСШИРЕННЫМИ МЕТРИКАМИ
   // =========================================================================
 
   updateStats(score, level, wagons, combo, coins, enemies, distance) {
@@ -446,9 +725,11 @@ export class GameManager {
     s.maxLevel = Math.max(s.maxLevel, level);
     s.maxWagons = Math.max(s.maxWagons, wagons);
     s.maxCombo = Math.max(s.maxCombo || 0, combo);
+    s.bestCombo = Math.max(s.bestCombo || 0, combo);
     s.totalCoinsCollected += coins;
     s.totalEnemiesKilled += enemies;
     s.totalDistance += distance;
+    
     this.save();
     this.emit('statsUpdated', s);
   }
@@ -461,11 +742,37 @@ export class GameManager {
   updatePlayTime(delta) {
     this.data.totalPlayTime = (this.data.totalPlayTime || 0) + delta;
     this.data.stats.totalPlayTime = (this.data.stats.totalPlayTime || 0) + delta;
+    
+    if (delta > (this.data.stats.longestSession || 0)) {
+      this.data.stats.longestSession = delta;
+    }
+    
+    this.save();
+  }
+
+  addGatePassed() {
+    this.data.stats.totalGatesPassed = (this.data.stats.totalGatesPassed || 0) + 1;
+    this.save();
+  }
+
+  addPowerupCollected() {
+    this.data.stats.totalPowerupsCollected = (this.data.stats.totalPowerupsCollected || 0) + 1;
     this.save();
   }
 
   getStats() {
     return this.data.stats;
+  }
+
+  getFormattedStats() {
+    const s = this.data.stats;
+    return {
+      ...s,
+      totalPlayTimeFormatted: this.formatTime(s.totalPlayTime),
+      longestSessionFormatted: this.formatTime(s.longestSession),
+      averageScorePerGame: s.totalGames ? Math.floor(s.maxScore / s.totalGames) : 0,
+      crystalsPerGame: s.totalGames ? Math.floor(this.getTotalCrystalsEarned() / s.totalGames) : 0,
+    };
   }
 
   // =========================================================================
@@ -482,7 +789,7 @@ export class GameManager {
       const yesterdayStr = yesterday.toISOString().split('T')[0];
       
       if (reward.lastClaimDate === yesterdayStr) {
-        reward.streak = Math.min(reward.streak + 1, 7);
+        reward.streak = Math.min(reward.streak + 1, 10);
       } else {
         reward.streak = 1;
       }
@@ -490,10 +797,14 @@ export class GameManager {
       reward.lastClaimDate = today;
       reward.available = true;
       
-      const rewardAmount = (reward.rewards || [10, 20, 30, 50, 75, 100, 150])[reward.streak - 1];
+      const rewardAmount = reward.rewards[reward.streak - 1] || 10;
       this.addCrystals(rewardAmount);
       this.save();
       this.emit('dailyRewardClaimed', { streak: reward.streak, amount: rewardAmount });
+      
+      // Проверка достижения за стрик
+      if (reward.streak >= 7) this.unlockAchievement('weekly_streak');
+      if (reward.streak >= 30) this.unlockAchievement('monthly_streak');
       
       return rewardAmount;
     }
@@ -509,19 +820,29 @@ export class GameManager {
     return this.data.dailyReward.streak || 0;
   }
 
+  getDailyRewardProgress() {
+    return {
+      streak: this.getDailyRewardStreak(),
+      nextReward: this.data.dailyReward.rewards[this.getDailyRewardStreak()] || 10,
+      canClaim: this.canClaimDailyReward()
+    };
+  }
+
   // =========================================================================
   // ЛИДЕРБОРД
   // =========================================================================
 
-  addLeaderboardEntry(score, level, wagons, meters) {
+  addLeaderboardEntry(score, level, wagons, meters, skinId) {
     const entry = {
       id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       score,
       level,
       wagons,
       meters,
+      skin: skinId || this.getCurrentSkin(),
       timestamp: Date.now(),
       date: new Date().toLocaleDateString('ru-RU'),
+      playerName: 'Player'
     };
     
     this.data.leaderboard.unshift(entry);
@@ -537,6 +858,12 @@ export class GameManager {
   getPersonalBest() {
     const entries = this.data.leaderboard || [];
     return Math.max(...entries.map(e => e.score), 0);
+  }
+
+  getPersonalBestBySkin(skinId) {
+    const entries = this.data.leaderboard || [];
+    const skinEntries = entries.filter(e => e.skin === skinId);
+    return Math.max(...skinEntries.map(e => e.score), 0);
   }
 
   clearLeaderboard() {
@@ -575,6 +902,11 @@ export class GameManager {
     return this.getSetting('vibrationEnabled');
   }
 
+  toggleHapticFeedback() {
+    this.setSetting('hapticFeedback', !this.getSetting('hapticFeedback'));
+    return this.getSetting('hapticFeedback');
+  }
+
   // =========================================================================
   // ТУТОРИАЛ
   // =========================================================================
@@ -594,14 +926,14 @@ export class GameManager {
   // =========================================================================
 
   vibrate(pattern) {
-    if (!this.getSetting('vibrationEnabled')) return;
+    if (!this.getSetting('vibrationEnabled') || !this.getSetting('hapticFeedback')) return;
     
     try {
       if (window.Telegram?.WebApp?.HapticFeedback) {
         if (typeof pattern === 'string') {
           window.Telegram.WebApp.HapticFeedback.impactOccurred(pattern);
-        } else if (window.navigator?.vibrate) {
-          window.navigator.vibrate(pattern);
+        } else {
+          window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
         }
       } else if (window.navigator?.vibrate) {
         window.navigator.vibrate(pattern);
@@ -645,7 +977,7 @@ export class GameManager {
   // =========================================================================
 
   getVersion() {
-    return '1.0.0';
+    return '2.0.0';
   }
 
   getLastPlayed() {
@@ -681,6 +1013,25 @@ export class GameManager {
       total += this.getWorldProgress(w) + 1;
     }
     return Math.floor(total * 2); // Процент от максимума (50 уровней)
+  }
+
+  getGameSummary() {
+    return {
+      crystals: this.getCrystals(),
+      totalCrystalsEarned: this.getTotalCrystalsEarned(),
+      totalCrystalsSpent: this.getTotalCrystalsSpent(),
+      ownedSkins: this.getOwnedSkinsCount(),
+      totalSkins: this.getTotalSkins(),
+      collectionProgress: this.getCollectionProgress().percentage,
+      completedAchievements: this.getCompletedAchievementsCount(),
+      totalAchievements: this.getTotalAchievements(),
+      totalGames: this.data.stats.totalGames,
+      maxScore: this.data.stats.maxScore,
+      maxCombo: this.data.stats.maxCombo,
+      totalDistance: this.data.stats.totalDistance,
+      totalPlayTime: this.formatTime(this.getTotalPlayTime()),
+      favoriteSkin: this.data.stats.favoriteSkin,
+    };
   }
 }
 

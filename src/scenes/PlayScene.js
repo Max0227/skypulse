@@ -2502,6 +2502,7 @@ playBonusSound(type) {
  */
 deactivateBonus() {
   if (!this.bonusActive) return;
+  this.particleManager.clearAll();
   
   this.bonusActive = false;
   this.bonusType = null;
