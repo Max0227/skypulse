@@ -360,222 +360,234 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   createSkinTextures() {
-    const g = this.make.graphics({ x: 0, y: 0, add: false });
+  const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // Классическое такси
-    g.clear();
-    g.fillStyle(0xffaa00);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xff8800);
-    g.fillRect(15, 5, 50, 8);
-    g.fillStyle(0x44aaff);
-    g.fillRect(20, 18, 15, 8);
-    g.fillRect(40, 18, 15, 8);
-    g.fillStyle(0x00ffff);
-    g.fillCircle(18, 30, 4);
-    g.fillStyle(0xffffff);
-    g.fillCircle(18, 30, 2);
-    g.fillStyle(0xffff00);
-    g.fillRect(35, 30, 8, 5);
-    g.generateTexture('player_taxi_classic', 80, 50);
+  // Классическое такси
+  g.clear();
+  g.fillStyle(0xffaa00);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xff8800);
+  g.fillRect(15, 5, 50, 8);
+  g.fillStyle(0x44aaff);
+  g.fillRect(20, 18, 15, 8);
+  g.fillRect(40, 18, 15, 8);
+  g.fillStyle(0x00ffff);
+  g.fillCircle(18, 30, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(18, 30, 2);
+  g.fillStyle(0xffff00);
+  g.fillRect(35, 30, 8, 5);
+  g.generateTexture('player_taxi_classic', 80, 50);
 
-    // Полиция
-    g.clear();
-    g.fillStyle(0x2244aa);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 5, 50, 4);
-    g.fillStyle(0xff3333);
-    g.fillCircle(25, 8, 3);
-    g.fillCircle(45, 8, 3);
-    g.fillStyle(0x44aaff);
-    g.fillRect(20, 18, 10, 8);
-    g.fillRect(40, 18, 10, 8);
-    g.fillStyle(0x0000ff);
-    g.fillCircle(18, 30, 4);
-    g.generateTexture('player_police', 80, 50);
+  // Полиция
+  g.clear();
+  g.fillStyle(0x2244aa);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xffffff);
+  g.fillRect(15, 5, 50, 4);
+  g.fillStyle(0xff3333);
+  g.fillCircle(25, 8, 3);
+  g.fillCircle(45, 8, 3);
+  g.fillStyle(0x44aaff);
+  g.fillRect(20, 18, 10, 8);
+  g.fillRect(40, 18, 10, 8);
+  g.fillStyle(0x0000ff);
+  g.fillCircle(18, 30, 4);
+  g.generateTexture('player_police', 80, 50);
 
-    // Полиция кибер
-    g.clear();
-    g.fillStyle(0x3300aa);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0x00ccff);
-    g.fillRect(15, 5, 50, 4);
-    g.fillStyle(0xff44ff);
-    g.fillCircle(25, 8, 3);
-    g.fillCircle(45, 8, 3);
-    g.fillStyle(0x00ffff);
-    g.fillRect(20, 18, 10, 8);
-    g.fillRect(40, 18, 10, 8);
-    g.fillStyle(0x00ffff);
-    g.fillCircle(18, 30, 4);
-    g.lineStyle(2, 0xff00ff);
-    g.strokeRoundedRect(10, 10, 60, 35, 8);
-    g.generateTexture('player_police_cyber', 80, 50);
+  // Полиция кибер
+  g.clear();
+  g.fillStyle(0x3300aa);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0x00ccff);
+  g.fillRect(15, 5, 50, 4);
+  g.fillStyle(0xff44ff);
+  g.fillCircle(25, 8, 3);
+  g.fillCircle(45, 8, 3);
+  g.fillStyle(0x00ffff);
+  g.fillRect(20, 18, 10, 8);
+  g.fillRect(40, 18, 10, 8);
+  g.fillStyle(0x00ffff);
+  g.fillCircle(18, 30, 4);
+  g.lineStyle(2, 0xff00ff);
+  g.strokeRoundedRect(10, 10, 60, 35, 8);
+  g.generateTexture('player_police_cyber', 80, 50);
 
-    // Скорая
-    g.clear();
-    g.fillStyle(0xff4444);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 5, 50, 8);
-    g.fillStyle(0xff8888);
-    g.fillRect(20, 18, 10, 8);
-    g.fillRect(40, 18, 10, 8);
-    g.fillStyle(0x44aaff);
-    g.fillCircle(18, 30, 4);
-    g.fillStyle(0xff0000);
-    g.fillCircle(45, 30, 4);
-    g.fillStyle(0xff3333);
-    g.fillRect(35, 5, 5, 8);
-    g.fillRect(45, 5, 5, 8);
-    g.generateTexture('player_ambulance', 80, 50);
+  // Скорая
+  g.clear();
+  g.fillStyle(0xff4444);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xffffff);
+  g.fillRect(15, 5, 50, 8);
+  g.fillStyle(0xff8888);
+  g.fillRect(20, 18, 10, 8);
+  g.fillRect(40, 18, 10, 8);
+  g.fillStyle(0x44aaff);
+  g.fillCircle(18, 30, 4);
+  g.fillStyle(0xff0000);
+  g.fillCircle(45, 30, 4);
+  g.fillStyle(0xff3333);
+  g.fillRect(35, 5, 5, 8);
+  g.fillRect(45, 5, 5, 8);
+  g.generateTexture('player_ambulance', 80, 50);
 
-    // Скорая неон
-    g.clear();
-    g.fillStyle(0xff44ff);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 5, 50, 8);
-    g.fillStyle(0xff88ff);
-    g.fillRect(20, 18, 10, 8);
-    g.fillRect(40, 18, 10, 8);
-    g.fillStyle(0x00ffff);
-    g.fillCircle(18, 30, 4);
-    g.fillStyle(0xff00ff);
-    g.fillCircle(45, 30, 4);
-    g.fillStyle(0xff88ff);
-    g.fillRect(35, 5, 5, 8);
-    g.fillRect(45, 5, 5, 8);
-    g.lineStyle(2, 0x00ffff);
-    g.strokeRoundedRect(10, 10, 60, 35, 8);
-    g.generateTexture('player_ambulance_neon', 80, 50);
+  // Скорая неон
+  g.clear();
+  g.fillStyle(0xff44ff);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xffffff);
+  g.fillRect(15, 5, 50, 8);
+  g.fillStyle(0xff88ff);
+  g.fillRect(20, 18, 10, 8);
+  g.fillRect(40, 18, 10, 8);
+  g.fillStyle(0x00ffff);
+  g.fillCircle(18, 30, 4);
+  g.fillStyle(0xff00ff);
+  g.fillCircle(45, 30, 4);
+  g.fillStyle(0xff88ff);
+  g.fillRect(35, 5, 5, 8);
+  g.fillRect(45, 5, 5, 8);
+  g.lineStyle(2, 0x00ffff);
+  g.strokeRoundedRect(10, 10, 60, 35, 8);
+  g.generateTexture('player_ambulance_neon', 80, 50);
 
-    // Спорткар красный
-    g.clear();
-    g.fillStyle(0xff3333);
-    g.fillRoundedRect(10, 15, 60, 25, 6);
-    g.fillStyle(0xffaa00);
-    g.fillRect(15, 10, 50, 8);
-    g.fillStyle(0x44aaff);
-    g.fillCircle(18, 30, 4);
-    g.fillCircle(48, 30, 4);
-    g.fillStyle(0xffffff);
-    g.fillCircle(18, 30, 2);
-    g.fillCircle(48, 30, 2);
-    g.fillStyle(0xffaa00);
-    g.fillRect(35, 25, 10, 4);
-    g.generateTexture('player_sport_red', 80, 50);
+  // Спорткар красный
+  g.clear();
+  g.fillStyle(0xff3333);
+  g.fillRoundedRect(10, 15, 60, 25, 6);
+  g.fillStyle(0xffaa00);
+  g.fillRect(15, 10, 50, 8);
+  g.fillStyle(0x44aaff);
+  g.fillCircle(18, 30, 4);
+  g.fillCircle(48, 30, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(18, 30, 2);
+  g.fillCircle(48, 30, 2);
+  g.fillStyle(0xffaa00);
+  g.fillRect(35, 25, 10, 4);
+  g.generateTexture('player_sport_red', 80, 50);
 
-    // Спорткар синий
-    g.clear();
-    g.fillStyle(0x3366ff);
-    g.fillRoundedRect(10, 15, 60, 25, 6);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 10, 50, 8);
-    g.fillStyle(0xffaa00);
-    g.fillCircle(18, 30, 4);
-    g.fillCircle(48, 30, 4);
-    g.fillStyle(0xffffff);
-    g.fillCircle(18, 30, 2);
-    g.fillCircle(48, 30, 2);
-    g.fillStyle(0x00ffff);
-    g.fillRect(35, 25, 10, 4);
-    g.generateTexture('player_sport_blue', 80, 50);
+  // Спорткар синий
+  g.clear();
+  g.fillStyle(0x3366ff);
+  g.fillRoundedRect(10, 15, 60, 25, 6);
+  g.fillStyle(0xffffff);
+  g.fillRect(15, 10, 50, 8);
+  g.fillStyle(0xffaa00);
+  g.fillCircle(18, 30, 4);
+  g.fillCircle(48, 30, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(18, 30, 2);
+  g.fillCircle(48, 30, 2);
+  g.fillStyle(0x00ffff);
+  g.fillRect(35, 25, 10, 4);
+  g.generateTexture('player_sport_blue', 80, 50);
 
-    // Монстр-трак
-    g.clear();
-    g.fillStyle(0xcc6600);
-    g.fillRoundedRect(10, 20, 60, 30, 6);
-    g.fillStyle(0x333333);
-    g.fillCircle(20, 45, 8);
-    g.fillCircle(50, 45, 8);
-    g.fillStyle(0x44aaff);
-    g.fillRect(20, 25, 15, 8);
-    g.fillRect(40, 25, 15, 8);
-    g.fillStyle(0xffff00);
-    g.fillRect(35, 35, 10, 5);
-    g.fillStyle(0x000000);
-    g.fillCircle(20, 45, 4);
-    g.fillCircle(50, 45, 4);
-    g.generateTexture('player_monster', 80, 60);
+  // Монстр-трак
+  g.clear();
+  g.fillStyle(0xcc6600);
+  g.fillRoundedRect(10, 20, 60, 30, 6);
+  g.fillStyle(0x333333);
+  g.fillCircle(20, 45, 8);
+  g.fillCircle(50, 45, 8);
+  g.fillStyle(0x44aaff);
+  g.fillRect(20, 25, 15, 8);
+  g.fillRect(40, 25, 15, 8);
+  g.fillStyle(0xffff00);
+  g.fillRect(35, 35, 10, 5);
+  g.fillStyle(0x000000);
+  g.fillCircle(20, 45, 4);
+  g.fillCircle(50, 45, 4);
+  g.generateTexture('player_monster', 80, 60);
 
-    // Формула-1
-    g.clear();
-    g.fillStyle(0xff6600);
-    g.fillPolygon([
-      { x: 15, y: 25 },
-      { x: 65, y: 25 },
-      { x: 70, y: 35 },
-      { x: 10, y: 35 }
-    ]);
-    g.fillStyle(0xffffff);
-    g.fillCircle(20, 40, 5);
-    g.fillCircle(60, 40, 5);
-    g.fillStyle(0x44aaff);
-    g.fillRect(30, 30, 20, 5);
-    g.fillStyle(0x000000);
-    g.fillCircle(20, 40, 3);
-    g.fillCircle(60, 40, 3);
-    g.generateTexture('player_formula', 80, 50);
-
-    // Пожарная машина
-    g.clear();
-    g.fillStyle(0xff3333);
-    g.fillRoundedRect(10, 15, 60, 30, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 10, 50, 5);
-    g.fillStyle(0xffaa00);
-    g.fillCircle(25, 8, 3);
-    g.fillCircle(45, 8, 3);
-    g.fillStyle(0x44aaff);
-    g.fillRect(20, 20, 10, 8);
-    g.fillRect(40, 20, 10, 8);
-    g.fillStyle(0x000000);
-    g.fillCircle(20, 40, 4);
-    g.fillCircle(50, 40, 4);
-    g.generateTexture('player_firetruck', 80, 50);
-
-    // Такси неон
-    g.clear();
-    g.fillStyle(0x00ffff);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xff00ff);
-    g.fillRect(15, 5, 50, 8);
-    g.fillStyle(0x44aaff);
-    g.fillRect(20, 18, 15, 8);
-    g.fillRect(40, 18, 15, 8);
-    g.fillStyle(0xffff00);
-    g.fillCircle(18, 30, 4);
-    g.fillStyle(0xffffff);
-    g.fillCircle(18, 30, 2);
-    g.fillStyle(0xff00ff);
-    g.fillRect(35, 30, 8, 5);
-    g.lineStyle(2, 0xff00ff);
-    g.strokeRoundedRect(10, 10, 60, 35, 8);
-    g.generateTexture('player_taxi_neon', 80, 50);
-
-    // Такси золотое
-    g.clear();
-    g.fillStyle(0xffaa00);
-    g.fillRoundedRect(10, 10, 60, 35, 8);
-    g.fillStyle(0xffdd44);
-    g.fillRect(15, 5, 50, 8);
-    g.fillStyle(0xffaa00);
-    g.fillRect(20, 18, 15, 8);
-    g.fillRect(40, 18, 15, 8);
-    g.fillStyle(0xffff00);
-    g.fillCircle(18, 30, 4);
-    g.fillStyle(0xffffff);
-    g.fillCircle(18, 30, 2);
-    g.fillStyle(0xffaa00);
-    g.fillRect(35, 30, 8, 5);
-    g.lineStyle(2, 0xffdd44);
-    g.strokeRoundedRect(10, 10, 60, 35, 8);
-    g.generateTexture('player_taxi_gold', 80, 50);
-
-    g.destroy();
+  // Формула-1 - ИСПРАВЛЕНО: используем fillPoints вместо fillPolygon
+  g.clear();
+  g.fillStyle(0xff6600);
+  
+  // Создаем массив точек для формы болида
+  const points = [
+    { x: 15, y: 25 },
+    { x: 65, y: 25 },
+    { x: 70, y: 35 },
+    { x: 10, y: 35 }
+  ];
+  
+  // Рисуем многоугольник через линии и заливку
+  g.beginPath();
+  g.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    g.lineTo(points[i].x, points[i].y);
   }
+  g.closePath();
+  g.fillPath();
+  
+  g.fillStyle(0xffffff);
+  g.fillCircle(20, 40, 5);
+  g.fillCircle(60, 40, 5);
+  g.fillStyle(0x44aaff);
+  g.fillRect(30, 30, 20, 5);
+  g.fillStyle(0x000000);
+  g.fillCircle(20, 40, 3);
+  g.fillCircle(60, 40, 3);
+  g.generateTexture('player_formula', 80, 50);
+
+  // Пожарная машина
+  g.clear();
+  g.fillStyle(0xff3333);
+  g.fillRoundedRect(10, 15, 60, 30, 8);
+  g.fillStyle(0xffffff);
+  g.fillRect(15, 10, 50, 5);
+  g.fillStyle(0xffaa00);
+  g.fillCircle(25, 8, 3);
+  g.fillCircle(45, 8, 3);
+  g.fillStyle(0x44aaff);
+  g.fillRect(20, 20, 10, 8);
+  g.fillRect(40, 20, 10, 8);
+  g.fillStyle(0x000000);
+  g.fillCircle(20, 40, 4);
+  g.fillCircle(50, 40, 4);
+  g.generateTexture('player_firetruck', 80, 50);
+
+  // Такси неон
+  g.clear();
+  g.fillStyle(0x00ffff);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xff00ff);
+  g.fillRect(15, 5, 50, 8);
+  g.fillStyle(0x44aaff);
+  g.fillRect(20, 18, 15, 8);
+  g.fillRect(40, 18, 15, 8);
+  g.fillStyle(0xffff00);
+  g.fillCircle(18, 30, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(18, 30, 2);
+  g.fillStyle(0xff00ff);
+  g.fillRect(35, 30, 8, 5);
+  g.lineStyle(2, 0xff00ff);
+  g.strokeRoundedRect(10, 10, 60, 35, 8);
+  g.generateTexture('player_taxi_neon', 80, 50);
+
+  // Такси золотое
+  g.clear();
+  g.fillStyle(0xffaa00);
+  g.fillRoundedRect(10, 10, 60, 35, 8);
+  g.fillStyle(0xffdd44);
+  g.fillRect(15, 5, 50, 8);
+  g.fillStyle(0xffaa00);
+  g.fillRect(20, 18, 15, 8);
+  g.fillRect(40, 18, 15, 8);
+  g.fillStyle(0xffff00);
+  g.fillCircle(18, 30, 4);
+  g.fillStyle(0xffffff);
+  g.fillCircle(18, 30, 2);
+  g.fillStyle(0xffaa00);
+  g.fillRect(35, 30, 8, 5);
+  g.lineStyle(2, 0xffdd44);
+  g.strokeRoundedRect(10, 10, 60, 35, 8);
+  g.generateTexture('player_taxi_gold', 80, 50);
+
+  g.destroy();
+}
 
   confirmPurchase(skin) {
     const w = this.scale.width;
