@@ -4,7 +4,12 @@ export class GameManager {
   constructor() {
     this.data = this.loadData();
     this.bgMusic = null;
+    this.eventListeners = {};
   }
+
+  // =========================================================================
+  // ЗАГРУЗКА И СОХРАНЕНИЕ
+  // =========================================================================
 
   loadData() {
     try {
@@ -30,6 +35,10 @@ export class GameManager {
       if (!data.dailyReward) data.dailyReward = this.getDefaultDailyReward();
       if (!data.leaderboard) data.leaderboard = [];
       if (!data.settings) data.settings = this.getDefaultSettings();
+      if (!data.currentWorld) data.currentWorld = 0;
+      if (!data.currentLevel) data.currentLevel = 0;
+      if (!data.totalPlayTime) data.totalPlayTime = 0;
+      if (!data.lastPlayed) data.lastPlayed = null;
       
       return data;
     } catch (e) {
@@ -66,6 +75,10 @@ export class GameManager {
       musicEnabled: true,
       vibrationEnabled: true,
       tutorialCompleted: false,
+      currentWorld: 0,
+      currentLevel: 0,
+      totalPlayTime: 0,
+      lastPlayed: null,
       stats: {
         totalGames: 0,
         totalPlayTime: 0,
@@ -76,6 +89,8 @@ export class GameManager {
         totalCoinsCollected: 0,
         totalEnemiesKilled: 0,
         totalDistance: 0,
+        totalDeaths: 0,
+        totalPurchases: 0,
       }
     };
   }
@@ -100,6 +115,7 @@ export class GameManager {
       lastClaimDate: '',
       streak: 0,
       available: true,
+      rewards: [10, 20, 30, 50, 75, 100, 150]
     };
   }
 
@@ -110,19 +126,81 @@ export class GameManager {
       vibrationEnabled: true,
       language: 'ru',
       difficulty: 'normal',
+      autoSave: true,
+      showTutorial: true,
     };
   }
 
   save() {
-    localStorage.setItem('skypulse_data', JSON.stringify(this.data));
+    try {
+      localStorage.setItem('skypulse_data', JSON.stringify(this.data));
+      this.emit('save', this.data);
+      return true;
+    } catch (e) {
+      console.error('Failed to save data', e);
+      return false;
+    }
   }
 
-  // ===== МИРЫ И УРОВНИ =====
-  getCurrentWorld() { return this.data.currentWorld || 0; }
-  setCurrentWorld(w) { this.data.currentWorld = w; this.save(); }
+  reset() {
+    try {
+      localStorage.removeItem('skypulse_data');
+      this.data = this.getDefaultData();
+      this.emit('reset');
+      return true;
+    } catch (e) {
+      console.error('Failed to reset data', e);
+      return false;
+    }
+  }
 
-  getCurrentLevel() { return this.data.currentLevel || 0; }
-  setCurrentLevel(l) { this.data.currentLevel = l; this.save(); }
+  exportData() {
+    return JSON.stringify({
+      data: this.data,
+      version: '1.0.0',
+      timestamp: Date.now()
+    });
+  }
+
+  importData(jsonString) {
+    try {
+      const imported = JSON.parse(jsonString);
+      if (imported.data) {
+        this.data = imported.data;
+        this.save();
+        this.emit('import');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to import data', e);
+      return false;
+    }
+  }
+
+  // =========================================================================
+  // МИРЫ И УРОВНИ
+  // =========================================================================
+
+  getCurrentWorld() { 
+    return this.data.currentWorld || 0; 
+  }
+  
+  setCurrentWorld(w) { 
+    this.data.currentWorld = w; 
+    this.save();
+    this.emit('worldChanged', w);
+  }
+
+  getCurrentLevel() { 
+    return this.data.currentLevel || 0; 
+  }
+  
+  setCurrentLevel(l) { 
+    this.data.currentLevel = l; 
+    this.save();
+    this.emit('levelChanged', l);
+  }
 
   isLevelUnlocked(world, level) {
     return this.data.unlockedLevels[world]?.includes(level) || false;
@@ -138,7 +216,10 @@ export class GameManager {
       }
       
       this.save();
+      this.emit('levelUnlocked', { world, level });
+      return true;
     }
+    return false;
   }
 
   purchaseLevel(world, level) {
@@ -148,6 +229,7 @@ export class GameManager {
     if (this.isLevelUnlocked(world, level)) return false;
 
     this.data.crystals -= price;
+    this.data.stats.totalPurchases += price;
     this.unlockLevel(world, level);
     return true;
   }
@@ -164,6 +246,7 @@ export class GameManager {
   setLevelStars(world, level, stars) {
     this.data.levelStars[`${world}-${level}`] = Math.min(3, stars);
     this.save();
+    this.emit('starsUpdated', { world, level, stars });
   }
 
   getStarsForWorld(world) {
@@ -176,9 +259,22 @@ export class GameManager {
     return this.data.worldProgress[world] || 0;
   }
 
-  // ===== СКИНЫ =====
-  getOwnedSkins() { return this.data.ownedSkins; }
-  getCurrentSkin() { return this.data.currentSkin; }
+  getNextUnlockableLevel(world) {
+    const progress = this.getWorldProgress(world);
+    return progress < 9 ? progress + 1 : null;
+  }
+
+  // =========================================================================
+  // СКИНЫ
+  // =========================================================================
+
+  getOwnedSkins() { 
+    return this.data.ownedSkins || ['default']; 
+  }
+  
+  getCurrentSkin() { 
+    return this.data.currentSkin || 'default'; 
+  }
 
   purchaseSkin(skinId) {
     const skin = SKINS.find(s => s.id === skinId);
@@ -187,8 +283,10 @@ export class GameManager {
     if (this.data.crystals < skin.price) return false;
     
     this.data.crystals -= skin.price;
+    this.data.stats.totalPurchases += skin.price;
     this.data.ownedSkins.push(skinId);
     this.save();
+    this.emit('skinPurchased', skinId);
     return true;
   }
 
@@ -196,20 +294,32 @@ export class GameManager {
     if (this.data.ownedSkins.includes(skinId)) {
       this.data.currentSkin = skinId;
       this.save();
+      this.emit('skinSelected', skinId);
       return true;
     }
     return false;
   }
 
-  // ===== ПРОКАЧКИ =====
-  getUpgradeLevel(key) { return this.data.upgrades[key] || 0; }
+  isSkinOwned(skinId) {
+    return this.data.ownedSkins.includes(skinId);
+  }
+
+  // =========================================================================
+  // ПРОКАЧКИ
+  // =========================================================================
+
+  getUpgradeLevel(key) { 
+    return this.data.upgrades[key] || 0; 
+  }
 
   upgrade(key) {
     const cost = this.getUpgradeCost(key);
     if (this.data.crystals >= cost) {
       this.data.crystals -= cost;
+      this.data.stats.totalPurchases += cost;
       this.data.upgrades[key] = this.getUpgradeLevel(key) + 1;
       this.save();
+      this.emit('upgrade', { key, level: this.data.upgrades[key] });
       return true;
     }
     return false;
@@ -222,24 +332,113 @@ export class GameManager {
     return Math.floor(cfg.base * Math.pow(cfg.multiplier, level));
   }
 
-  // ===== КРИСТАЛЛЫ =====
-  addCrystals(amount) {
-    this.data.crystals += amount;
-    this.save();
+  getUpgradeValue(key) {
+    const level = this.getUpgradeLevel(key);
+    switch(key) {
+      case 'jumpPower': return 300 + level * 25;
+      case 'gravity': return 1300 - level * 60;
+      case 'headHP': return 3 + level;
+      case 'magnetRange': return 220 + level * 40;
+      case 'wagonHP': return 1 + level;
+      case 'maxWagons': return 12 + level * 2;
+      case 'wagonGap': return 28 - level * 2;
+      case 'shieldDuration': return 5 + level * 1.5;
+      case 'weaponDamage': return 1 + level;
+      case 'weaponSpeed': return 400 + level * 20;
+      case 'weaponFireRate': return Math.max(100, 500 - level * 20);
+      case 'revival': return level;
+      default: return 0;
+    }
   }
 
-  // ===== ДОСТИЖЕНИЯ =====
-  unlockAchievement(id) {
-    if (!this.data.achievements[id]) {
-      this.data.achievements[id] = { unlockedAt: Date.now() };
-      this.addCrystals(ACHIEVEMENTS[id]?.reward || 0);
+  getAllUpgrades() {
+    return Object.keys(UPGRADE_COSTS).map(key => ({
+      key,
+      level: this.getUpgradeLevel(key),
+      cost: this.getUpgradeCost(key),
+      value: this.getUpgradeValue(key)
+    }));
+  }
+
+  // =========================================================================
+  // КРИСТАЛЛЫ
+  // =========================================================================
+
+  addCrystals(amount) {
+    if (amount > 0) {
+      this.data.crystals += amount;
       this.save();
+      this.emit('crystalsChanged', this.data.crystals);
       return true;
     }
     return false;
   }
 
-  // ===== СТАТИСТИКА =====
+  spendCrystals(amount) {
+    if (amount <= this.data.crystals) {
+      this.data.crystals -= amount;
+      this.data.stats.totalPurchases += amount;
+      this.save();
+      this.emit('crystalsChanged', this.data.crystals);
+      return true;
+    }
+    return false;
+  }
+
+  getCrystals() {
+    return this.data.crystals || 0;
+  }
+
+  // =========================================================================
+  // ДОСТИЖЕНИЯ
+  // =========================================================================
+
+  unlockAchievement(id) {
+    if (!this.data.achievements[id]) {
+      this.data.achievements[id] = { 
+        unlockedAt: Date.now(),
+        claimed: false 
+      };
+      const reward = ACHIEVEMENTS[id]?.reward || 0;
+      if (reward > 0) {
+        this.addCrystals(reward);
+      }
+      this.save();
+      this.emit('achievementUnlocked', { id, reward });
+      return true;
+    }
+    return false;
+  }
+
+  isAchievementUnlocked(id) {
+    return !!this.data.achievements[id];
+  }
+
+  getAchievementProgress(id) {
+    return this.data.achievements[id]?.progress || 0;
+  }
+
+  updateAchievementProgress(id, progress) {
+    if (!this.data.achievements[id]) {
+      this.data.achievements[id] = { progress: 0 };
+    }
+    this.data.achievements[id].progress = Math.min(progress, 100);
+    this.save();
+  }
+
+  getAllAchievements() {
+    return Object.keys(ACHIEVEMENTS).map(id => ({
+      id,
+      ...ACHIEVEMENTS[id],
+      unlocked: this.isAchievementUnlocked(id),
+      progress: this.getAchievementProgress(id)
+    }));
+  }
+
+  // =========================================================================
+  // СТАТИСТИКА
+  // =========================================================================
+
   updateStats(score, level, wagons, combo, coins, enemies, distance) {
     const s = this.data.stats;
     s.totalGames++;
@@ -251,12 +450,31 @@ export class GameManager {
     s.totalEnemiesKilled += enemies;
     s.totalDistance += distance;
     this.save();
+    this.emit('statsUpdated', s);
   }
 
-  // ===== ДНЕВНЫЕ НАГРАДЫ =====
+  addDeath() {
+    this.data.stats.totalDeaths = (this.data.stats.totalDeaths || 0) + 1;
+    this.save();
+  }
+
+  updatePlayTime(delta) {
+    this.data.totalPlayTime = (this.data.totalPlayTime || 0) + delta;
+    this.data.stats.totalPlayTime = (this.data.stats.totalPlayTime || 0) + delta;
+    this.save();
+  }
+
+  getStats() {
+    return this.data.stats;
+  }
+
+  // =========================================================================
+  // ДНЕВНЫЕ НАГРАДЫ
+  // =========================================================================
+
   claimDailyReward() {
     const today = new Date().toISOString().split('T')[0];
-    const reward = this.dailyReward;
+    const reward = this.data.dailyReward;
     
     if (reward.lastClaimDate !== today) {
       const yesterday = new Date();
@@ -272,18 +490,32 @@ export class GameManager {
       reward.lastClaimDate = today;
       reward.available = true;
       
-      const rewardAmount = [10, 20, 30, 50, 75, 100, 150][reward.streak - 1];
+      const rewardAmount = (reward.rewards || [10, 20, 30, 50, 75, 100, 150])[reward.streak - 1];
       this.addCrystals(rewardAmount);
       this.save();
+      this.emit('dailyRewardClaimed', { streak: reward.streak, amount: rewardAmount });
       
       return rewardAmount;
     }
     return 0;
   }
 
-  // ===== ЛИДЕРБОРД =====
+  canClaimDailyReward() {
+    const today = new Date().toISOString().split('T')[0];
+    return this.data.dailyReward.lastClaimDate !== today;
+  }
+
+  getDailyRewardStreak() {
+    return this.data.dailyReward.streak || 0;
+  }
+
+  // =========================================================================
+  // ЛИДЕРБОРД
+  // =========================================================================
+
   addLeaderboardEntry(score, level, wagons, meters) {
     const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).substr(2),
       score,
       level,
       wagons,
@@ -295,10 +527,160 @@ export class GameManager {
     this.data.leaderboard.unshift(entry);
     this.data.leaderboard = this.data.leaderboard.slice(0, 100);
     this.save();
+    this.emit('leaderboardUpdated', this.data.leaderboard);
   }
 
-  getLeaderboard() {
-    return this.data.leaderboard || [];
+  getLeaderboard(limit = 50) {
+    return (this.data.leaderboard || []).slice(0, limit);
+  }
+
+  getPersonalBest() {
+    const entries = this.data.leaderboard || [];
+    return Math.max(...entries.map(e => e.score), 0);
+  }
+
+  clearLeaderboard() {
+    this.data.leaderboard = [];
+    this.save();
+    this.emit('leaderboardUpdated', []);
+  }
+
+  // =========================================================================
+  // НАСТРОЙКИ
+  // =========================================================================
+
+  getSetting(key) {
+    return this.data.settings?.[key] ?? this.getDefaultSettings()[key];
+  }
+
+  setSetting(key, value) {
+    if (!this.data.settings) this.data.settings = this.getDefaultSettings();
+    this.data.settings[key] = value;
+    this.save();
+    this.emit('settingChanged', { key, value });
+  }
+
+  toggleSound() {
+    this.setSetting('soundEnabled', !this.getSetting('soundEnabled'));
+    return this.getSetting('soundEnabled');
+  }
+
+  toggleMusic() {
+    this.setSetting('musicEnabled', !this.getSetting('musicEnabled'));
+    return this.getSetting('musicEnabled');
+  }
+
+  toggleVibration() {
+    this.setSetting('vibrationEnabled', !this.getSetting('vibrationEnabled'));
+    return this.getSetting('vibrationEnabled');
+  }
+
+  // =========================================================================
+  // ТУТОРИАЛ
+  // =========================================================================
+
+  isTutorialCompleted() {
+    return this.data.tutorialCompleted || false;
+  }
+
+  setTutorialCompleted() {
+    this.data.tutorialCompleted = true;
+    this.save();
+    this.emit('tutorialCompleted');
+  }
+
+  // =========================================================================
+  // ВИБРАЦИЯ
+  // =========================================================================
+
+  vibrate(pattern) {
+    if (!this.getSetting('vibrationEnabled')) return;
+    
+    try {
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        if (typeof pattern === 'string') {
+          window.Telegram.WebApp.HapticFeedback.impactOccurred(pattern);
+        } else if (window.navigator?.vibrate) {
+          window.navigator.vibrate(pattern);
+        }
+      } else if (window.navigator?.vibrate) {
+        window.navigator.vibrate(pattern);
+      }
+    } catch (e) {
+      // Игнорируем ошибки вибрации
+    }
+  }
+
+  // =========================================================================
+  // СОБЫТИЯ
+  // =========================================================================
+
+  on(event, callback) {
+    if (!this.eventListeners[event]) {
+      this.eventListeners[event] = [];
+    }
+    this.eventListeners[event].push(callback);
+  }
+
+  off(event, callback) {
+    if (!this.eventListeners[event]) return;
+    this.eventListeners[event] = this.eventListeners[event].filter(
+      cb => cb !== callback
+    );
+  }
+
+  emit(event, data) {
+    if (!this.eventListeners[event]) return;
+    this.eventListeners[event].forEach(callback => {
+      try {
+        callback(data);
+      } catch (e) {
+        console.error(`Error in event listener for ${event}:`, e);
+      }
+    });
+  }
+
+  // =========================================================================
+  // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ
+  // =========================================================================
+
+  getVersion() {
+    return '1.0.0';
+  }
+
+  getLastPlayed() {
+    return this.data.lastPlayed;
+  }
+
+  updateLastPlayed() {
+    this.data.lastPlayed = Date.now();
+    this.save();
+  }
+
+  getTotalPlayTime() {
+    return this.data.totalPlayTime || 0;
+  }
+
+  formatTime(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) return `${hrs}ч ${mins}м`;
+    if (mins > 0) return `${mins}м ${secs}с`;
+    return `${secs}с`;
+  }
+
+  getProgressPercentage(world) {
+    return (this.getWorldProgress(world) + 1) * 10;
+  }
+
+  getTotalProgress() {
+    let total = 0;
+    for (let w = 0; w < 5; w++) {
+      total += this.getWorldProgress(w) + 1;
+    }
+    return Math.floor(total * 2); // Процент от максимума (50 уровней)
   }
 }
 
