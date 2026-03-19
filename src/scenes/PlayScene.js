@@ -1647,625 +1647,809 @@ flap() {
     });
   }
 
-      /** * Активация бонуса от монет - УЛУЧШЕННАЯ ВЕРСИЯ
-   */
-  activateBonus(type) {
-    const now = Date.now();
-    if (now - this.lastBonusTime < 300) return;
-    this.lastBonusTime = now;
+      /**
+ * Активация бонуса от монет - УЛУЧШЕННАЯ ВЕРСИЯ С ИСПРАВЛЕННЫМ МАГНИТОМ
+ */
+activateBonus(type) {
+  const now = Date.now();
+  if (now - this.lastBonusTime < 300) return;
+  this.lastBonusTime = now;
 
-    if (this.bonusActive) this.deactivateBonus();
+  if (this.bonusActive) this.deactivateBonus();
 
-    this.bonusActive = true;
-    this.bonusType = type;
-    this.bonusTime = this.shieldDuration;
+  this.bonusActive = true;
+  this.bonusType = type;
+  this.bonusTime = this.shieldDuration;
 
-    // Создаем уникальные эффекты для каждого типа бонуса
-    switch (type) {
-      case 'speed':
-        this.currentSpeed = this.baseSpeed * 1.5;
-        this.bonusMultiplier = 2;
-        if (this.player) {
-          this.player.setTint(0xffff00);
-          this.player.speedBoost = 1.5;
-          
-          // Эффект скоростных линий
-          this.createSpeedLines();
-          
-          // Орбитальные частицы для скорости (желтые)
-          this.createOrbitalEffect('speed', 0xffff00, 40, 6);
-          
-          // Пульсация игрока
-          this.tweens.add({
-            targets: this.player,
-            scaleX: 1.1,
-            scaleY: 1.1,
-            duration: 200,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-          });
-        }
-        if (this.bonusText) {
-          this.bonusText.setColor('#ffff00').setText(`🚀 x2 ${Math.ceil(this.bonusTime)}с`);
-          this.bonusText.setVisible(true);
-        }
-        this.particleManager.createBonusEffect('speed', this.player.x, this.player.y);
-        
-        // Визуальный индикатор скорости
-        this.createSpeedIndicator();
-        break;
-
-      case 'shield':
-        this.shieldActive = true;
-        if (this.player) {
-          this.player.setTint(0x00ffff);
-          this.player.shieldActive = true;
-          
-          // Эффект вращающегося щита
-          this.createShieldEffect();
-          
-          // Орбитальные частицы для щита (голубые) - больше частиц
-          this.createOrbitalEffect('shield', 0x00ffff, 45, 8);
-        }
-        if (this.bonusText) {
-          this.bonusText.setColor('#00ffff').setText(`🛡️ ${Math.ceil(this.bonusTime)}с`);
-          this.bonusText.setVisible(true);
-        }
-        this.particleManager.createShieldEffect(this.player);
-        break;
-
-      case 'magnet':
-        this.magnetActive = true;
-        if (this.player) {
-          this.player.setTint(0xff00ff);
-          this.player.magnetActive = true;
-          
-          // Эффект магнитного поля
-          this.createMagnetField();
-          
-          // Искрящиеся частицы вокруг игрока
-          this.createMagnetParticles();
-          
-          // Орбитальные частицы для магнита (фиолетовые)
-          this.createOrbitalEffect('magnet', 0xff00ff, 50, 6);
-        }
-        if (this.bonusText) {
-          this.bonusText.setColor('#ff00ff').setText(`🧲 ${Math.ceil(this.bonusTime)}с`);
-          this.bonusText.setVisible(true);
-        }
-        this.particleManager.createBonusEffect('magnet', this.player.x, this.player.y);
-        break;
-
-      case 'slow':
-        this.currentSpeed = this.baseSpeed * 0.6;
-        if (this.player) {
-          this.player.setTint(0xff8800);
-          
-          // Эффект замедления времени
-          this.createSlowMotionEffect();
-          
-          // Орбитальные частицы для замедления (оранжевые) - медленнее вращаются
-          this.createOrbitalEffect('slow', 0xff8800, 40, 6, true);
-        }
-        if (this.bonusText) {
-          this.bonusText.setColor('#ff8800').setText(`⏳ ${Math.ceil(this.bonusTime)}с`);
-          this.bonusText.setVisible(true);
-        }
-        this.particleManager.createBonusEffect('slow', this.player.x, this.player.y);
-        break;
+  // Настройки для разных типов бонусов
+  const config = {
+    speed: {
+      color: 0xffff00,
+      textColor: '#ffff00',
+      emoji: '🚀',
+      speedMult: 1.5,
+      multiplier: 2,
+      scale: 1.1,
+      duration: this.shieldDuration,
+      particles: { count: 6, radius: 40, speed: 200 }
+    },
+    shield: {
+      color: 0x00ffff,
+      textColor: '#00ffff',
+      emoji: '🛡️',
+      shield: true,
+      duration: this.shieldDuration,
+      particles: { count: 8, radius: 45, size: 4 }
+    },
+    magnet: {
+      color: 0xff00ff,
+      textColor: '#ff00ff',
+      emoji: '🧲',
+      magnet: true,
+      range: 350,
+      duration: this.shieldDuration,
+      particles: { count: 6, radius: 50, sparkle: true }
+    },
+    slow: {
+      color: 0xff8800,
+      textColor: '#ff8800',
+      emoji: '⏳',
+      speedMult: 0.6,
+      duration: this.shieldDuration,
+      particles: { count: 6, radius: 40, slow: true }
     }
+  };
 
-    this.updatePlayerVisuals();
+  const cfg = config[type];
 
-    if (this.bonusTimer) this.bonusTimer.remove();
-
-    this.bonusTimer = this.time.addEvent({
-      delay: 100,
-      callback: () => {
-        this.bonusTime -= 0.1;
-        if (this.bonusTime <= 0) {
-          this.deactivateBonus();
-        } else {
-          const emoji = this.getBonusEmoji(type);
-          if (this.bonusText) {
-            this.bonusText.setText(`${emoji} ${Math.ceil(this.bonusTime)}с`);
-          }
-          
-          // Обновляем визуальные эффекты в реальном времени
-          this.updateBonusEffects(type);
-        }
-      },
-      loop: true
-    });
-    
-    // Звуковой эффект для бонуса
-    this.playBonusSound(type);
-  }
-
-  /**
-   * Создание орбитальных частиц для бонусов
-   */
-  createOrbitalEffect(type, color, radius, count = 6, isSlow = false) {
-    const particleKey = `${type}OrbitalParticles`;
-    
-    // Очищаем предыдущие частицы этого типа
-    if (this[particleKey]) {
-      this[particleKey].forEach(p => p.destroy());
-    }
-
-    // Создаем новые частицы
-    this[particleKey] = [];
-
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2;
-      const particle = this.add.circle(
-        this.player.x + Math.cos(angle) * radius,
-        this.player.y + Math.sin(angle) * radius,
-        type === 'shield' ? 4 : 3, 
-        color, 
-        0.7
-      );
-      particle.setDepth(14);
-      this[particleKey].push(particle);
-    }
-
-    // Анимация вращения
-    const tweenKey = `${type}OrbitalTween`;
-    const duration = isSlow ? 3000 : 2000;
-    
-    this[tweenKey] = this.tweens.add({
-      targets: {},
-      duration: duration,
-      repeat: -1,
-      onUpdate: () => {
-        if (!this[particleKey] || !this.player) return;
-        const time = Date.now() * 0.002 * (isSlow ? 0.5 : 1);
-        
-        this[particleKey].forEach((p, i) => {
-          if (p && p.active) {
-            const angle = (i / this[particleKey].length) * Math.PI * 2 + time;
-            p.x = this.player.x + Math.cos(angle) * radius;
-            p.y = this.player.y + Math.sin(angle) * radius;
-          }
-        });
+  // Применяем эффекты в зависимости от типа
+  switch (type) {
+    case 'speed':
+      this.currentSpeed = this.baseSpeed * cfg.speedMult;
+      this.bonusMultiplier = cfg.multiplier;
+      if (this.player) {
+        this.player.setTint(cfg.color);
+        this.player.speedBoost = cfg.speedMult;
+        this.createSpeedLines();
+        this.createOrbitalEffect(type, cfg.color, cfg.particles.radius, cfg.particles.count);
+        this.pulsePlayer(cfg.scale);
       }
-    });
-  }
+      break;
 
-  /**
-   * Создание эффекта скоростных линий
-   */
-  createSpeedLines() {
-    if (this.speedLinesEmitter) this.speedLinesEmitter.stop();
-    
-    this.speedLinesEmitter = this.add.particles(0, 0, 'flare', {
-      x: this.player.x,
-      y: this.player.y,
-      speed: { min: 200, max: 400 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.5, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: 300,
-      quantity: 2,
-      frequency: 50,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: 0xffff00,
-      follow: this.player,
-      followOffset: { x: -20, y: 0 }
-    });
-  }
-
-  /**
-   * Создание индикатора скорости
-   */
-  createSpeedIndicator() {
-    if (this.speedIndicator) this.speedIndicator.destroy();
-    
-    this.speedIndicator = this.add.graphics();
-    this.speedIndicator.setDepth(25);
-    
-    // Анимированный индикатор
-    this.tweens.add({
-      targets: this.speedIndicator,
-      alpha: { from: 0.8, to: 0.3 },
-      duration: 300,
-      yoyo: true,
-      repeat: -1
-    });
-  }
-
-  /**
-   * Создание эффекта щита
-   */
-  createShieldEffect() {
-    if (this.shieldGraphics) this.shieldGraphics.destroy();
-    
-    this.shieldGraphics = this.add.graphics();
-    this.shieldGraphics.setDepth(14);
-    
-    // Создаем вращающиеся частицы вокруг щита
-    this.shieldParticles = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const particle = this.add.circle(
-        this.player.x + Math.cos(angle) * 45,
-        this.player.y + Math.sin(angle) * 45,
-        3, 0x00ffff, 0.8
-      );
-      particle.setDepth(14);
-      this.shieldParticles.push(particle);
-    }
-    
-    // Анимация вращения частиц
-    this.shieldRotationTween = this.tweens.add({
-      targets: {},
-      duration: 2000,
-      repeat: -1,
-      onUpdate: () => {
-        if (!this.shieldParticles || !this.player) return;
-        const time = Date.now() * 0.002;
-        this.shieldParticles.forEach((p, i) => {
-          if (p && p.active) {
-            const angle = (i / this.shieldParticles.length) * Math.PI * 2 + time;
-            p.x = this.player.x + Math.cos(angle) * 45;
-            p.y = this.player.y + Math.sin(angle) * 45;
-          }
-        });
-      }
-    });
-  }
-
-  /**
-   * Создание магнитного поля
-   */
-  createMagnetField() {
-    if (this.magnetGraphics) this.magnetGraphics.destroy();
-    
-    this.magnetGraphics = this.add.graphics();
-    this.magnetGraphics.setDepth(14);
-    
-    // Пульсация магнитного поля
-    this.magnetPulseTween = this.tweens.add({
-      targets: { scale: 1 },
-      scale: 1.3,
-      duration: 800,
-      yoyo: true,
-      repeat: -1,
-      onUpdate: (tween) => {
-        if (!this.magnetGraphics || !this.player) return;
-        const target = tween.targets[0];
-        
-        this.magnetGraphics.clear();
-        
-        // Внешний круг
-        this.magnetGraphics.lineStyle(3, 0xff00ff, 0.4);
-        this.magnetGraphics.strokeCircle(
-          this.player.x, 
-          this.player.y, 
-          this.magnetRange * target.scale
+    case 'shield':
+      this.shieldActive = true;
+      if (this.player) {
+        this.player.setTint(cfg.color);
+        this.player.shieldActive = true;
+        this.createShieldEffect();
+        this.createOrbitalEffect(
+          type, 
+          cfg.color, 
+          cfg.particles.radius, 
+          cfg.particles.count, 
+          false, 
+          cfg.particles.size
         );
-        
-        // Внутренний круг
-        this.magnetGraphics.lineStyle(2, 0xff88ff, 0.6);
-        this.magnetGraphics.strokeCircle(
-          this.player.x, 
-          this.player.y, 
-          this.magnetRange * 0.7
+      }
+      break;
+
+    case 'magnet':
+      this.magnetActive = true;
+      this.magnetRange = cfg.range;
+      if (this.player) {
+        this.player.setTint(cfg.color);
+        this.player.magnetActive = true;
+        this.createMagnetField();
+        this.createMagnetParticles();
+        this.createOrbitalEffect(type, cfg.color, cfg.particles.radius, cfg.particles.count);
+      }
+      break;
+
+    case 'slow':
+      this.currentSpeed = this.baseSpeed * cfg.speedMult;
+      if (this.player) {
+        this.player.setTint(cfg.color);
+        this.createSlowMotionEffect();
+        this.createOrbitalEffect(type, cfg.color, cfg.particles.radius, cfg.particles.count, true);
+      }
+      break;
+  }
+
+  // Обновляем текст бонуса
+  if (this.bonusText) {
+    this.bonusText
+      .setColor(cfg.textColor)
+      .setText(`${cfg.emoji} ${Math.ceil(this.bonusTime)}с`)
+      .setVisible(true);
+  }
+
+  // Базовый эффект частиц
+  if (this.particleManager) {
+    this.particleManager.createBonusEffect(type, this.player?.x, this.player?.y);
+  }
+
+  this.updatePlayerVisuals();
+
+  // Таймер обратного отсчета
+  if (this.bonusTimer) this.bonusTimer.remove();
+  
+  this.bonusTimer = this.time.addEvent({
+    delay: 100,
+    callback: () => {
+      this.bonusTime -= 0.1;
+      if (this.bonusTime <= 0) {
+        this.deactivateBonus();
+      } else if (this.bonusText) {
+        this.bonusText.setText(`${cfg.emoji} ${Math.ceil(this.bonusTime)}с`);
+        this.updateBonusEffects(type);
+      }
+    },
+    loop: true
+  });
+
+  // Звук бонуса
+  this.playBonusSound(type);
+}
+
+/**
+ * Пульсация игрока
+ */
+pulsePlayer(scale) {
+  if (!this.player) return;
+  
+  this.tweens.add({
+    targets: this.player,
+    scaleX: scale,
+    scaleY: scale,
+    duration: 200,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+}
+
+/**
+ * Создание орбитальных частиц
+ */
+createOrbitalEffect(type, color, radius, count = 6, isSlow = false, size = 3) {
+  const particleKey = `${type}OrbitalParticles`;
+  const tweenKey = `${type}OrbitalTween`;
+  
+  // Очищаем старые частицы
+  this.cleanupOrbitalEffects(type);
+
+  // Создаем новые частицы
+  this[particleKey] = [];
+  
+  const textureKey = this.textures.exists('flare') ? 'flare' : '__DEFAULT';
+  
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    
+    // Используем спрайты вместо кругов для лучшей производительности
+    const particle = this.add.image(
+      this.player.x + Math.cos(angle) * radius,
+      this.player.y + Math.sin(angle) * radius,
+      textureKey
+    );
+    particle.setScale(size * 0.1);
+    particle.setTint(color);
+    particle.setAlpha(0.8);
+    particle.setDepth(14);
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    this[particleKey].push(particle);
+  }
+
+  // Анимация вращения
+  const duration = isSlow ? 4000 : 2500;
+  this[tweenKey] = this.tweens.addCounter({
+    from: 0,
+    to: Math.PI * 2,
+    duration: duration,
+    repeat: -1,
+    onUpdate: (tween) => {
+      // Исправлено: добавлен оператор ||
+      if (!this[particleKey] || !this.player) return;
+      
+      const value = tween.getValue();
+      this[particleKey].forEach((p, i) => {
+        if (p?.active) {
+          const angle = (i / count) * Math.PI * 2 + value;
+          p.x = this.player.x + Math.cos(angle) * radius;
+          p.y = this.player.y + Math.sin(angle) * radius;
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Очистка орбитальных эффектов
+ */
+cleanupOrbitalEffects(type) {
+  const particleKey = `${type}OrbitalParticles`;
+  const tweenKey = `${type}OrbitalTween`;
+  
+  if (this[particleKey]) {
+    this[particleKey].forEach(p => {
+      if (p?.destroy) p.destroy();
+    });
+    this[particleKey] = null;
+  }
+  if (this[tweenKey]) {
+    this[tweenKey].stop();
+    this[tweenKey] = null;
+  }
+}
+
+/**
+ * Создание эффекта скоростных линий
+ */
+createSpeedLines() {
+  if (this.speedLinesEmitter) {
+    this.speedLinesEmitter.stop();
+    this.speedLinesEmitter.destroy();
+  }
+  
+  const textureKey = this.textures.exists('flare') ? 'flare' : '__DEFAULT';
+  
+  this.speedLinesEmitter = this.add.particles(0, 0, textureKey, {
+    x: this.player.x,
+    y: this.player.y,
+    speed: { min: 200, max: 400 },
+    angle: { min: 0, max: 360 },
+    scale: { start: 0.5, end: 0 },
+    alpha: { start: 0.6, end: 0 },
+    lifespan: 300,
+    quantity: 2,
+    frequency: 50,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: 0xffff00,
+    follow: this.player,
+    followOffset: { x: -20, y: 0 }
+  });
+  
+  if (this.speedLinesEmitter) {
+    this.speedLinesEmitter.setDepth(12);
+  }
+}
+
+/**
+ * Создание индикатора скорости
+ */
+createSpeedIndicator() {
+  if (this.speedIndicator) this.speedIndicator.destroy();
+  
+  this.speedIndicator = this.add.graphics();
+  this.speedIndicator.setDepth(25);
+  
+  // Сохраняем длительность для использования в updateBonusEffects
+  this.speedDuration = this.shieldDuration;
+  
+  // Анимированный индикатор
+  this.tweens.add({
+    targets: this.speedIndicator,
+    alpha: { from: 0.8, to: 0.3 },
+    duration: 300,
+    yoyo: true,
+    repeat: -1
+  });
+}
+
+/**
+ * Создание эффекта щита
+ */
+createShieldEffect() {
+  this.cleanupGraphics('shield');
+  
+  this.shieldGraphics = this.add.graphics();
+  this.shieldGraphics.setDepth(14);
+  
+  const textureKey = this.textures.exists('flare') ? 'flare' : '__DEFAULT';
+  
+  this.shieldParticles = [];
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const particle = this.add.image(
+      this.player.x + Math.cos(angle) * 45,
+      this.player.y + Math.sin(angle) * 45,
+      textureKey
+    );
+    particle.setScale(0.3);
+    particle.setTint(0x00ffff);
+    particle.setAlpha(0.8);
+    particle.setDepth(14);
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    this.shieldParticles.push(particle);
+  }
+  
+  this.shieldRotationTween = this.tweens.addCounter({
+    from: 0,
+    to: Math.PI * 2,
+    duration: 2000,
+    repeat: -1,
+    onUpdate: (tween) => {
+      // Исправлено: добавлен оператор ||
+      if (!this.shieldParticles || !this.player) return;
+      
+      const value = tween.getValue();
+      this.shieldParticles.forEach((p, i) => {
+        if (p?.active) {
+          const angle = (i / 8) * Math.PI * 2 + value;
+          p.x = this.player.x + Math.cos(angle) * 45;
+          p.y = this.player.y + Math.sin(angle) * 45;
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Создание магнитного поля - ИСПРАВЛЕНО ДЛЯ РАБОТЫ МАГНИТА
+ */
+createMagnetField() {
+  this.cleanupGraphics('magnet');
+  
+  this.magnetGraphics = this.add.graphics();
+  this.magnetGraphics.setDepth(14);
+  
+  // Пульсация магнитного поля
+  this.magnetPulseTween = this.tweens.add({
+    targets: { scale: 1 },
+    scale: 1.3,
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    onUpdate: (tween) => {
+      // Исправлено: добавлен оператор ||
+      if (!this.magnetGraphics || !this.player) return;
+      
+      const target = tween.targets[0];
+      this.magnetGraphics.clear();
+
+      // Внешний круг
+      this.magnetGraphics.lineStyle(3, 0xff00ff, 0.4);
+      this.magnetGraphics.strokeCircle(
+        this.player.x,
+        this.player.y,
+        this.magnetRange * target.scale
+      );
+
+      // Внутренний круг
+      this.magnetGraphics.lineStyle(2, 0xff88ff, 0.6);
+      this.magnetGraphics.strokeCircle(
+        this.player.x,
+        this.player.y,
+        this.magnetRange * 0.7
+      );
+
+      // Магнитные линии
+      const time = Date.now() * 0.001;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + time;
+        const x1 = this.player.x + Math.cos(angle) * this.magnetRange * 0.5;
+        const y1 = this.player.y + Math.sin(angle) * this.magnetRange * 0.5;
+        const x2 = this.player.x + Math.cos(angle) * this.magnetRange;
+        const y2 = this.player.y + Math.sin(angle) * this.magnetRange;
+
+        this.magnetGraphics.lineStyle(1, 0xff00ff, 0.3);
+        this.magnetGraphics.lineBetween(x1, y1, x2, y2);
+      }
+    }
+  });
+}
+
+/**
+ * Создание магнитных частиц
+ */
+createMagnetParticles() {
+  if (this.magnetParticles) {
+    this.magnetParticles.destroy();
+  }
+  
+  const textureKey = this.textures.exists('flare') ? 'flare' : '__DEFAULT';
+  
+  this.magnetParticles = this.add.particles(0, 0, textureKey, {
+    x: this.player.x,
+    y: this.player.y,
+    speed: { min: 30, max: 80 },
+    angle: { min: 0, max: 360 },
+    scale: { start: 0.3, end: 0 },
+    alpha: { start: 0.8, end: 0 },
+    lifespan: 600,
+    quantity: 2,
+    frequency: 80,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: [0xff00ff, 0xff88ff],
+    follow: this.player
+  });
+  
+  if (this.magnetParticles) {
+    this.magnetParticles.setDepth(13);
+  }
+}
+
+/**
+ * Создание эффекта замедления времени
+ */
+createSlowMotionEffect() {
+  this.cleanupGraphics('slow');
+  
+  this.slowMotionGraphics = this.add.graphics();
+  this.slowMotionGraphics.setDepth(14);
+  
+  this.slowMotionTween = this.tweens.add({
+    targets: {},
+    duration: 1000,
+    repeat: -1,
+    onUpdate: () => {
+      // Исправлено: добавлен оператор ||
+      if (!this.slowMotionGraphics || !this.player) return;
+
+      this.slowMotionGraphics.clear();
+
+      const time = Date.now() * 0.003;
+      const radius = 30 + Math.sin(time) * 10;
+
+      // Точки-часы
+      for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2 + time * 0.5;
+        const x = this.player.x + Math.cos(angle) * radius;
+        const y = this.player.y + Math.sin(angle) * radius;
+
+        // Выделяем 12, 3, 6, 9 часов
+        const isMain = i % 3 === 0;
+        this.slowMotionGraphics.fillStyle(
+          0xffaa00,
+          isMain ? 0.9 : 0.5
         );
-        
-        // Магнитные линии
-        for (let i = 0; i < 8; i++) {
-          const angle = (i / 8) * Math.PI * 2 + Date.now() * 0.001;
-          const x1 = this.player.x + Math.cos(angle) * this.magnetRange * 0.5;
-          const y1 = this.player.y + Math.sin(angle) * this.magnetRange * 0.5;
-          const x2 = this.player.x + Math.cos(angle) * this.magnetRange;
-          const y2 = this.player.y + Math.sin(angle) * this.magnetRange;
-          
-          this.magnetGraphics.lineStyle(1, 0xff00ff, 0.3);
-          this.magnetGraphics.lineBetween(x1, y1, x2, y2);
-        }
+        this.slowMotionGraphics.fillCircle(x, y, isMain ? 4 : 3);
       }
-    });
+
+      // Стрелки часов
+      const hourAngle = time * 0.3;
+      const minAngle = time * 1.5;
+
+      // Минутная стрелка
+      this.slowMotionGraphics.lineStyle(2, 0xffaa00, 0.8);
+      this.slowMotionGraphics.lineBetween(
+        this.player.x,
+        this.player.y,
+        this.player.x + Math.cos(minAngle) * radius * 0.85,
+        this.player.y + Math.sin(minAngle) * radius * 0.85
+      );
+
+      // Часовая стрелка
+      this.slowMotionGraphics.lineStyle(3, 0xff8800, 0.9);
+      this.slowMotionGraphics.lineBetween(
+        this.player.x,
+        this.player.y,
+        this.player.x + Math.cos(hourAngle) * radius * 0.6,
+        this.player.y + Math.sin(hourAngle) * radius * 0.6
+      );
+
+      // Центральный круг
+      this.slowMotionGraphics.lineStyle(2, 0xffaa00, 0.6);
+      this.slowMotionGraphics.strokeCircle(
+        this.player.x,
+        this.player.y,
+        radius
+      );
+    }
+  });
+
+  // Частицы замедления
+  if (this.slowParticles) {
+    this.slowParticles.destroy();
   }
 
-  /**
-   * Создание магнитных частиц
-   */
-  createMagnetParticles() {
-    if (this.magnetParticles) this.magnetParticles.destroy();
-    
-    this.magnetParticles = this.add.particles(0, 0, 'flare', {
-      x: this.player.x,
-      y: this.player.y,
-      speed: { min: 50, max: 150 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.3, end: 0 },
-      alpha: { start: 0.8, end: 0 },
-      lifespan: 600,
-      quantity: 3,
-      frequency: 100,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: [0xff00ff, 0xff88ff, 0xffffff],
-      follow: this.player
-    });
-  }
+  const textureKey = this.textures.exists('flare') ? 'flare' : '__DEFAULT';
 
-  /**
-   * Создание эффекта замедления времени
-   */
-  createSlowMotionEffect() {
-    if (this.slowMotionGraphics) this.slowMotionGraphics.destroy();
-    
-    this.slowMotionGraphics = this.add.graphics();
-    this.slowMotionGraphics.setDepth(14);
-    
-    // Эффект "ряби" времени
-    this.slowMotionTween = this.tweens.add({
-      targets: {},
-      duration: 1000,
-      repeat: -1,
-      onUpdate: () => {
-        if (!this.slowMotionGraphics || !this.player) return;
-        
-        this.slowMotionGraphics.clear();
-        
-        const time = Date.now() * 0.003;
-        const radius = 30 + Math.sin(time) * 10;
-        
-        // Создаем эффект часов
-        for (let i = 0; i < 12; i++) {
-          const angle = (i / 12) * Math.PI * 2 + time * 0.5;
-          const x = this.player.x + Math.cos(angle) * radius;
-          const y = this.player.y + Math.sin(angle) * radius;
-          
-          this.slowMotionGraphics.fillStyle(0xffaa00, 0.5);
-          this.slowMotionGraphics.fillCircle(x, y, 3);
-        }
-        
-        // Центральный круг
-        this.slowMotionGraphics.lineStyle(2, 0xffaa00, 0.6);
-        this.slowMotionGraphics.strokeCircle(this.player.x, this.player.y, radius);
-      }
-    });
-    
-    // Добавляем медленные частицы
-    if (this.slowParticles) this.slowParticles.destroy();
-    
-    this.slowParticles = this.add.particles(0, 0, 'flare', {
-      x: this.player.x,
-      y: this.player.y,
-      speed: { min: 20, max: 50 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.2, end: 0 },
-      alpha: { start: 0.5, end: 0 },
-      lifespan: 1000,
-      quantity: 1,
-      frequency: 150,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: 0xffaa00,
-      follow: this.player
-    });
-  }
+  this.slowParticles = this.add.particles(0, 0, textureKey, {
+    x: this.player.x,
+    y: this.player.y,
+    speed: { min: 20, max: 50 },
+    angle: { min: 0, max: 360 },
+    scale: { start: 0.2, end: 0 },
+    alpha: { start: 0.5, end: 0 },
+    lifespan: 1000,
+    quantity: 1,
+    frequency: 150,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: 0xffaa00,
+    follow: this.player
+  });
 
-  /**
-   * Обновление визуальных эффектов в реальном времени
-   */
-  updateBonusEffects(type) {
-    if (!this.player) return;
-    
-    switch (type) {
-      case 'speed':
-        if (this.speedLinesEmitter) {
-          // Увеличиваем интенсивность при окончании бонуса
-          const intensity = Math.min(1, this.bonusTime / 2);
-          this.speedLinesEmitter.setFrequency(50 / intensity);
-        }
-        
-        if (this.speedIndicator) {
-          this.speedIndicator.clear();
-          this.speedIndicator.lineStyle(2, 0xffff00, 0.8);
-          this.speedIndicator.strokeCircle(
-            this.player.x, 
-            this.player.y - 50, 
-            20 + (1 - this.bonusTime / this.shieldDuration) * 10
-          );
-        }
-        break;
-        
-      case 'shield':
-        if (this.shieldGraphics) {
-          this.shieldGraphics.clear();
-          const alpha = 0.3 + (this.bonusTime / this.shieldDuration) * 0.3;
-          this.shieldGraphics.lineStyle(4, 0x00ffff, alpha);
-          this.shieldGraphics.strokeCircle(this.player.x, this.player.y, 40);
-          this.shieldGraphics.fillStyle(0x00ffff, alpha * 0.3);
-          this.shieldGraphics.fillCircle(this.player.x, this.player.y, 40);
-        }
-        break;
-    }
+  if (this.slowParticles) {
+    this.slowParticles.setDepth(13);
   }
+}
 
-  /**
-   * Воспроизведение звука бонуса
-   */
-  playBonusSound(type) {
-    try {
-      const sounds = {
-        speed: 'speed_sound',
-        shield: 'shield_sound',
-        magnet: 'magnet_sound',
-        slow: 'slow_sound'
-      };
-      
-      const soundKey = sounds[type];
-      if (soundKey && this.cache.audio.has(soundKey)) {
-        const sound = this.sound.add(soundKey, { volume: 0.5 });
-        sound.play();
-      }
-    } catch (e) {
-      // Игнорируем ошибки звука
-    }
-  }
-
-  /**
-   * Деактивация бонуса - УЛУЧШЕННАЯ ВЕРСИЯ
-   */
-  deactivateBonus() {
-    if (!this.bonusActive) return;
-    
-    this.bonusActive = false;
-    this.bonusType = null;
-    this.shieldActive = false;
-    this.magnetActive = false;
-    
-    if (this.player) {
-      this.player.shieldActive = false;
-      this.player.magnetActive = false;
-      this.player.speedBoost = 1;
-      this.player.clearTint();
-      
-      // Останавливаем пульсацию
-      this.tweens.killTweensOf(this.player);
-      this.player.setScale(0.9);
-    }
-    
-    this.bonusMultiplier = 1;
-    this.currentSpeed = this.baseSpeed;
-    
-    if (this.bonusText) {
-      this.bonusText.setVisible(false);
-    }
-    
-    this.updatePlayerVisuals();
-    
-    if (this.bonusTimer) {
-      this.bonusTimer.remove();
-      this.bonusTimer = null;
-    }
-    
-    // Очищаем все визуальные эффекты
-    this.cleanupBonusEffects();
-    
-    this.particleManager.clearAll();
-    
-    // Финальная вспышка при деактивации
-    if (this.player) {
-      this.cameras.main.flash(200, 100, 100, 100, false);
-    }
-  }
-
-  /**
-   * Очистка всех визуальных эффектов бонусов
-   */
-  cleanupBonusEffects() {
-    // Останавливаем эмиттеры
-    if (this.speedLinesEmitter) {
-      this.speedLinesEmitter.stop();
-      this.speedLinesEmitter = null;
-    }
-    
-    if (this.magnetParticles) {
-      this.magnetParticles.destroy();
-      this.magnetParticles = null;
-    }
-    
-    if (this.slowParticles) {
-      this.slowParticles.destroy();
-      this.slowParticles = null;
-    }
-    
-    // Уничтожаем графику
-    if (this.speedIndicator) {
-      this.speedIndicator.destroy();
-      this.speedIndicator = null;
-    }
-    
-    if (this.shieldGraphics) {
-      this.shieldGraphics.destroy();
-      this.shieldGraphics = null;
-    }
-    
-    if (this.magnetGraphics) {
-      this.magnetGraphics.destroy();
-      this.magnetGraphics = null;
-    }
-    
-    if (this.slowMotionGraphics) {
-      this.slowMotionGraphics.destroy();
-      this.slowMotionGraphics = null;
-    }
-    
-    // Останавливаем твины
-    if (this.shieldRotationTween) {
-      this.shieldRotationTween.stop();
-      this.shieldRotationTween = null;
-    }
-    
-    if (this.magnetPulseTween) {
-      this.magnetPulseTween.stop();
-      this.magnetPulseTween = null;
-    }
-    
-    if (this.slowMotionTween) {
-      this.slowMotionTween.stop();
-      this.slowMotionTween = null;
-    }
-    
-    // Уничтожаем частицы щита
-    if (this.shieldParticles) {
-      this.shieldParticles.forEach(p => p.destroy());
-      this.shieldParticles = null;
-    }
-    
-    // Очищаем орбитальные частицы для всех типов
-    const types = ['speed', 'shield', 'magnet', 'slow'];
-    types.forEach(type => {
-      const particleKey = `${type}OrbitalParticles`;
-      if (this[particleKey]) {
-        this[particleKey].forEach(p => p.destroy());
-        this[particleKey] = null;
+/**
+ * Обновление визуальных эффектов в реальном времени
+ */
+updateBonusEffects(type) {
+  if (!this.player) return;
+  
+  switch (type) {
+    case 'speed':
+      if (this.speedLinesEmitter) {
+        // Увеличиваем интенсивность при окончании бонуса
+        const intensity = Math.max(0.3, Math.min(1, this.bonusTime / 2));
+        this.speedLinesEmitter.setFrequency(50 / intensity);
       }
       
-      const tweenKey = `${type}OrbitalTween`;
-      if (this[tweenKey]) {
-        this[tweenKey].stop();
-        this[tweenKey] = null;
+      if (this.speedIndicator) {
+        this.speedIndicator.clear();
+        this.speedIndicator.lineStyle(2, 0xffff00, 0.8);
+        
+        // Исправлено: используем shieldDuration для скорости
+        // (в конфиге speedDuration не определен, используем shieldDuration)
+        const progress = 1 - (this.bonusTime / this.shieldDuration);
+        this.speedIndicator.strokeCircle(
+          this.player.x, 
+          this.player.y - 50, 
+          20 + progress * 10
+        );
       }
-    });
+      break;
+      
+    case 'shield':
+      if (this.shieldGraphics) {
+        this.shieldGraphics.clear();
+        const alpha = 0.3 + (this.bonusTime / this.shieldDuration) * 0.3;
+        this.shieldGraphics.lineStyle(4, 0x00ffff, alpha);
+        this.shieldGraphics.strokeCircle(this.player.x, this.player.y, 40);
+        this.shieldGraphics.fillStyle(0x00ffff, alpha * 0.2);
+        this.shieldGraphics.fillCircle(this.player.x, this.player.y, 40);
+      }
+      break;
+      
+    case 'magnet':
+      // Обновление уже происходит в твине
+      break;
+      
+    case 'slow':
+      // Обновление уже происходит в твине
+      break;
   }
+}
 
-  /**
-   * Получить эмодзи для бонуса
-   */
-  getBonusEmoji(type) {
-    const emojis = { 
-      speed: '🚀', 
-      shield: '🛡️', 
-      magnet: '🧲', 
-      slow: '⏳' 
-    };
-    return emojis[type] || '✨';
-  }
-
-  /**
-   * Обновить визуальные эффекты игрока
-   */
-  updatePlayerVisuals() {
-    if (!this.player) return;
-    
-    if (this.shieldActive) {
-      this.player.setTint(0x00ffff);
-    } else if (this.bonusActive && this.bonusType === 'speed') {
-      this.player.setTint(0xffff00);
-    } else if (this.bonusActive && this.bonusType === 'magnet') {
-      this.player.setTint(0xff00ff);
-    } else if (this.bonusActive && this.bonusType === 'slow') {
-      this.player.setTint(0xff8800);
-    } else {
-      this.player.clearTint();
+/**
+ * Воспроизведение звука бонуса
+ */
+playBonusSound(type) {
+  try {
+    const soundKey = `${type}_sound`;
+    if (soundKey && this.cache.audio.has(soundKey)) {
+      const sound = this.sound.add(soundKey, { volume: 0.5 });
+      sound.play();
+    } else if (this.itemSound) {
+      this.itemSound.play();
     }
+  } catch (e) {
+    // Игнорируем ошибки звука
   }
+}
+
+/**
+ * Деактивация бонуса - УЛУЧШЕННАЯ ВЕРСИЯ
+ */
+deactivateBonus() {
+  if (!this.bonusActive) return;
+  
+  this.bonusActive = false;
+  this.bonusType = null;
+  this.shieldActive = false;
+  this.magnetActive = false;
+  
+  if (this.player) {
+    this.player.shieldActive = false;
+    this.player.magnetActive = false;
+    this.player.speedBoost = 1;
+    this.player.clearTint();
+    
+    // Останавливаем пульсацию
+    this.tweens.killTweensOf(this.player);
+    this.player.setScale(0.9);
+  }
+  
+  this.bonusMultiplier = 1;
+  this.currentSpeed = this.baseSpeed;
+  
+  if (this.bonusText) {
+    this.bonusText.setVisible(false);
+  }
+  
+  this.updatePlayerVisuals();
+  
+  if (this.bonusTimer) {
+    this.bonusTimer.remove();
+    this.bonusTimer = null;
+  }
+  
+  // Очищаем все эффекты
+  this.cleanupAllEffects();
+  
+  // Финальная вспышка
+  this.cameras.main.flash(150, 100, 100, 100, false);
+}
+
+/**
+ * Очистка всех визуальных эффектов бонусов
+ */
+cleanupAllEffects() {
+  // Останавливаем эмиттеры
+  if (this.speedLinesEmitter) {
+    this.speedLinesEmitter.stop();
+    this.speedLinesEmitter.destroy();
+    this.speedLinesEmitter = null;
+  }
+  
+  if (this.magnetParticles) {
+    this.magnetParticles.destroy();
+    this.magnetParticles = null;
+  }
+  
+  if (this.slowParticles) {
+    this.slowParticles.destroy();
+    this.slowParticles = null;
+  }
+  
+  // Уничтожаем графику
+  if (this.speedIndicator) {
+    this.speedIndicator.destroy();
+    this.speedIndicator = null;
+  }
+  
+  // Очищаем графику для всех типов
+  ['shield', 'magnet', 'slow'].forEach(type => {
+    this.cleanupGraphics(type);
+  });
+  
+  // Очищаем орбитальные эффекты
+  ['speed', 'shield', 'magnet', 'slow'].forEach(type => {
+    this.cleanupOrbitalEffects(type);
+  });
+  
+  // Очищаем shieldParticles
+  if (this.shieldParticles) {
+    this.shieldParticles.forEach(p => {
+      if (p?.destroy) p.destroy();
+    });
+    this.shieldParticles = null;
+  }
+}
+
+/**
+ * Очистка графических эффектов
+ */
+cleanupGraphics(type) {
+  const graphicsKey = `${type}Graphics`;
+  const particlesKey = `${type}Particles`;
+  const pulseTweenKey = `${type}PulseTween`;
+  const rotationTweenKey = `${type}RotationTween`;
+  
+  if (this[graphicsKey]) {
+    this[graphicsKey].destroy();
+    this[graphicsKey] = null;
+  }
+  
+  if (this[particlesKey]) {
+    this[particlesKey].destroy();
+    this[particlesKey] = null;
+  }
+  
+  if (this[pulseTweenKey]) {
+    this[pulseTweenKey].stop();
+    this[pulseTweenKey] = null;
+  }
+  
+  if (this[rotationTweenKey]) {
+    this[rotationTweenKey].stop();
+    this[rotationTweenKey] = null;
+  }
+}
+
+/**
+ * Остановка всех эффектов бонусов
+ * Вызывать при деактивации бонуса
+ */
+stopBonusEffects(type) {
+  switch (type) {
+    case 'magnet':
+      if (this.magnetPulseTween) {
+        this.magnetPulseTween.stop();
+        this.magnetPulseTween = null;
+      }
+      if (this.magnetGraphics) {
+        this.magnetGraphics.destroy();
+        this.magnetGraphics = null;
+      }
+      if (this.magnetParticles) {
+        this.magnetParticles.destroy();
+        this.magnetParticles = null;
+      }
+      break;
+
+    case 'slow':
+      if (this.slowMotionTween) {
+        this.slowMotionTween.stop();
+        this.slowMotionTween = null;
+      }
+      if (this.slowMotionGraphics) {
+        this.slowMotionGraphics.destroy();
+        this.slowMotionGraphics = null;
+      }
+      if (this.slowParticles) {
+        this.slowParticles.destroy();
+        this.slowParticles = null;
+      }
+      break;
+      
+    case 'speed':
+      if (this.speedLinesEmitter) {
+        this.speedLinesEmitter.stop();
+        this.speedLinesEmitter.destroy();
+        this.speedLinesEmitter = null;
+      }
+      if (this.speedIndicator) {
+        this.speedIndicator.destroy();
+        this.speedIndicator = null;
+      }
+      break;
+      
+    case 'shield':
+      if (this.shieldGraphics) {
+        this.shieldGraphics.destroy();
+        this.shieldGraphics = null;
+      }
+      if (this.shieldParticles) {
+        this.shieldParticles.forEach(p => p?.destroy());
+        this.shieldParticles = null;
+      }
+      if (this.shieldRotationTween) {
+        this.shieldRotationTween.stop();
+        this.shieldRotationTween = null;
+      }
+      break;
+  }
+  
+  // Очищаем орбитальные эффекты для этого типа
+  this.cleanupOrbitalEffects(type);
+}
+
+/**
+ * Получить эмодзи для бонуса
+ */
+getBonusEmoji(type) {
+  const emojis = { 
+    speed: '🚀', 
+    shield: '🛡️', 
+    magnet: '🧲', 
+    slow: '⏳' 
+  };
+  return emojis[type] || '✨';
+}
+
+/**
+ * Обновить визуальные эффекты игрока
+ */
+updatePlayerVisuals() {
+  if (!this.player) return;
+  
+  if (this.shieldActive) {
+    this.player.setTint(0x00ffff);
+  } else if (this.bonusActive && this.bonusType === 'speed') {
+    this.player.setTint(0xffff00);
+  } else if (this.bonusActive && this.bonusType === 'magnet') {
+    this.player.setTint(0xff00ff);
+  } else if (this.bonusActive && this.bonusType === 'slow') {
+    this.player.setTint(0xff8800);
+  } else {
+    this.player.clearTint();
+  }
+}
 
   // =========================================================================
   // ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ
