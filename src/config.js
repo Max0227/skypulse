@@ -35,26 +35,26 @@ export const GAME_CONFIG = {
 
 export const DIFFICULTY_CURVE = {
   0: { speed: 240, gap: 240, spawnDelay: 1500, coinChance: 0.8, asteroidChance: 0.3, powerUpChance: 0.1 },
-  1: { speed: 260, gap: 235, spawnDelay: 1450, coinChance: 0.8, asteroidChance: 0.32, powerUpChance: 0.11 },
-  2: { speed: 280, gap: 230, spawnDelay: 1400, coinChance: 0.8, asteroidChance: 0.34, powerUpChance: 0.12 },
-  3: { speed: 300, gap: 225, spawnDelay: 1350, coinChance: 0.8, asteroidChance: 0.36, powerUpChance: 0.13 },
-  4: { speed: 320, gap: 220, spawnDelay: 1300, coinChance: 0.8, asteroidChance: 0.38, powerUpChance: 0.14 },
-  5: { speed: 340, gap: 215, spawnDelay: 1250, coinChance: 0.8, asteroidChance: 0.4, powerUpChance: 0.15 },
-  6: { speed: 360, gap: 210, spawnDelay: 1200, coinChance: 0.8, asteroidChance: 0.42, powerUpChance: 0.16 },
-  7: { speed: 380, gap: 205, spawnDelay: 1150, coinChance: 0.8, asteroidChance: 0.44, powerUpChance: 0.17 },
-  8: { speed: 400, gap: 200, spawnDelay: 1100, coinChance: 0.8, asteroidChance: 0.46, powerUpChance: 0.18 },
-  9: { speed: 420, gap: 195, spawnDelay: 1050, coinChance: 0.8, asteroidChance: 0.48, powerUpChance: 0.19 },
-  10: { speed: 440, gap: 190, spawnDelay: 1000, coinChance: 0.8, asteroidChance: 0.5, powerUpChance: 0.2 },
-  11: { speed: 460, gap: 185, spawnDelay: 950, coinChance: 0.8, asteroidChance: 0.52, powerUpChance: 0.21 },
-  12: { speed: 480, gap: 180, spawnDelay: 900, coinChance: 0.8, asteroidChance: 0.54, powerUpChance: 0.22 },
-  13: { speed: 500, gap: 175, spawnDelay: 850, coinChance: 0.8, asteroidChance: 0.56, powerUpChance: 0.23 },
-  14: { speed: 520, gap: 170, spawnDelay: 800, coinChance: 0.8, asteroidChance: 0.58, powerUpChance: 0.24 },
-  15: { speed: 540, gap: 165, spawnDelay: 750, coinChance: 0.8, asteroidChance: 0.6, powerUpChance: 0.25 },
-  16: { speed: 560, gap: 160, spawnDelay: 700, coinChance: 0.8, asteroidChance: 0.62, powerUpChance: 0.26 },
-  17: { speed: 580, gap: 155, spawnDelay: 650, coinChance: 0.8, asteroidChance: 0.64, powerUpChance: 0.27 },
-  18: { speed: 600, gap: 150, spawnDelay: 600, coinChance: 0.8, asteroidChance: 0.66, powerUpChance: 0.28 },
-  19: { speed: 620, gap: 145, spawnDelay: 550, coinChance: 0.8, asteroidChance: 0.68, powerUpChance: 0.29 },
-  20: { speed: 640, gap: 140, spawnDelay: 500, coinChance: 0.8, asteroidChance: 0.7, powerUpChance: 0.3 },
+  1: { speed: 264, gap: 235, spawnDelay: 1450, coinChance: 0.8, asteroidChance: 0.32, powerUpChance: 0.11 }, // +10%
+  2: { speed: 290, gap: 230, spawnDelay: 1400, coinChance: 0.8, asteroidChance: 0.34, powerUpChance: 0.12 }, // +10%
+  3: { speed: 319, gap: 225, spawnDelay: 1350, coinChance: 0.8, asteroidChance: 0.36, powerUpChance: 0.13 }, // +10%
+  4: { speed: 351, gap: 220, spawnDelay: 1300, coinChance: 0.8, asteroidChance: 0.38, powerUpChance: 0.14 }, // +10%
+  5: { speed: 386, gap: 215, spawnDelay: 1250, coinChance: 0.8, asteroidChance: 0.4, powerUpChance: 0.15 },  // +10%
+  6: { speed: 425, gap: 210, spawnDelay: 1200, coinChance: 0.8, asteroidChance: 0.42, powerUpChance: 0.16 }, // +10%
+  7: { speed: 468, gap: 205, spawnDelay: 1150, coinChance: 0.8, asteroidChance: 0.44, powerUpChance: 0.17 }, // +10%
+  8: { speed: 515, gap: 200, spawnDelay: 1100, coinChance: 0.8, asteroidChance: 0.46, powerUpChance: 0.18 }, // +10%
+  9: { speed: 567, gap: 195, spawnDelay: 1050, coinChance: 0.8, asteroidChance: 0.48, powerUpChance: 0.19 }, // +10%
+  10: { speed: 624, gap: 190, spawnDelay: 1000, coinChance: 0.8, asteroidChance: 0.5, powerUpChance: 0.2 },  // +10%
+  11: { speed: 686, gap: 185, spawnDelay: 950, coinChance: 0.8, asteroidChance: 0.52, powerUpChance: 0.21 }, // +10%
+  12: { speed: 755, gap: 180, spawnDelay: 900, coinChance: 0.8, asteroidChance: 0.54, powerUpChance: 0.22 }, // +10%
+  13: { speed: 831, gap: 175, spawnDelay: 850, coinChance: 0.8, asteroidChance: 0.56, powerUpChance: 0.23 }, // +10%
+  14: { speed: 914, gap: 170, spawnDelay: 800, coinChance: 0.8, asteroidChance: 0.58, powerUpChance: 0.24 }, // +10%
+  15: { speed: 1005, gap: 165, spawnDelay: 750, coinChance: 0.8, asteroidChance: 0.6, powerUpChance: 0.25 }, // +10%
+  16: { speed: 1106, gap: 160, spawnDelay: 700, coinChance: 0.8, asteroidChance: 0.62, powerUpChance: 0.26 }, // +10%
+  17: { speed: 1217, gap: 155, spawnDelay: 650, coinChance: 0.8, asteroidChance: 0.64, powerUpChance: 0.27 }, // +10%
+  18: { speed: 1339, gap: 150, spawnDelay: 600, coinChance: 0.8, asteroidChance: 0.66, powerUpChance: 0.28 }, // +10%
+  19: { speed: 1473, gap: 145, spawnDelay: 550, coinChance: 0.8, asteroidChance: 0.68, powerUpChance: 0.29 }, // +10%
+  20: { speed: 1620, gap: 140, spawnDelay: 500, coinChance: 0.8, asteroidChance: 0.7, powerUpChance: 0.3 },   // +10%
 };
 
 export const SHOP_UPGRADES = [
