@@ -2282,23 +2282,33 @@ cleanupAllEffects() {
   // Останавливаем эмиттеры
   if (this.speedLinesEmitter) {
     this.speedLinesEmitter.stop();
-    this.speedLinesEmitter.destroy();
+    if (typeof this.speedLinesEmitter.destroy === 'function') {
+      this.speedLinesEmitter.destroy();
+    }
     this.speedLinesEmitter = null;
   }
   
   if (this.magnetParticles) {
-    this.magnetParticles.destroy();
+    this.magnetParticles.stop();
+    if (typeof this.magnetParticles.destroy === 'function') {
+      this.magnetParticles.destroy();
+    }
     this.magnetParticles = null;
   }
   
   if (this.slowParticles) {
-    this.slowParticles.destroy();
+    this.slowParticles.stop();
+    if (typeof this.slowParticles.destroy === 'function') {
+      this.slowParticles.destroy();
+    }
     this.slowParticles = null;
   }
   
   // Уничтожаем графику
   if (this.speedIndicator) {
-    this.speedIndicator.destroy();
+    if (typeof this.speedIndicator.destroy === 'function') {
+      this.speedIndicator.destroy();
+    }
     this.speedIndicator = null;
   }
   
@@ -2315,14 +2325,16 @@ cleanupAllEffects() {
   // Очищаем shieldParticles
   if (this.shieldParticles) {
     this.shieldParticles.forEach(p => {
-      if (p?.destroy) p.destroy();
+      if (p && typeof p.destroy === 'function') {
+        p.destroy();
+      }
     });
     this.shieldParticles = null;
   }
 }
 
 /**
- * Очистка графических эффектов
+ * Очистка графических эффектов - ИСПРАВЛЕНО
  */
 cleanupGraphics(type) {
   const graphicsKey = `${type}Graphics`;
@@ -2330,86 +2342,150 @@ cleanupGraphics(type) {
   const pulseTweenKey = `${type}PulseTween`;
   const rotationTweenKey = `${type}RotationTween`;
   
+  // Графика - есть destroy
   if (this[graphicsKey]) {
-    this[graphicsKey].destroy();
+    if (typeof this[graphicsKey].destroy === 'function') {
+      this[graphicsKey].destroy();
+    }
     this[graphicsKey] = null;
   }
   
+  // Частицы - есть destroy
   if (this[particlesKey]) {
-    this[particlesKey].destroy();
+    if (typeof this[particlesKey].destroy === 'function') {
+      this[particlesKey].destroy();
+    } else if (typeof this[particlesKey].stop === 'function') {
+      this[particlesKey].stop();
+    }
     this[particlesKey] = null;
   }
   
+  // Твины - НЕТ destroy, только stop
   if (this[pulseTweenKey]) {
-    this[pulseTweenKey].stop();
+    if (typeof this[pulseTweenKey].stop === 'function') {
+      this[pulseTweenKey].stop();
+    }
     this[pulseTweenKey] = null;
   }
   
   if (this[rotationTweenKey]) {
-    this[rotationTweenKey].stop();
+    if (typeof this[rotationTweenKey].stop === 'function') {
+      this[rotationTweenKey].stop();
+    }
     this[rotationTweenKey] = null;
   }
 }
 
 /**
- * Остановка всех эффектов бонусов
- * Вызывать при деактивации бонуса
+ * Очистка орбитальных эффектов - ИСПРАВЛЕНО
+ */
+cleanupOrbitalEffects(type) {
+  const particleKey = `${type}OrbitalParticles`;
+  const tweenKey = `${type}OrbitalTween`;
+  
+  if (this[particleKey]) {
+    this[particleKey].forEach(p => {
+      if (p && typeof p.destroy === 'function') {
+        p.destroy();
+      }
+    });
+    this[particleKey] = null;
+  }
+  if (this[tweenKey]) {
+    if (typeof this[tweenKey].stop === 'function') {
+      this[tweenKey].stop();
+    }
+    this[tweenKey] = null;
+  }
+}
+
+/**
+ * Остановка всех эффектов бонусов - ИСПРАВЛЕНО
  */
 stopBonusEffects(type) {
   switch (type) {
     case 'magnet':
       if (this.magnetPulseTween) {
-        this.magnetPulseTween.stop();
+        if (typeof this.magnetPulseTween.stop === 'function') {
+          this.magnetPulseTween.stop();
+        }
         this.magnetPulseTween = null;
       }
       if (this.magnetGraphics) {
-        this.magnetGraphics.destroy();
+        if (typeof this.magnetGraphics.destroy === 'function') {
+          this.magnetGraphics.destroy();
+        }
         this.magnetGraphics = null;
       }
       if (this.magnetParticles) {
-        this.magnetParticles.destroy();
+        if (typeof this.magnetParticles.destroy === 'function') {
+          this.magnetParticles.destroy();
+        } else if (typeof this.magnetParticles.stop === 'function') {
+          this.magnetParticles.stop();
+        }
         this.magnetParticles = null;
       }
       break;
 
     case 'slow':
       if (this.slowMotionTween) {
-        this.slowMotionTween.stop();
+        if (typeof this.slowMotionTween.stop === 'function') {
+          this.slowMotionTween.stop();
+        }
         this.slowMotionTween = null;
       }
       if (this.slowMotionGraphics) {
-        this.slowMotionGraphics.destroy();
+        if (typeof this.slowMotionGraphics.destroy === 'function') {
+          this.slowMotionGraphics.destroy();
+        }
         this.slowMotionGraphics = null;
       }
       if (this.slowParticles) {
-        this.slowParticles.destroy();
+        if (typeof this.slowParticles.destroy === 'function') {
+          this.slowParticles.destroy();
+        } else if (typeof this.slowParticles.stop === 'function') {
+          this.slowParticles.stop();
+        }
         this.slowParticles = null;
       }
       break;
       
     case 'speed':
       if (this.speedLinesEmitter) {
-        this.speedLinesEmitter.stop();
-        this.speedLinesEmitter.destroy();
+        if (typeof this.speedLinesEmitter.destroy === 'function') {
+          this.speedLinesEmitter.destroy();
+        } else if (typeof this.speedLinesEmitter.stop === 'function') {
+          this.speedLinesEmitter.stop();
+        }
         this.speedLinesEmitter = null;
       }
       if (this.speedIndicator) {
-        this.speedIndicator.destroy();
+        if (typeof this.speedIndicator.destroy === 'function') {
+          this.speedIndicator.destroy();
+        }
         this.speedIndicator = null;
       }
       break;
       
     case 'shield':
       if (this.shieldGraphics) {
-        this.shieldGraphics.destroy();
+        if (typeof this.shieldGraphics.destroy === 'function') {
+          this.shieldGraphics.destroy();
+        }
         this.shieldGraphics = null;
       }
       if (this.shieldParticles) {
-        this.shieldParticles.forEach(p => p?.destroy());
+        this.shieldParticles.forEach(p => {
+          if (p && typeof p.destroy === 'function') {
+            p.destroy();
+          }
+        });
         this.shieldParticles = null;
       }
       if (this.shieldRotationTween) {
-        this.shieldRotationTween.stop();
+        if (typeof this.shieldRotationTween.stop === 'function') {
+          this.shieldRotationTween.stop();
+        }
         this.shieldRotationTween = null;
       }
       break;
@@ -2657,7 +2733,7 @@ updatePlayerVisuals() {
    * Метод для обновления сложности в реальном времени
    */
   updateDifficultyInRealTime() {
-    const newGameLevel = Math.floor(this.meters / 300);
+    const newGameLevel = Math.floor(this.meters / 5000);
     if (newGameLevel > this.gameLevel) {
       this.gameLevel = newGameLevel;
       this.updateDifficulty();
@@ -3492,7 +3568,7 @@ updatePlayerVisuals() {
   }
 
     checkLevelProgression() {
-    const nextLevel = Math.floor(this.score / 500);
+    const nextLevel = Math.floor(this.score / 5000);
     // Проверяем, что levelManager существует и nextLevel изменился
     if (this.levelManager && nextLevel > (this.levelManager.currentLevel || 0) && nextLevel < 6) {
       this.transitionToLevel(nextLevel);
@@ -3553,7 +3629,7 @@ updatePlayerVisuals() {
   }
 
   updateLevel() {
-    const newLevel = Math.floor(this.meters / 300);
+    const newLevel = Math.floor(this.meters / 5000);
     if (newLevel > this.gameLevel) {
       this.gameLevel = newLevel;
       this.updateDifficulty();
