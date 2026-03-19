@@ -2733,7 +2733,7 @@ updatePlayerVisuals() {
    * Метод для обновления сложности в реальном времени
    */
   updateDifficultyInRealTime() {
-    const newGameLevel = Math.floor(this.meters / 5000);
+    const newGameLevel = Math.floor(this.meters / 1000);
     if (newGameLevel > this.gameLevel) {
       this.gameLevel = newGameLevel;
       this.updateDifficulty();
@@ -3268,17 +3268,35 @@ updatePlayerVisuals() {
   }
 
   getDifficulty() {
-    const level = Math.min(this.gameLevel, 20);
-    return DIFFICULTY_CURVE[level] || DIFFICULTY_CURVE[20];
-  }
-
-  updateDifficulty() {
-    const diff = this.getDifficulty();
-    this.baseSpeed = diff.speed;
-    this.gapSize = diff.gap;
-    this.spawnDelay = diff.spawnDelay;
-    if (!this.bonusActive) this.currentSpeed = this.baseSpeed;
-  }
+  const level = Math.min(this.gameLevel, 20);
+  
+  // Базовая скорость для 0 уровня
+  const baseSpeed = 240;
+  // Увеличение на 10% каждый уровень
+  const speed = Math.floor(baseSpeed * Math.pow(1.1, level));
+  
+  // Плавное уменьшение зазора
+  const baseGap = 240;
+  const gap = Math.max(140, Math.floor(baseGap - level * 5));
+  
+  // Уменьшение задержки спавна
+  const baseDelay = 1500;
+  const spawnDelay = Math.max(500, baseDelay - level * 50);
+  
+  // Увеличение шансов
+  const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
+  const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
+  
+  // Добавляем случайность
+  return {
+    speed: speed + Phaser.Math.Between(-10, 10),
+    gap: gap + Phaser.Math.Between(-10, 10),
+    spawnDelay: spawnDelay + Phaser.Math.Between(-50, 50),
+    coinChance: 0.8,
+    asteroidChance: asteroidChance,
+    powerUpChance: powerUpChance
+  };
+}
 
   togglePause() {
     this.isPaused = !this.isPaused;
@@ -3568,7 +3586,7 @@ updatePlayerVisuals() {
   }
 
     checkLevelProgression() {
-    const nextLevel = Math.floor(this.score / 5000);
+    const nextLevel = Math.floor(this.score / 1000);
     // Проверяем, что levelManager существует и nextLevel изменился
     if (this.levelManager && nextLevel > (this.levelManager.currentLevel || 0) && nextLevel < 6) {
       this.transitionToLevel(nextLevel);
@@ -3629,7 +3647,7 @@ updatePlayerVisuals() {
   }
 
   updateLevel() {
-    const newLevel = Math.floor(this.meters / 5000);
+    const newLevel = Math.floor(this.meters / 1000);
     if (newLevel > this.gameLevel) {
       this.gameLevel = newLevel;
       this.updateDifficulty();
