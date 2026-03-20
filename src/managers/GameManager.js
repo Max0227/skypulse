@@ -462,31 +462,30 @@ export class GameManager {
   }
 
   purchaseSkin(skinId) {
-    const skin = this.getSkinById(skinId);
-    if (!skin) return false;
-    if (this.data.ownedSkins.includes(skinId)) return false;
-    if (this.data.crystals < skin.price) return false;
-    
-    this.data.crystals -= skin.price;
-    this.data.stats.totalPurchases += skin.price;
-    this.data.stats.totalCrystalsSpent += skin.price;
-    this.data.ownedSkins.push(skinId);
-    
-    // Обновляем статистику использования
-    this.data.skinUsage[skinId] = 0;
-    
-    // Обновляем счет коллекции
-    this.updateCollectionScore();
-    
-    this.save();
-    this.clearCaches();
-    this.emit('skinPurchased', skinId);
-    
-    // Проверяем достижения за коллекцию скинов
-    this.checkSkinCollectionAchievements();
-    
-    return true;
+  const skin = this.getSkinById(skinId);
+  console.log('purchaseSkin called:', skinId, skin);
+  console.log('Owned skins:', this.data.ownedSkins);
+  console.log('Crystals:', this.data.crystals);
+  
+  if (!skin) {
+    console.log('Skin not found');
+    return false;
   }
+  if (this.data.ownedSkins.includes(skinId)) {
+    console.log('Skin already owned');
+    return false;
+  }
+  if (this.data.crystals < skin.price) {
+    console.log('Not enough crystals');
+    return false;
+  }
+  
+  this.data.crystals -= skin.price;
+  this.data.ownedSkins.push(skinId);
+  this.save();
+  console.log('Purchase successful!');
+  return true;
+}
 
   selectSkin(skinId) {
     if (this.data.ownedSkins.includes(skinId)) {

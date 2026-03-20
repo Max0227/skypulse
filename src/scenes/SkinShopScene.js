@@ -754,8 +754,8 @@ export class SkinShopScene extends Phaser.Scene {
       return a.price - b.price;
     });
 
-    let currentY = 10;
-    const cardSpacing = 140;
+    let currentY = 20;
+    const cardSpacing = 150;
     let currentRarity = null;
 
     // Русские названия редкостей
@@ -797,6 +797,11 @@ export class SkinShopScene extends Phaser.Scene {
       const owned = gameManager.getOwnedSkins().includes(skin.id);
       const selected = gameManager.getCurrentSkin() === skin.id;
       const canAfford = gameManager.data.crystals >= skin.price;
+      console.log('Container Y:', this.skinContainer.y);
+      console.log('Total height:', currentY);
+      console.log('List height:', listHeight);
+      console.log('minScrollY:', this.minScrollY);
+      console.log('maxScrollY:', this.maxScrollY);
 
       // Создаем карточку
       const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
@@ -942,14 +947,15 @@ export class SkinShopScene extends Phaser.Scene {
   // Добавляем все элементы
   elements.push(bg, preview, nameText, rarityText, statsText, status);
 
-  // ИНТЕРАКТИВНАЯ ОБЛАСТЬ (ЕДИНСТВЕННАЯ)
-  const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
-    .setInteractive({ useHandCursor: true })
-    .setOrigin(0.5)
-    .setDepth(10);
-
-  // Сохраняем ссылку на скин
-  hitArea.skinData = skin;
+  // ИНТЕРАКТИВНАЯ ОБЛАСТЬ - увеличиваем размер и проверяем
+const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
+  .setInteractive({ 
+    useHandCursor: true,
+    hitArea: new Phaser.Geom.Rectangle(-(w - 40)/2, -60, w - 40, 120),
+    hitAreaCallback: Phaser.Geom.Rectangle.Contains
+  })
+  .setOrigin(0.5)
+  .setDepth(15); // Увеличиваем depth
 
   // Обработчики
   hitArea.on('pointerover', () => {
@@ -989,78 +995,87 @@ export class SkinShopScene extends Phaser.Scene {
 }
 
   setupScrolling(listTop, listHeight, totalHeight) {
-    const w = this.scale.width;
-    
-    this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
-    this.scrollZone.setDepth(5); // Ниже, чем hitArea (depth 10)
-    
-    this.minScrollY = -(totalHeight - listHeight + 50);
-    this.maxScrollY = listTop;
+  const w = this.scale.width;
+  
+  // Создаем зону для перетаскивания, НО НЕ для кликов!
+  this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0);
+  this.scrollZone.setInteractive({ draggable: true }); // Только для перетаскивания
+  this.scrollZone.setDepth(0); // На самом низу
+  
+  // ВАЖНО: НЕ блокируем клики на карточках
+  this.scrollZone.input.alwaysEnabled = false;
+  
+  this.minScrollY = -(totalHeight - listHeight + 50);
+  this.maxScrollY = listTop;
 
-    // Переменные для инерции
+  // Переменные для инерции
+  this.scrollVelocity = 0;
+  this.isDragging = false;
+  this.lastScrollY = 0;
+  this.scrollDeceleration = 0.92;
+
+  // Обработчики событий
+  this.scrollZone.on('pointerdown', (pointer) => {
+    // Проверяем, не кликнули ли по карточке
+    const target = this.input.hitTest(pointer, [this.skinContainer]);
+    if (target.length > 0) return; // Если клик по карточке, не начинаем перетаскивание
+    
+    this.isDragging = true;
+    this.lastScrollY = pointer.y;
     this.scrollVelocity = 0;
+    this.startDragY = this.skinContainer.y;
+    this.startPointerY = pointer.y;
+  });
+
+  this.scrollZone.on('pointermove', (pointer) => {
+    if (!this.isDragging) return;
+    
+    const deltaY = pointer.y - this.lastScrollY;
+    this.scrollVelocity = deltaY * 0.5;
+    
+    let newY = this.skinContainer.y + deltaY;
+    
+    // Резиновый эффект на границах
+    if (newY < this.minScrollY) {
+      newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
+    } else if (newY > this.maxScrollY) {
+      newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
+    }
+    
+    this.skinContainer.y = newY;
+    this.lastScrollY = pointer.y;
+  });
+
+  this.scrollZone.on('pointerup', () => {
     this.isDragging = false;
-    this.lastScrollY = 0;
-    this.scrollDeceleration = 0.90;
+  });
 
-    // Обработчики событий
-    this.scrollZone.on('pointerdown', (pointer) => {
-      this.isDragging = true;
-      this.lastScrollY = pointer.y;
-      this.scrollVelocity = 0;
-      this.startDragY = this.skinContainer.y;
-      this.startPointerY = pointer.y;
-    });
+  this.scrollZone.on('pointerout', () => {
+    this.isDragging = false;
+  });
 
-    this.scrollZone.on('pointermove', (pointer) => {
-      if (!this.isDragging) return;
-      
-      const deltaY = pointer.y - this.lastScrollY;
-      this.scrollVelocity = deltaY * 0.5;
-      
-      let newY = this.skinContainer.y + deltaY;
-      
-      // Резиновый эффект на границах
-      if (newY < this.minScrollY) {
-        newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
-      } else if (newY > this.maxScrollY) {
-        newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
-      }
-      
-      this.skinContainer.y = newY;
-      this.lastScrollY = pointer.y;
-    });
-
-    this.scrollZone.on('pointerup', () => {
-      this.isDragging = false;
-    });
-
-    this.scrollZone.on('pointerout', () => {
-      this.isDragging = false;
-    });
-
-    // Индикатор прокрутки
-    if (totalHeight > listHeight) {
-      this.scrollTrack = this.add.graphics();
-      this.scrollTrack.fillStyle(0x333333, 0.5);
-      this.scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
-      
-      this.indicatorHeight = (listHeight - 20) * listHeight / totalHeight;
-      this.scrollIndicator = this.add.graphics();
-      this.scrollIndicator.fillStyle(0x00ffff, 0.8);
-      this.scrollIndicator.fillRoundedRect(w - 20, listTop + 10, 6, this.indicatorHeight, 3);
-      
-      if (!this.optimizeLowEnd) {
-        this.tweens.add({
-          targets: this.scrollIndicator,
-          alpha: 0.5,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1
-        });
-      }
+  // Индикатор прокрутки (оставляем без изменений)
+  if (totalHeight > listHeight) {
+    this.scrollTrack = this.add.graphics();
+    this.scrollTrack.fillStyle(0x333333, 0.5);
+    this.scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
+    
+    this.indicatorHeight = (listHeight - 20) * listHeight / totalHeight;
+    this.scrollIndicator = this.add.graphics();
+    this.scrollIndicator.fillStyle(0x00ffff, 0.8);
+    this.scrollIndicator.fillRoundedRect(w - 20, listTop + 10, 6, this.indicatorHeight, 3);
+    
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: this.scrollIndicator,
+        alpha: 0.5,
+        duration: 1000,
+        yoyo: true,
+        repeat: -1
+      });
     }
   }
+}
 
   // =========================================================================
   // ДЕТАЛЬНОЕ ОКНО СКИНА (КРАСИВОЕ, СОВРЕМЕННОЕ)
@@ -1071,6 +1086,13 @@ export class SkinShopScene extends Phaser.Scene {
   
   const w = this.scale.width;
   const h = this.scale.height;
+  console.log('=== OPEN SKIN DETAIL ===');
+  console.log('Skin:', skin.name);
+  console.log('Owned:', gameManager.getOwnedSkins().includes(skin.id));
+  console.log('Selected:', gameManager.getCurrentSkin() === skin.id);
+  console.log('Crystals:', gameManager.data.crystals);
+  console.log('Price:', skin.price);
+  console.log('Can afford:', gameManager.data.crystals >= skin.price);
 
   const owned = gameManager.getOwnedSkins().includes(skin.id);
   const selected = gameManager.getCurrentSkin() === skin.id;
@@ -1400,6 +1422,14 @@ export class SkinShopScene extends Phaser.Scene {
   confirmPurchase(skin) {
     const w = this.scale.width;
     const h = this.scale.height;
+    console.log('=== CONFIRM PURCHASE ===');
+    console.log('Skin:', skin.name);
+    console.log('Price:', skin.price);
+    console.log('Crystals before:', gameManager.data.crystals);
+  
+    const success = gameManager.purchaseSkin(skin.id);
+    console.log('Purchase success:', success);
+    console.log('Crystals after:', gameManager.data.crystals);
 
     const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0)
       .setDepth(50).setScrollFactor(0);
