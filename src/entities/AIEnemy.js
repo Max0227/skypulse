@@ -32,7 +32,7 @@ export class AIEnemy {
     this.scoreValue = this.config.scoreValue;
     
     // Состояния
-    this.state = 'patrol'; // patrol, chase, attack, retreat, stunned
+    this.state = 'patrol';
     this.patrolDirection = 1;
     this.patrolTimer = 0;
     this.fireCooldown = 0;
@@ -70,13 +70,12 @@ export class AIEnemy {
   getWorldConfig() {
     const config = { ...this.baseConfig };
     
-    // Модификаторы в зависимости от мира
     const modifiers = {
-      0: { health: 1.0, speed: 1.0, damage: 1.0, score: 1.0 },      // Космос
-      1: { health: 0.8, speed: 1.3, damage: 1.2, score: 1.2 },      // Киберпанк
-      2: { health: 1.5, speed: 0.8, damage: 1.5, score: 1.3 },      // Подземелье
-      3: { health: 1.2, speed: 1.2, damage: 1.3, score: 1.4 },      // Астероиды
-      4: { health: 1.4, speed: 0.7, damage: 1.4, score: 1.5 }       // Чёрная дыра
+      0: { health: 1.0, speed: 1.0, damage: 1.0, score: 1.0 },
+      1: { health: 0.8, speed: 1.3, damage: 1.2, score: 1.2 },
+      2: { health: 1.5, speed: 0.8, damage: 1.5, score: 1.3 },
+      3: { health: 1.2, speed: 1.2, damage: 1.3, score: 1.4 },
+      4: { health: 1.4, speed: 0.7, damage: 1.4, score: 1.5 }
     };
     
     const mod = modifiers[this.worldType] || modifiers[0];
@@ -102,7 +101,6 @@ export class AIEnemy {
     
     let texture = textureMap[this.type] || 'enemy_drone';
     
-    // Специальные текстуры для миров
     if (this.worldType === 1 && this.type === 'drone') {
       texture = 'cyber_drone';
     } else if (this.worldType === 2 && this.type === 'skeleton') {
@@ -122,7 +120,6 @@ export class AIEnemy {
     this.sprite.setCollideWorldBounds(true);
     this.sprite.body.setDrag(0.95);
     
-    // Разный размер коллизии для разных врагов
     if (this.type === 'sentinel') {
       this.sprite.body.setCircle(18);
     } else if (this.type === 'skeleton') {
@@ -133,12 +130,10 @@ export class AIEnemy {
   }
 
   applyWorldVisuals() {
-    // Киберпанк - неоновое свечение
     if (this.worldType === 1) {
       this.sprite.setBlendMode(Phaser.BlendModes.ADD);
       this.sprite.setTint(0xff44ff);
       
-      // Мерцание
       this.scene.tweens.add({
         targets: this.sprite,
         alpha: { from: 0.8, to: 1.0 },
@@ -148,12 +143,10 @@ export class AIEnemy {
       });
     }
     
-    // Подземелье - тёмная аура
     if (this.worldType === 2) {
       this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
       this.sprite.setTint(0x886644);
       
-      // Эффект теней
       const shadow = this.scene.add.circle(this.sprite.x, this.sprite.y + 10, 15, 0x000000, 0.3);
       shadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
       shadow.setDepth(9);
@@ -173,17 +166,14 @@ export class AIEnemy {
       });
     }
     
-    // Астероиды - каменная текстура
     if (this.worldType === 3) {
       this.sprite.setTint(0xccaa88);
     }
     
-    // Чёрная дыра - фиолетовое свечение
     if (this.worldType === 4) {
       this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
       this.sprite.setTint(0xaa88ff);
       
-      // Аура
       const aura = this.scene.add.circle(this.sprite.x, this.sprite.y, 20, 0xaa88ff, 0.2);
       aura.setBlendMode(Phaser.BlendModes.ADD);
       aura.setDepth(9);
@@ -228,7 +218,6 @@ export class AIEnemy {
     
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
     
-    // Цвет полоски в зависимости от мира
     let barColor = 0xff0000;
     if (this.worldType === 1) barColor = 0xff44ff;
     if (this.worldType === 2) barColor = 0xff6600;
@@ -264,13 +253,9 @@ export class AIEnemy {
   update(playerPos, time, delta) {
     if (!this.sprite || !this.sprite.active) return;
     
-    // Обновляем таймеры
     this.updateTimers(delta);
-    
-    // Проверка на невидимость
     this.updateInvisibility(delta);
     
-    // Проверка на оглушение
     if (this.stunTimer > 0) {
       this.updateStun(delta);
       return;
@@ -281,10 +266,8 @@ export class AIEnemy {
       playerPos.x, playerPos.y
     );
     
-    // Определяем состояние
     this.updateState(dist, playerPos);
     
-    // Выполняем действие
     switch (this.state) {
       case 'chase':
         this.chase(playerPos);
@@ -300,19 +283,13 @@ export class AIEnemy {
         break;
     }
     
-    // Применяем специальную способность
     if (this.specialAbility && this.abilityCooldown <= 0 && !this.invisible) {
       this.useSpecialAbility(playerPos);
       this.abilityCooldown = 5000;
     }
     
-    // Обновляем щит
     this.updateShield(delta);
-    
-    // Обновляем полоску здоровья
     this.updateHealthBar();
-    
-    // Обновляем визуальные эффекты
     this.updateVisualEffects(delta);
   }
 
@@ -327,7 +304,6 @@ export class AIEnemy {
   }
 
   updateState(dist, playerPos) {
-    // Если здоровье низкое, отступаем
     if (this.health < this.maxHealth * 0.3 && Math.random() < 0.02) {
       this.retreatTimer = 2000;
       this.state = 'retreat';
@@ -351,22 +327,16 @@ export class AIEnemy {
     const speed = this.config.speed * (this.shieldActive ? 0.5 : 1);
     this.sprite.setVelocityX(Math.cos(angle) * speed);
     this.sprite.setVelocityY(Math.sin(angle) * speed * 0.6);
-    
-    // Поворот в сторону движения
     this.sprite.setAngle(Math.atan2(this.sprite.body.velocity.y, this.sprite.body.velocity.x) * 57.3);
   }
 
   attack(playerPos) {
-    // Стрельба
     if (this.fireCooldown <= 0) {
       this.fireAtPlayer(playerPos);
       this.fireCooldown = this.config.fireDelay;
     }
-    
-    // Продолжаем преследование
     this.chase(playerPos);
     
-    // Визуальный эффект атаки
     if (this.attackCooldown <= 0) {
       this.createAttackEffect();
       this.attackCooldown = 500;
@@ -425,12 +395,12 @@ export class AIEnemy {
     bullet.active = true;
     bullet.enemyBullet = true;
     
-    // Эффект выстрела
     this.createMuzzleFlash();
     
-    // Звук выстрела
     try {
-      audioManager.playSound(this.scene, 'shoot_sound', 0.2);
+      if (audioManager && audioManager.playSound) {
+        audioManager.playSound(this.scene, 'shoot_sound', 0.2);
+      }
     } catch (e) {}
   }
 
@@ -467,10 +437,8 @@ export class AIEnemy {
   }
 
   teleport(playerPos) {
-    // Эффект телепортации
     this.createTeleportEffect();
     
-    // Новая позиция
     const angle = Phaser.Math.Angle.Between(
       this.sprite.x, this.sprite.y,
       playerPos.x, playerPos.y
@@ -481,7 +449,6 @@ export class AIEnemy {
     
     this.sprite.setPosition(newX, newY);
     
-    // Второй эффект
     this.scene.time.delayedCall(50, () => {
       this.createTeleportEffect();
     });
@@ -577,7 +544,6 @@ export class AIEnemy {
         this.invisible = false;
         this.sprite.setAlpha(1);
       } else {
-        // Мерцание
         const alpha = 0.2 + Math.sin(Date.now() * 0.02) * 0.1;
         this.sprite.setAlpha(alpha);
       }
@@ -585,14 +551,9 @@ export class AIEnemy {
   }
 
   updateStun(delta) {
-    // Визуальный эффект оглушения
     const blink = Math.floor(Date.now() / 100) % 2;
     this.sprite.setAlpha(blink ? 0.5 : 1);
   }
-
-  // =========================================================================
-  // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
-  // =========================================================================
 
   createAttackEffect() {
     this.sprite.setTint(0xff6666);
@@ -626,7 +587,6 @@ export class AIEnemy {
   }
 
   updateVisualEffects(delta) {
-    // След для быстрых врагов
     if (this.config.speed > 150 && !this.trailEmitter && !this.invisible) {
       this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
         speed: 20,
@@ -642,10 +602,6 @@ export class AIEnemy {
     }
   }
 
-  // =========================================================================
-  // УРОН И СМЕРТЬ
-  // =========================================================================
-
   takeDamage(amount) {
     if (this.shieldActive) {
       this.createShieldHitEffect();
@@ -654,7 +610,6 @@ export class AIEnemy {
     
     this.health -= amount;
     
-    // Визуальный эффект урона
     this.sprite.setTint(0xff8888);
     this.scene.time.delayedCall(150, () => {
       if (this.sprite && this.sprite.active) {
@@ -662,11 +617,9 @@ export class AIEnemy {
       }
     });
     
-    // Эффект отбрасывания
     this.sprite.body.setVelocityX(-50);
     this.sprite.body.setVelocityY(Phaser.Math.Between(-50, 50));
     
-    // Шанс оглушения
     if (Math.random() < 0.2 && !this.shieldActive) {
       this.stunTimer = 500;
     }
@@ -690,35 +643,32 @@ export class AIEnemy {
     });
     
     try {
-      audioManager.playSound(this.scene, 'shield_sound', 0.2);
+      if (audioManager && audioManager.playSound) {
+        audioManager.playSound(this.scene, 'shield_sound', 0.2);
+      }
     } catch (e) {}
   }
 
   die() {
-    // Добавляем кристаллы
     this.scene.crystals += this.scoreValue;
     if (this.scene.crystalText) {
       this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
     }
-    gameManager.addCrystals(this.scoreValue, 'enemy_kill');
+    if (gameManager) {
+      gameManager.addCrystals(this.scoreValue, 'enemy_kill');
+    }
     
-    // Эффект смерти
     this.createDeathEffect();
-    
-    // Звук
     this.playDeathSound();
     
-    // Увеличиваем комбо
     if (this.scene.comboSystem) {
       this.scene.comboSystem.add();
     }
     
-    // Обновляем квест
     if (this.scene.questSystem) {
       this.scene.questSystem.updateProgress('enemies', 1);
     }
     
-    // Очистка
     this.cleanup();
   }
 
@@ -730,9 +680,7 @@ export class AIEnemy {
       );
     }
     
-    // Дополнительный эффект для разных миров
     if (this.worldType === 1) {
-      // Киберпанк - цифровые осколки
       for (let i = 0; i < 5; i++) {
         const debris = this.scene.add.text(
           this.sprite.x + Phaser.Math.Between(-15, 15),
@@ -749,7 +697,6 @@ export class AIEnemy {
         });
       }
     } else if (this.worldType === 4) {
-      // Чёрная дыра - гравитационный коллапс
       const collapse = this.scene.add.circle(this.sprite.x, this.sprite.y, 15, 0xaa88ff, 0.6);
       this.scene.tweens.add({
         targets: collapse,
@@ -763,33 +710,30 @@ export class AIEnemy {
 
   playDeathSound() {
     try {
-      audioManager.playSound(this.scene, 'enemy_die_sound', 0.4);
+      if (audioManager && audioManager.playSound) {
+        audioManager.playSound(this.scene, 'enemy_die_sound', 0.4);
+      }
     } catch (e) {}
   }
 
   cleanup() {
-    // Удаляем след
     if (this.trailEmitter) {
       this.trailEmitter.stop();
       this.trailEmitter.destroy();
     }
     
-    // Удаляем щит
     if (this.shieldEffect) {
       this.shieldEffect.destroy();
     }
     
-    // Удаляем полоску здоровья
     if (this.healthBar) {
       this.healthBar.destroy();
     }
     
-    // Удаляем из группы
     if (this.scene.enemyGroup) {
       this.scene.enemyGroup.remove(this.sprite);
     }
     
-    // Удаляем из волны
     if (this.scene.waveManager) {
       const index = this.scene.waveManager.enemies.indexOf(this);
       if (index !== -1) {
@@ -797,15 +741,10 @@ export class AIEnemy {
       }
     }
     
-    // Уничтожаем спрайт
     if (this.sprite && this.sprite.active) {
       this.sprite.destroy();
     }
   }
-
-  // =========================================================================
-  // ГЕТТЕРЫ
-  // =========================================================================
 
   getPosition() {
     return { x: this.sprite.x, y: this.sprite.y };

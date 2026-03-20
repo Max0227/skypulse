@@ -1,13 +1,15 @@
-// В начале файла PlayScene.js, в импортах добавьте ACHIEVEMENTS
-import {
-  ACHIEVEMENTS,  // <-- ДОБАВЬТЕ ЭТУ СТРОКУ
-  LEVEL_CONFIG,
-  ENEMY_CONFIG,
-  SHOP_UPGRADES,
-} from '../config';
 // src/scenes/PlayScene.js
 import Phaser from 'phaser';
-import { LEVEL_CONFIG, ENEMY_CONFIG } from '../config';
+import {
+  COLORS,
+  LEVEL_CONFIG,
+  ENEMY_CONFIG,
+  WAVE_CONFIG,
+  POWERUP_TYPES,
+  ACHIEVEMENTS,
+  SHOP_UPGRADES,
+  GAME_CONFIG
+} from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 import { ParticleEffectManager } from '../systems/ParticleEffectManager';
@@ -19,7 +21,7 @@ import { MultiplierSystem } from '../systems/MultiplierSystem';
 import { WaveManager } from '../systems/WaveManager';
 import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
-import { Wagon } from '../entities/Wagon';
+// Wagon не импортируем, так как используем локальный класс
 // ... остальной код PlayScene
 
 // =========================================================================
@@ -995,271 +997,185 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (this.isPaused || this.countdownActive) return;
+  if (this.isPaused || this.countdownActive) return;
 
-    // ===== ОБНОВЛЕНИЕ ФОНА =====
-    this.updateStars(time, delta);
-    this.updatePlanets(delta);
-    this.updateShips(delta);
-    this.updateAsteroids(delta);
+  // ===== ОБНОВЛЕНИЕ ФОНА =====
+  this.updateStars(time, delta);
+  this.updatePlanets(delta);
+  this.updateShips(delta);
+  this.updateAsteroids(delta);
 
-    // ===== ПРИНУДИТЕЛЬНЫЙ КОНТРОЛЬ ГРАВИТАЦИИ =====
-    if (this.gateGroup) {
-      this.gateGroup.getChildren().forEach((gate) => {
-        if (gate && gate.body) {
-          gate.body.setVelocityY(0);
-          gate.body.setGravityY(0);
+  // ===== ПРИНУДИТЕЛЬНЫЙ КОНТРОЛЬ ГРАВИТАЦИИ =====
+  if (this.gateGroup) {
+    this.gateGroup.getChildren().forEach((gate) => {
+      if (gate && gate.body) {
+        gate.body.setVelocityY(0);
+        gate.body.setGravityY(0);
+      }
+    });
+  }
+
+  if (this.scoreZones) {
+    this.scoreZones.forEach((zone) => {
+      if (zone && zone.body) {
+        zone.body.setVelocityY(0);
+        zone.body.setGravityY(0);
+      }
+    });
+  }
+
+  // ===== КОНТРОЛЬ МОНЕТ =====
+  if (this.coins) {
+    for (let i = 0; i < this.coins.length; i++) {
+      const coin = this.coins[i];
+      if (coin && coin.body && coin.active) {
+        if (coin.body.velocity.y !== 0) {
+          coin.body.setVelocityY(0);
         }
-      });
-    }
-
-    if (this.scoreZones) {
-      this.scoreZones.forEach((zone) => {
-        if (zone && zone.body) {
-          zone.body.setVelocityY(0);
-          zone.body.setGravityY(0);
+        if (coin.body.velocity.x !== -this.currentSpeed) {
+          coin.body.setVelocityX(-this.currentSpeed);
         }
-      });
-    }
-
-    // ===== КОНТРОЛЬ МОНЕТ (БЕЗ ИЗМЕНЕНИЙ) =====
-    if (this.coins) {
-      for (let i = 0; i < this.coins.length; i++) {
-        const coin = this.coins[i];
-        if (coin && coin.body && coin.active) {
-          if (coin.body.velocity.y !== 0) {
-            coin.body.setVelocityY(0);
-          }
-          if (coin.body.velocity.x !== -this.currentSpeed) {
-            coin.body.setVelocityX(-this.currentSpeed);
-          }
-          coin.body.setAllowGravity(false);
-          coin.body.setGravityY(0);
-        }
+        coin.body.setAllowGravity(false);
+        coin.body.setGravityY(0);
       }
     }
+  }
 
-    if (!this.started || this.dead || !this.player) return;
+  if (!this.started || this.dead || !this.player) return;
 
-    // ===== ОБНОВЛЕНИЕ ОРУЖИЯ =====
-    if (this.weaponCooldown > 0) {
-      this.weaponCooldown -= delta;
-    }
-    
-    // ===== ОБНОВЛЕНИЕ ПОЗИЦИИ ИГРОКА =====
-    this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
-    this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
+  // ===== ОБНОВЛЕНИЕ ОРУЖИЯ =====
+  if (this.weaponCooldown > 0) {
+    this.weaponCooldown -= delta;
+  }
 
-    const body = this.player.body;
-    if (body) {
-      this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
-    }
+  // ===== ОБНОВЛЕНИЕ ПОЗИЦИИ ИГРОКА =====
+  this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
+  this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
 
-    // ===== ПРОВЕРКА СМЕРТИ =====
-    if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
-      this.handleDeath();
-    }
+  const body = this.player.body;
+  if (body) {
+    this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
+  }
 
-    // ===== МАГНИТ =====
-    if (this.magnetActive && this.coinGroup) {
-      const magnetCoins = this.coinGroup.getChildren();
-      for (let coin of magnetCoins) {
-        if (!coin || !coin.active) continue;
-        const dist = Phaser.Math.Distance.Between(
-          this.player.x,
-          this.player.y,
-          coin.x,
-          coin.y
-        );
-        if (dist < this.magnetRange) {
-          const angle = Phaser.Math.Angle.Between(
-            coin.x,
-            coin.y,
-            this.player.x,
-            this.player.y
-          );
-          coin.x += Math.cos(angle) * 10;
-          coin.y += Math.sin(angle) * 10;
-        }
-      }
-    }
+  // ===== ПРОВЕРКА СМЕРТИ =====
+  if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
+    this.handleDeath();
+    return;
+  }
 
-    // ===== ОБНОВЛЕНИЕ ВАГОНОВ И ОЧИСТКА =====
-    this.updateWagons();
-    this.cleanupObjects();
-
-    // ===== СТАНЦИЯ =====
-    if (this.stationPlanet && this.stationPlanet.active && this.stationActive) {
+  // ===== МАГНИТ =====
+  if (this.magnetActive && this.coinGroup) {
+    const magnetCoins = this.coinGroup.getChildren();
+    for (let coin of magnetCoins) {
+      if (!coin || !coin.active) continue;
       const dist = Phaser.Math.Distance.Between(
         this.player.x,
         this.player.y,
-        this.stationPlanet.x,
-        this.stationPlanet.y
+        coin.x,
+        coin.y
       );
-      if (dist < 100) this.touchStation();
-    }
-
-    // ===== ПРОВЕРКИ И ОБНОВЛЕНИЯ =====
-    this.checkAchievements();
-    if (this.level >= 1 && this.waveManager) {
-      this.waveManager.update(time, delta, this.player);
-    }
-    if (this.specialEventManager) {
-      this.specialEventManager.update(delta);
-    }
-    this.checkLevelProgression();
-
-    // ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
-    const distanceDelta = (this.currentSpeed * delta) / 1000 / 10;
-    
-    // Общий метраж (для статистики)
-    this.meters += distanceDelta;
-    
-    // Прогресс в текущем уровне мира
-    this.levelProgress += distanceDelta;
-    
-    if (this.meterText) {
-      this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
-    }
-
-    // ===== ОБНОВЛЕНИЕ ПРОГРЕССА УРОВНЯ (НОВОЕ) =====
-    this.updateWorldProgress();
-
-    // ===== ОБНОВЛЕНИЕ ПУЛЬ =====
-    if (this.playerBullets) {
-      this.playerBullets.getChildren().forEach((b) => {
-        if (b && b.x > this.scale.width + 100) b.destroy();
-      });
-    }
-    if (this.enemyBullets) {
-      this.enemyBullets.getChildren().forEach((b) => {
-        if (b && (b.x < -100 || b.y < -100 || b.y > this.scale.height + 100)) b.destroy();
-      });
-    }
-
-    // ===== ОБНОВЛЕНИЕ АСТЕРОИДОВ =====
-    for (let i = this.asteroids.length - 1; i >= 0; i--) {
-      const asteroid = this.asteroids[i];
-      if (!asteroid || typeof asteroid.update !== 'function') {
-        this.asteroids.splice(i, 1);
-        continue;
-      }
-      if (!asteroid.update()) {
-        this.asteroids.splice(i, 1);
+      if (dist < this.magnetRange) {
+        const angle = Phaser.Math.Angle.Between(
+          coin.x,
+          coin.y,
+          this.player.x,
+          this.player.y
+        );
+        coin.x += Math.cos(angle) * 10;
+        coin.y += Math.sin(angle) * 10;
       }
     }
+  }
 
-    // ===== ОБНОВЛЕНИЕ УСИЛИТЕЛЕЙ =====
-    for (let i = this.powerUps.length - 1; i >= 0; i--) {
-      const powerUp = this.powerUps[i];
-      if (!powerUp || typeof powerUp.update !== 'function') {
-        this.powerUps.splice(i, 1);
-        continue;
-      }
-      if (!powerUp.update()) {
-        this.powerUps.splice(i, 1);
-      }
+  // ===== ОБНОВЛЕНИЕ ВАГОНОВ И ОЧИСТКА =====
+  this.updateWagons();
+  this.cleanupObjects();
+
+  // ===== СТАНЦИЯ =====
+  if (this.stationPlanet && this.stationPlanet.active && this.stationActive) {
+    const dist = Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.stationPlanet.x,
+      this.stationPlanet.y
+    );
+    if (dist < 100) this.touchStation();
+  }
+
+  // ===== ПРОВЕРКИ И ОБНОВЛЕНИЯ =====
+  this.checkAchievements();
+  if (this.level >= 1 && this.waveManager) {
+    this.waveManager.update(time, delta, this.player);
+  }
+  if (this.specialEventManager) {
+    this.specialEventManager.update(delta);
+  }
+  this.checkLevelProgression();
+
+  // ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
+  const distanceDelta = (this.currentSpeed * delta) / 1000 / 10;
+
+  // Общий метраж (для статистики)
+  this.meters += distanceDelta;
+
+  // Прогресс в текущем уровне мира
+  this.levelProgress += distanceDelta;
+
+  if (this.meterText) {
+    this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
+  }
+
+  // ===== ОБНОВЛЕНИЕ ПРОГРЕССА УРОВНЯ =====
+  this.updateWorldProgress();
+
+  // ===== ОБНОВЛЕНИЕ ПУЛЬ =====
+  if (this.playerBullets) {
+    this.playerBullets.getChildren().forEach((b) => {
+      if (b && b.x > this.scale.width + 100) b.destroy();
+    });
+  }
+  if (this.enemyBullets) {
+    this.enemyBullets.getChildren().forEach((b) => {
+      if (b && (b.x < -100 || b.y < -100 || b.y > this.scale.height + 100)) b.destroy();
+    });
+  }
+
+  // ===== ОБНОВЛЕНИЕ АСТЕРОИДОВ =====
+  for (let i = this.asteroids.length - 1; i >= 0; i--) {
+    const asteroid = this.asteroids[i];
+    if (!asteroid || typeof asteroid.update !== 'function') {
+      this.asteroids.splice(i, 1);
+      continue;
     }
-
-    // ===== СТАРЫЙ МЕТОД updateLevel БОЛЬШЕ НЕ ВЫЗЫВАЕТСЯ =====
-    // this.updateLevel(); - УДАЛЕН
-
-    // ===== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ =====
-if (this.updatePlayerEffects) this.updatePlayerEffects();
-if (this.updateMultiplier) this.updateMultiplier();
-if (this.checkWaveAchievements) this.checkWaveAchievements();
-if (this.createComboEffect) this.createComboEffect();
-if (this.checkNewRecords) this.checkNewRecords();
-if (this.checkQuests) this.checkQuests();
-if (this.updateRealTimeStats) this.updateRealTimeStats();
-
-// ВАЖНО: закомментировано, так как метод удален
-// if (this.checkLevelCompletion) this.checkLevelCompletion();
-
-if (this.checkMaxCombo) this.checkMaxCombo();
-if (this.checkPerformance) this.checkPerformance();
-if (this.optimizeMemory) this.optimizeMemory();
-    // ===== ПРОВЕРКИ И ОБНОВЛЕНИЯ =====
-this.checkAchievements();
-if (this.level >= 1 && this.waveManager) {
-  this.waveManager.update(time, delta, this.player);
-}
-if (this.specialEventManager) {
-  this.specialEventManager.update(delta);
-}
-this.checkLevelProgression();
-
-// ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
-const distDelta = (this.currentSpeed * delta) / 1000 / 10;
-
-// Общий метраж (для статистики)
-this.meters += distanceDelta;
-
-// Прогресс в текущем уровне мира
-this.levelProgress += distanceDelta;
-
-if (this.meterText) {
-  this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
-}
-
-// ===== ОБНОВЛЕНИЕ ПРОГРЕССА УРОВНЯ =====
-this.updateWorldProgress();
-
-// ===== ОБНОВЛЕНИЕ ПУЛЬ =====
-if (this.playerBullets) {
-  this.playerBullets.getChildren().forEach((b) => {
-    if (b && b.x > this.scale.width + 100) b.destroy();
-  });
-}
-if (this.enemyBullets) {
-  this.enemyBullets.getChildren().forEach((b) => {
-    if (b && (b.x < -100 || b.y < -100 || b.y > this.scale.height + 100)) b.destroy();
-  });
-}
-
-// ===== ОБНОВЛЕНИЕ АСТЕРОИДОВ =====
-for (let i = this.asteroids.length - 1; i >= 0; i--) {
-  const asteroid = this.asteroids[i];
-  if (!asteroid || typeof asteroid.update !== 'function') {
-    this.asteroids.splice(i, 1);
-    continue;
+    if (!asteroid.update()) {
+      this.asteroids.splice(i, 1);
+    }
   }
-  if (!asteroid.update()) {
-    this.asteroids.splice(i, 1);
+
+  // ===== ОБНОВЛЕНИЕ УСИЛИТЕЛЕЙ =====
+  for (let i = this.powerUps.length - 1; i >= 0; i--) {
+    const powerUp = this.powerUps[i];
+    if (!powerUp || typeof powerUp.update !== 'function') {
+      this.powerUps.splice(i, 1);
+      continue;
+    }
+    if (!powerUp.update()) {
+      this.powerUps.splice(i, 1);
+    }
   }
+
+  // ===== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ =====
+  if (this.updatePlayerEffects) this.updatePlayerEffects();
+  if (this.updateMultiplier) this.updateMultiplier();
+  if (this.checkWaveAchievements) this.checkWaveAchievements();
+  if (this.createComboEffect) this.createComboEffect();
+  if (this.checkNewRecords) this.checkNewRecords();
+  if (this.checkQuests) this.checkQuests();
+  if (this.updateRealTimeStats) this.updateRealTimeStats();
+  if (this.checkMaxCombo) this.checkMaxCombo();
+  if (this.checkPerformance) this.checkPerformance();
+  if (this.optimizeMemory) this.optimizeMemory();
 }
-
-// ===== ОБНОВЛЕНИЕ УСИЛИТЕЛЕЙ =====
-for (let i = this.powerUps.length - 1; i >= 0; i--) {
-  const powerUp = this.powerUps[i];
-  if (!powerUp || typeof powerUp.update !== 'function') {
-    this.powerUps.splice(i, 1);
-    continue;
-  }
-  if (!powerUp.update()) {
-    this.powerUps.splice(i, 1);
-  }
-}
-
-// ===== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ =====
-if (this.updatePlayerEffects) this.updatePlayerEffects();
-if (this.updateMultiplier) this.updateMultiplier();
-if (this.checkWaveAchievements) this.checkWaveAchievements();
-if (this.createComboEffect) this.createComboEffect();
-if (this.checkNewRecords) this.checkNewRecords();
-if (this.checkQuests) this.checkQuests();
-if (this.updateRealTimeStats) this.updateRealTimeStats();
-
-// ВАЖНО: закомментируйте checkLevelCompletion, если не хотите завершать уровень по очкам
-// if (this.checkLevelCompletion) this.checkLevelCompletion();
-
-if (this.checkMaxCombo) this.checkMaxCombo();
-if (this.checkPerformance) this.checkPerformance();
-if (this.optimizeMemory) this.optimizeMemory();
-
-// ===== КОНЕЦ БЛОКА UPDATE =====
-// Далее идут другие методы класса, например attackEnemies()
-  }
 
   // =========================================================================
   // МЕТОДЫ ДЛЯ МОНЕТ
