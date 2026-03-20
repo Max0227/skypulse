@@ -23,6 +23,7 @@ import { MultiplierSystem } from '../systems/MultiplierSystem';
 import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
 import { Wagon } from '../entities/Wagon';
+import { WaveManager } from '../systems/WaveManager';
 
 // =========================================================================
 // ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
