@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, UPGRADE_COSTS, SKINS } from '../config';
+import { ACHIEVEMENTS, UPGRADE_COSTS, SKINS, WORLD_CONFIG } from '../config';
 
 export class GameManager {
   constructor() {
@@ -22,7 +22,7 @@ export class GameManager {
     if (this.isInitialized) return;
     
     this.startAutoSave();
-    this.checkDailyReward(); // <- этот метод нужно добавить
+    this.checkDailyReward();
     this.updateLastPlayed();
     this.isInitialized = true;
     
@@ -39,12 +39,9 @@ export class GameManager {
   }
 
   // =========================================================================
-  // ДНЕВНЫЕ НАГРАДЫ (ДОБАВЛЯЕМ ОТСУТСТВУЮЩИЙ МЕТОД)
+  // ДНЕВНЫЕ НАГРАДЫ
   // =========================================================================
 
-  /**
-   * Проверка и обновление дневной награды
-   */
   checkDailyReward() {
     const today = new Date().toISOString().split('T')[0];
     const lastClaim = this.data.dailyReward?.lastClaimDate || '';
@@ -381,7 +378,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // МИРЫ И УРОВНИ (остальные методы остаются без изменений)
+  // МИРЫ И УРОВНИ
   // =========================================================================
 
   getCurrentWorld() { 
@@ -501,8 +498,21 @@ export class GameManager {
     return total;
   }
 
+  getWorldName(world) {
+    return WORLD_CONFIG[world]?.name || `Мир ${world + 1}`;
+  }
+
+  getWorldDescription(world) {
+    return WORLD_CONFIG[world]?.description || '';
+  }
+
+  getWorldColor(world) {
+    const colors = [0x00ffff, 0xff00ff, 0xff6600, 0xffaa00, 0xaa88ff];
+    return colors[world] || 0x00ffff;
+  }
+
   // =========================================================================
-  // СКИНЫ (остаются без изменений)
+  // СКИНЫ
   // =========================================================================
 
   getOwnedSkins() { 
@@ -530,7 +540,7 @@ export class GameManager {
       jumpBonus: 0
     };
     
-    const stats = skin ? { ...defaultStats, ...skin.stats } : defaultStats;
+    const stats = skin ? { ...defaultStats, ...(skin.stats || {}) } : defaultStats;
     this.skinStatsCache.set(skinId, stats);
     return stats;
   }
@@ -548,6 +558,7 @@ export class GameManager {
     this.data.crystals -= skin.price;
     this.data.ownedSkins.push(skinId);
     this.save();
+    this.checkSkinCollectionAchievements();
     return true;
   }
 
@@ -1049,24 +1060,24 @@ export class GameManager {
 
   generateDailyQuests() {
     const quests = [
-      { id: 'daily_1', type: 'score', target: 1000, reward: 50, progress: 0, completed: false },
-      { id: 'daily_2', type: 'distance', target: 5000, reward: 75, progress: 0, completed: false },
-      { id: 'daily_3', type: 'combo', target: 20, reward: 100, progress: 0, completed: false },
-      { id: 'daily_4', type: 'crystals', target: 50, reward: 150, progress: 0, completed: false },
-      { id: 'daily_5', type: 'gates', target: 30, reward: 80, progress: 0, completed: false }
+      { id: 'daily_1', type: 'score', target: 1000, reward: 50, progress: 0, completed: false, claimed: false },
+      { id: 'daily_2', type: 'distance', target: 5000, reward: 75, progress: 0, completed: false, claimed: false },
+      { id: 'daily_3', type: 'combo', target: 20, reward: 100, progress: 0, completed: false, claimed: false },
+      { id: 'daily_4', type: 'crystals', target: 50, reward: 150, progress: 0, completed: false, claimed: false },
+      { id: 'daily_5', type: 'gates', target: 30, reward: 80, progress: 0, completed: false, claimed: false }
     ];
     return this.shuffleArray(quests).slice(0, 3);
   }
 
   generateWeeklyQuests() {
     const quests = [
-      { id: 'weekly_1', type: 'score', target: 10000, reward: 300, progress: 0, completed: false },
-      { id: 'weekly_2', type: 'distance', target: 50000, reward: 500, progress: 0, completed: false },
-      { id: 'weekly_3', type: 'combo', target: 100, reward: 750, progress: 0, completed: false },
-      { id: 'weekly_4', type: 'crystals', target: 500, reward: 1000, progress: 0, completed: false },
-      { id: 'weekly_5', type: 'games', target: 20, reward: 400, progress: 0, completed: false },
-      { id: 'weekly_6', type: 'perfect', target: 5, reward: 600, progress: 0, completed: false },
-      { id: 'weekly_7', type: 'no_hit', target: 3, reward: 800, progress: 0, completed: false }
+      { id: 'weekly_1', type: 'score', target: 10000, reward: 300, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_2', type: 'distance', target: 50000, reward: 500, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_3', type: 'combo', target: 100, reward: 750, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_4', type: 'crystals', target: 500, reward: 1000, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_5', type: 'games', target: 20, reward: 400, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_6', type: 'perfect', target: 5, reward: 600, progress: 0, completed: false, claimed: false },
+      { id: 'weekly_7', type: 'no_hit', target: 3, reward: 800, progress: 0, completed: false, claimed: false }
     ];
     return this.shuffleArray(quests).slice(0, 5);
   }
