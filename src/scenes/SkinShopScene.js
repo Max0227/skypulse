@@ -129,9 +129,9 @@ export class SkinShopScene extends Phaser.Scene {
     super('skinShop');
     this.isExiting = false;
     this.lastHoverTime = 0;
-    this.currentDetailPanel = null;     // ссылка на активное окно
-    this.detailObjects = [];             // массив всех объектов окна
-    this.purchaseInProgress = false;     // защита от двойной покупки
+    this.currentDetailPanel = null;
+    this.purchaseInProgress = false;
+    this.skinCards = [];
   }
 
   create() {
@@ -159,6 +159,9 @@ export class SkinShopScene extends Phaser.Scene {
     // Кнопка назад
     this.createBackButton();
 
+    // Добавляем обработчик изменения размера экрана
+    this.scale.on('resize', () => this.scene.restart(), this);
+
     console.log('✅ SkinShop: create completed');
   }
 
@@ -179,7 +182,7 @@ export class SkinShopScene extends Phaser.Scene {
   createStars() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const count = 100;
+    const count = 120;
     for (let i = 0; i < count; i++) {
       const star = this.add.circle(
         Phaser.Math.Between(0, w),
@@ -230,7 +233,7 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СПИСОК СКИНОВ (6 карточек)
+  // СПИСОК СКИНОВ
   // =========================================================================
 
   createSkinList() {
@@ -246,6 +249,7 @@ export class SkinShopScene extends Phaser.Scene {
       const canAfford = gameManager.data.crystals >= skin.price;
       const card = this.createSkinCard(skin, w, y, owned, selected, canAfford);
       this.add.existing(card);
+      this.skinCards.push(card);
     });
   }
 
@@ -356,7 +360,7 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕТАЛЬНОЕ ОКНО СКИНА (ВСЁ ВИДНО, КНОПКИ НА МЕСТЕ, РАБОТАЕТ)
+  // ДЕТАЛЬНОЕ ОКНО СКИНА (ПОЛНОСТЬЮ РАБОТАЮЩЕЕ)
   // =========================================================================
 
   openSkinDetail(skin) {
@@ -515,16 +519,38 @@ export class SkinShopScene extends Phaser.Scene {
       }).setOrigin(1, 0.5).setDepth(203).setScrollFactor(0);
     }
 
-    // Кнопки действия (Купить/Выбрать и Отмена) – размещаем внизу, поверх всего
+    // Кнопки действия
     const buttonY = h / 2 + 170;
     let actionBtn = null;
+    let actionBtnText = null;
 
     if (!owned) {
-      actionBtn = this.createActionButton(w / 2 - 60, buttonY, 'КУПИТЬ', canAfford ? '#00ff00' : '#ff4444');
-      actionBtn.setDepth(210).setScrollFactor(0);
+      const btnColor = canAfford ? '#00ff00' : '#ff4444';
+      actionBtn = this.add.graphics();
+      actionBtn.fillStyle(Phaser.Display.Color.HexStringToColor(btnColor).color, 0.9);
+      actionBtn.fillRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+      actionBtn.lineStyle(2, Phaser.Display.Color.HexStringToColor(btnColor).color, 1);
+      actionBtn.strokeRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+      actionBtnText = this.add.text(w / 2 - 60, buttonY, 'КУПИТЬ', {
+        fontSize: '16px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2
+      }).setOrigin(0.5);
     } else if (!selected) {
-      actionBtn = this.createActionButton(w / 2 - 60, buttonY, 'ВЫБРАТЬ', '#00ffff');
-      actionBtn.setDepth(210).setScrollFactor(0);
+      actionBtn = this.add.graphics();
+      actionBtn.fillStyle(0x00ffff, 0.9);
+      actionBtn.fillRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+      actionBtn.lineStyle(2, 0x00ffff, 1);
+      actionBtn.strokeRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+      actionBtnText = this.add.text(w / 2 - 60, buttonY, 'ВЫБРАТЬ', {
+        fontSize: '16px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2
+      }).setOrigin(0.5);
     } else {
       const equipped = this.add.text(w / 2 - 60, buttonY, '✓ ВЫБРАНО', {
         fontSize: '18px',
@@ -535,12 +561,45 @@ export class SkinShopScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(210).setScrollFactor(0);
     }
 
-    const cancelBtn = this.createActionButton(w / 2 + 60, buttonY, 'ОТМЕНА', '#ff4444');
-    cancelBtn.setDepth(210).setScrollFactor(0);
+    // Кнопка отмены
+    const cancelBtn = this.add.graphics();
+    cancelBtn.fillStyle(0xff4444, 0.9);
+    cancelBtn.fillRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+    cancelBtn.lineStyle(2, 0xff4444, 1);
+    cancelBtn.strokeRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+    const cancelText = this.add.text(w / 2 + 60, buttonY, 'ОТМЕНА', {
+      fontSize: '16px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
 
-    // Логика обработки
+    // Добавляем интерактивные области
     if (actionBtn) {
-      actionBtn.on('pointerdown', () => {
+      const actionHit = this.add.rectangle(w / 2 - 60, buttonY, 110, 40, 0x000000, 0)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(300);
+      actionHit.on('pointerover', () => {
+        const btnColor = (!owned && canAfford) ? '#00ff00' : (!owned ? '#ff4444' : '#00ffff');
+        actionBtn.clear();
+        actionBtn.fillStyle(Phaser.Display.Color.HexStringToColor(btnColor).color, 1);
+        actionBtn.fillRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+        actionBtn.lineStyle(2, Phaser.Display.Color.HexStringToColor(btnColor).color, 1);
+        actionBtn.strokeRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+        actionBtnText.setScale(1.05);
+        this.playHoverSound();
+      });
+      actionHit.on('pointerout', () => {
+        const btnColor = (!owned && canAfford) ? '#00ff00' : (!owned ? '#ff4444' : '#00ffff');
+        actionBtn.clear();
+        actionBtn.fillStyle(Phaser.Display.Color.HexStringToColor(btnColor).color, 0.9);
+        actionBtn.fillRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+        actionBtn.lineStyle(2, Phaser.Display.Color.HexStringToColor(btnColor).color, 1);
+        actionBtn.strokeRoundedRect(w / 2 - 60 - 55, buttonY - 20, 110, 40, 20);
+        actionBtnText.setScale(1);
+      });
+      actionHit.on('pointerdown', () => {
         if (this.purchaseInProgress) return;
         this.purchaseInProgress = true;
         if (!owned) {
@@ -577,7 +636,27 @@ export class SkinShopScene extends Phaser.Scene {
       });
     }
 
-    cancelBtn.on('pointerdown', () => {
+    const cancelHit = this.add.rectangle(w / 2 + 60, buttonY, 110, 40, 0x000000, 0)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(300);
+    cancelHit.on('pointerover', () => {
+      cancelBtn.clear();
+      cancelBtn.fillStyle(0xff4444, 1);
+      cancelBtn.fillRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+      cancelBtn.lineStyle(2, 0xff4444, 1);
+      cancelBtn.strokeRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+      cancelText.setScale(1.05);
+      this.playHoverSound();
+    });
+    cancelHit.on('pointerout', () => {
+      cancelBtn.clear();
+      cancelBtn.fillStyle(0xff4444, 0.9);
+      cancelBtn.fillRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+      cancelBtn.lineStyle(2, 0xff4444, 1);
+      cancelBtn.strokeRoundedRect(w / 2 + 60 - 55, buttonY - 20, 110, 40, 20);
+      cancelText.setScale(1);
+    });
+    cancelHit.on('pointerdown', () => {
       this.playClickSound();
       this.closeDetailPanel();
     });
@@ -594,53 +673,18 @@ export class SkinShopScene extends Phaser.Scene {
       descText,
       loreText,
       actionBtn,
-      cancelBtn
+      actionBtnText,
+      cancelBtn,
+      cancelText,
+      actionHit,
+      cancelHit
     };
-  }
-
-  createActionButton(x, y, text, color) {
-    const btn = this.add.graphics();
-    btn.fillStyle(Phaser.Display.Color.HexStringToColor(color).color, 0.9);
-    btn.fillRoundedRect(x - 55, y - 20, 110, 40, 20);
-    btn.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
-    btn.strokeRoundedRect(x - 55, y - 20, 110, 40, 20);
-
-    const btnText = this.add.text(x, y, text, {
-      fontSize: '16px',
-      fontFamily: '"Audiowide", sans-serif',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
-
-    const hit = this.add.rectangle(x, y, 110, 40, 0x000000, 0)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(300);
-    hit.on('pointerover', () => {
-      btn.clear();
-      btn.fillStyle(Phaser.Display.Color.HexStringToColor(color).color, 1);
-      btn.fillRoundedRect(x - 55, y - 20, 110, 40, 20);
-      btn.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
-      btn.strokeRoundedRect(x - 55, y - 20, 110, 40, 20);
-      btnText.setScale(1.05);
-      this.playHoverSound();
-    });
-    hit.on('pointerout', () => {
-      btn.clear();
-      btn.fillStyle(Phaser.Display.Color.HexStringToColor(color).color, 0.9);
-      btn.fillRoundedRect(x - 55, y - 20, 110, 40, 20);
-      btn.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 1);
-      btn.strokeRoundedRect(x - 55, y - 20, 110, 40, 20);
-      btnText.setScale(1);
-    });
-    hit.on('pointerdown', (pointer) => pointer.event.stopPropagation());
-    return hit;
   }
 
   closeDetailPanel() {
     if (!this.currentDetailPanel) return;
-    const { overlay, panel, closeBtn, closeIcon, preview, nameObj, rarityText, descText, loreText, actionBtn, cancelBtn } = this.currentDetailPanel;
-    const all = [overlay, panel, closeBtn, closeIcon, preview, nameObj, rarityText, descText, loreText, actionBtn, cancelBtn];
+    const { overlay, panel, closeBtn, closeIcon, preview, nameObj, rarityText, descText, loreText, actionBtn, actionBtnText, cancelBtn, cancelText, actionHit, cancelHit } = this.currentDetailPanel;
+    const all = [overlay, panel, closeBtn, closeIcon, preview, nameObj, rarityText, descText, loreText, actionBtn, actionBtnText, cancelBtn, cancelText, actionHit, cancelHit];
     all.forEach(obj => {
       if (obj && obj.destroy) {
         this.tweens.add({
@@ -853,5 +897,10 @@ export class SkinShopScene extends Phaser.Scene {
   playPurchaseSound() { try { audioManager.playSound(this, 'purchase_sound', 0.5); } catch(e) {} }
 
   onResize() { this.scene.restart(); }
-  shutdown() { this.tweens.killAll(); console.log('SkinShopScene shutdown'); }
+  shutdown() {
+    this.tweens.killAll();
+    if (this.currentDetailPanel) this.closeDetailPanel();
+    this.skinCards = [];
+    console.log('SkinShopScene shutdown');
+  }
 }
