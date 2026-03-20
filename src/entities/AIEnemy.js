@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { ENEMY_CONFIG } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
