@@ -1,17 +1,6 @@
 // src/scenes/PlayScene.js
 import Phaser from 'phaser';
-import {
-  COLORS,
-  DIFFICULTY_CURVE,
-  ACHIEVEMENTS,
-  LEVEL_CONFIG,
-  ENEMY_CONFIG,
-  WAVE_CONFIG,
-  POWERUP_TYPES,
-  UPGRADE_COSTS,
-  SHOP_UPGRADES,
-  GAME_CONFIG
-} from '../config';
+import { COLORS, LEVEL_CONFIG, ENEMY_CONFIG } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 import { ParticleEffectManager } from '../systems/ParticleEffectManager';
@@ -20,10 +9,10 @@ import { QuestSystem } from '../systems/QuestSystem';
 import { LevelManager } from '../systems/LevelManager';
 import { ComboSystem } from '../systems/ComboSystem';
 import { MultiplierSystem } from '../systems/MultiplierSystem';
+import { WaveManager } from '../systems/WaveManager';
 import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
 import { Wagon } from '../entities/Wagon';
-import { WaveManager } from '../systems/WaveManager';
 
 // =========================================================================
 // ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
