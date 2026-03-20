@@ -22,7 +22,7 @@ export class GameManager {
     if (this.isInitialized) return;
     
     this.startAutoSave();
-    this.checkDailyReward();
+    this.checkDailyReward(); // <- этот метод нужно добавить
     this.updateLastPlayed();
     this.isInitialized = true;
     
@@ -35,7 +35,85 @@ export class GameManager {
       if (this.getSetting('autoSave')) {
         this.save();
       }
-    }, 60000); // Автосохранение каждую минуту
+    }, 60000);
+  }
+
+  // =========================================================================
+  // ДНЕВНЫЕ НАГРАДЫ (ДОБАВЛЯЕМ ОТСУТСТВУЮЩИЙ МЕТОД)
+  // =========================================================================
+
+  /**
+   * Проверка и обновление дневной награды
+   */
+  checkDailyReward() {
+    const today = new Date().toISOString().split('T')[0];
+    const lastClaim = this.data.dailyReward?.lastClaimDate || '';
+    
+    if (lastClaim !== today) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (lastClaim === yesterdayStr) {
+        this.data.dailyReward.streak = Math.min((this.data.dailyReward.streak || 0) + 1, 10);
+      } else if (lastClaim !== today) {
+        this.data.dailyReward.streak = 1;
+      }
+      
+      this.data.dailyReward.lastClaimDate = today;
+      this.data.dailyReward.available = true;
+      this.save();
+      
+      console.log('Daily reward updated, streak:', this.data.dailyReward.streak);
+    }
+  }
+
+  claimDailyReward() {
+    const today = new Date().toISOString().split('T')[0];
+    const reward = this.data.dailyReward;
+    
+    if (reward.lastClaimDate !== today && reward.available) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (reward.lastClaimDate === yesterdayStr) {
+        reward.streak = Math.min(reward.streak + 1, 10);
+      } else {
+        reward.streak = 1;
+      }
+      
+      reward.lastClaimDate = today;
+      reward.available = false;
+      
+      const rewardAmount = reward.rewards[reward.streak - 1] || 10;
+      this.addCrystals(rewardAmount, 'daily');
+      this.save();
+      this.emit('dailyRewardClaimed', { streak: reward.streak, amount: rewardAmount });
+      
+      if (reward.streak >= 7) this.unlockAchievement('weekly_streak');
+      if (reward.streak >= 30) this.unlockAchievement('monthly_streak');
+      
+      return rewardAmount;
+    }
+    return 0;
+  }
+
+  canClaimDailyReward() {
+    const today = new Date().toISOString().split('T')[0];
+    return this.data.dailyReward.lastClaimDate !== today && this.data.dailyReward.available;
+  }
+
+  getDailyRewardStreak() {
+    return this.data.dailyReward.streak || 0;
+  }
+
+  getDailyRewardProgress() {
+    return {
+      streak: this.getDailyRewardStreak(),
+      nextReward: this.data.dailyReward.rewards[this.getDailyRewardStreak()] || 10,
+      canClaim: this.canClaimDailyReward()
+    };
   }
 
   // =========================================================================
@@ -144,6 +222,12 @@ export class GameManager {
       currentLevel: 0,
       totalPlayTime: 0,
       lastPlayed: null,
+      dailyReward: {
+        lastClaimDate: '',
+        streak: 0,
+        available: true,
+        rewards: [10, 20, 30, 50, 75, 100, 150, 200, 250, 300]
+      },
       stats: {
         totalGames: 0,
         totalPlayTime: 0,
@@ -297,7 +381,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // МИРЫ И УРОВНИ
+  // МИРЫ И УРОВНИ (остальные методы остаются без изменений)
   // =========================================================================
 
   getCurrentWorld() { 
@@ -335,10 +419,7 @@ export class GameManager {
       
       this.save();
       this.emit('levelUnlocked', { world, level });
-      
-      // Проверяем достижения за уровни
       this.checkLevelAchievements();
-      
       return true;
     }
     return false;
@@ -370,8 +451,6 @@ export class GameManager {
     this.data.levelStars[`${world}-${level}`] = Math.min(3, stars);
     this.save();
     this.emit('starsUpdated', { world, level, stars });
-    
-    // Проверяем достижения при получении звезд
     this.checkStarAchievements();
   }
 
@@ -400,7 +479,6 @@ export class GameManager {
   }
 
   checkStarAchievements() {
-    // Проверка на 3 звезды во всех уровнях мира
     for (let w = 0; w < 5; w++) {
       let allThree = true;
       for (let l = 0; l < 10; l++) {
@@ -424,7 +502,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // СКИНЫ - РАСШИРЕННАЯ СИСТЕМА
+  // СКИНЫ (остаются без изменений)
   // =========================================================================
 
   getOwnedSkins() { 
@@ -462,49 +540,27 @@ export class GameManager {
   }
 
   purchaseSkin(skinId) {
-  const skin = this.getSkinById(skinId);
-  console.log('purchaseSkin called:', skinId, skin);
-  console.log('Owned skins:', this.data.ownedSkins);
-  console.log('Crystals:', this.data.crystals);
-  
-  if (!skin) {
-    console.log('Skin not found');
-    return false;
+    const skin = this.getSkinById(skinId);
+    if (!skin) return false;
+    if (this.data.ownedSkins.includes(skinId)) return false;
+    if (this.data.crystals < skin.price) return false;
+    
+    this.data.crystals -= skin.price;
+    this.data.ownedSkins.push(skinId);
+    this.save();
+    return true;
   }
-  if (this.data.ownedSkins.includes(skinId)) {
-    console.log('Skin already owned');
-    return false;
-  }
-  if (this.data.crystals < skin.price) {
-    console.log('Not enough crystals');
-    return false;
-  }
-  
-  this.data.crystals -= skin.price;
-  this.data.ownedSkins.push(skinId);
-  this.save();
-  console.log('Purchase successful!');
-  return true;
-}
 
   selectSkin(skinId) {
     if (this.data.ownedSkins.includes(skinId)) {
       const oldSkin = this.data.currentSkin;
       this.data.currentSkin = skinId;
-      
-      // Обновляем статистику использования
       this.data.skinUsage[skinId] = (this.data.skinUsage[skinId] || 0) + 1;
-      
-      // Обновляем любимый скин
       this.updateFavoriteSkin();
-      
       this.save();
       this.clearCaches();
       this.emit('skinSelected', { skinId, oldSkin });
-      
-      // Проверяем достижения за выбор скинов
       this.checkSkinSelectionAchievements();
-      
       return true;
     }
     return false;
@@ -516,14 +572,12 @@ export class GameManager {
 
   toggleFavoriteSkin(skinId) {
     if (!this.isSkinOwned(skinId)) return false;
-    
     const index = this.data.favoriteSkins.indexOf(skinId);
     if (index === -1) {
       this.data.favoriteSkins.push(skinId);
     } else {
       this.data.favoriteSkins.splice(index, 1);
     }
-    
     this.save();
     this.emit('favoritesUpdated', this.data.favoriteSkins);
     return true;
@@ -541,14 +595,12 @@ export class GameManager {
     const usage = this.data.skinUsage || {};
     let maxUsage = 0;
     let favorite = 'taxi_classic';
-    
     Object.entries(usage).forEach(([skinId, count]) => {
       if (count > maxUsage) {
         maxUsage = count;
         favorite = skinId;
       }
     });
-    
     this.data.stats.favoriteSkin = favorite;
   }
 
@@ -593,16 +645,11 @@ export class GameManager {
 
   updateCollectionScore() {
     let score = 0;
-    
-    // Базовые очки за каждый скин
     score += this.getOwnedSkinsCount() * 10;
-    
-    // Бонус за редкость
     score += this.getOwnedRarityCount('RARE') * 20;
     score += this.getOwnedRarityCount('EPIC') * 50;
     score += this.getOwnedRarityCount('LEGENDARY') * 100;
     
-    // Бонус за полные коллекции
     if (this.getOwnedRarityCount('COMMON') === this.getRarityCount('COMMON')) {
       score += 100;
       this.unlockAchievement('complete_common');
@@ -626,28 +673,19 @@ export class GameManager {
 
   checkSkinCollectionAchievements() {
     const owned = this.getOwnedSkinsCount();
-    
     if (owned >= 5) this.unlockAchievement('skin_collector_1');
     if (owned >= 10) this.unlockAchievement('skin_collector_2');
     if (owned >= 15) this.unlockAchievement('skin_collector_3');
     if (owned >= 20) this.unlockAchievement('skin_collector_4');
     if (owned >= 25) this.unlockAchievement('skin_collector_5');
     
-    // Проверка на коллекционирование по редкости
-    if (this.getOwnedRarityCount('LEGENDARY') >= 1) {
-      this.unlockAchievement('legendary_collector_1');
-    }
-    if (this.getOwnedRarityCount('LEGENDARY') >= 3) {
-      this.unlockAchievement('legendary_collector_2');
-    }
-    if (this.getOwnedRarityCount('LEGENDARY') >= 5) {
-      this.unlockAchievement('legendary_collector_3');
-    }
+    if (this.getOwnedRarityCount('LEGENDARY') >= 1) this.unlockAchievement('legendary_collector_1');
+    if (this.getOwnedRarityCount('LEGENDARY') >= 3) this.unlockAchievement('legendary_collector_2');
+    if (this.getOwnedRarityCount('LEGENDARY') >= 5) this.unlockAchievement('legendary_collector_3');
   }
 
   checkSkinSelectionAchievements() {
     const totalSelections = Object.values(this.data.skinUsage || {}).reduce((a, b) => a + b, 0);
-    
     if (totalSelections >= 10) this.unlockAchievement('skin_selector_1');
     if (totalSelections >= 50) this.unlockAchievement('skin_selector_2');
     if (totalSelections >= 100) this.unlockAchievement('skin_selector_3');
@@ -679,7 +717,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // ПРОКАЧКИ С КЭШИРОВАНИЕМ
+  // ПРОКАЧКИ
   // =========================================================================
 
   getUpgradeLevel(key) { 
@@ -696,10 +734,7 @@ export class GameManager {
       this.clearCaches();
       this.save();
       this.emit('upgrade', { key, level: this.data.upgrades[key] });
-      
-      // Проверяем достижения за прокачку
       this.checkUpgradeAchievements();
-      
       return true;
     }
     return false;
@@ -756,13 +791,12 @@ export class GameManager {
 
   getUpgradeProgress() {
     const total = this.getTotalUpgradeLevels();
-    const maxTotal = Object.keys(UPGRADE_COSTS).length * 20; // Примерный максимум
+    const maxTotal = Object.keys(UPGRADE_COSTS).length * 20;
     return (total / maxTotal) * 100;
   }
 
   checkUpgradeAchievements() {
     const total = this.getTotalUpgradeLevels();
-    
     if (total >= 10) this.unlockAchievement('upgrader_1');
     if (total >= 25) this.unlockAchievement('upgrader_2');
     if (total >= 50) this.unlockAchievement('upgrader_3');
@@ -771,7 +805,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // КРИСТАЛЛЫ С РАСШИРЕННОЙ СТАТИСТИКОЙ
+  // КРИСТАЛЛЫ
   // =========================================================================
 
   addCrystals(amount, source = 'unknown') {
@@ -819,7 +853,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // ДОСТИЖЕНИЯ С ПРОГРЕССОМ
+  // ДОСТИЖЕНИЯ
   // =========================================================================
 
   unlockAchievement(id) {
@@ -839,7 +873,6 @@ export class GameManager {
       
       this.data.completedAchievements.push(id);
       
-      // Проверка на секретное достижение
       if (achievement?.secret) {
         this.data.secretAchievements.push(id);
       }
@@ -899,7 +932,7 @@ export class GameManager {
   }
 
   // =========================================================================
-  // СТАТИСТИКА С РАСШИРЕННЫМИ МЕТРИКАМИ
+  // СТАТИСТИКА
   // =========================================================================
 
   updateStats(score, level, wagons, combo, coins, enemies, distance) {
@@ -914,12 +947,10 @@ export class GameManager {
     s.totalEnemiesKilled += enemies;
     s.totalDistance += distance;
     
-    // Проверка на идеальную игру (без смертей)
     if (this.data.stats.totalDeaths === 0) {
       s.totalPerfectGames++;
     }
     
-    // Проверка на быстрое прохождение
     const currentTime = Date.now() - this.sessionStartTime;
     if (currentTime < s.fastestCompletion) {
       s.fastestCompletion = currentTime;
@@ -927,8 +958,6 @@ export class GameManager {
     
     this.save();
     this.emit('statsUpdated', s);
-    
-    // Проверяем статистические достижения
     this.checkStatsAchievements();
   }
 
@@ -946,8 +975,6 @@ export class GameManager {
     }
     
     this.save();
-    
-    // Проверяем достижения за время
     this.checkTimeAchievements();
   }
 
@@ -982,7 +1009,6 @@ export class GameManager {
 
   checkStatsAchievements() {
     const s = this.data.stats;
-    
     if (s.totalGames >= 10) this.unlockAchievement('veteran_1');
     if (s.totalGames >= 50) this.unlockAchievement('veteran_2');
     if (s.totalGames >= 100) this.unlockAchievement('veteran_3');
@@ -1010,65 +1036,11 @@ export class GameManager {
 
   checkTimeAchievements() {
     const totalTime = this.data.totalPlayTime;
-    
     if (totalTime >= 3600) this.unlockAchievement('time_1h');
     if (totalTime >= 36000) this.unlockAchievement('time_10h');
     if (totalTime >= 86400) this.unlockAchievement('time_24h');
     if (totalTime >= 604800) this.unlockAchievement('time_7d');
     if (totalTime >= 2592000) this.unlockAchievement('time_30d');
-  }
-
-  // =========================================================================
-  // ДНЕВНЫЕ НАГРАДЫ
-  // =========================================================================
-
-  claimDailyReward() {
-    const today = new Date().toISOString().split('T')[0];
-    const reward = this.data.dailyReward;
-    
-    if (reward.lastClaimDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      if (reward.lastClaimDate === yesterdayStr) {
-        reward.streak = Math.min(reward.streak + 1, 10);
-      } else {
-        reward.streak = 1;
-      }
-      
-      reward.lastClaimDate = today;
-      reward.available = true;
-      
-      const rewardAmount = reward.rewards[reward.streak - 1] || 10;
-      this.addCrystals(rewardAmount, 'daily');
-      this.save();
-      this.emit('dailyRewardClaimed', { streak: reward.streak, amount: rewardAmount });
-      
-      // Проверка достижения за стрик
-      if (reward.streak >= 7) this.unlockAchievement('weekly_streak');
-      if (reward.streak >= 30) this.unlockAchievement('monthly_streak');
-      
-      return rewardAmount;
-    }
-    return 0;
-  }
-
-  canClaimDailyReward() {
-    const today = new Date().toISOString().split('T')[0];
-    return this.data.dailyReward.lastClaimDate !== today;
-  }
-
-  getDailyRewardStreak() {
-    return this.data.dailyReward.streak || 0;
-  }
-
-  getDailyRewardProgress() {
-    return {
-      streak: this.getDailyRewardStreak(),
-      nextReward: this.data.dailyReward.rewards[this.getDailyRewardStreak()] || 10,
-      canClaim: this.canClaimDailyReward()
-    };
   }
 
   // =========================================================================
@@ -1083,8 +1055,6 @@ export class GameManager {
       { id: 'daily_4', type: 'crystals', target: 50, reward: 150, progress: 0, completed: false },
       { id: 'daily_5', type: 'gates', target: 30, reward: 80, progress: 0, completed: false }
     ];
-    
-    // Случайный выбор 3 квестов на день
     return this.shuffleArray(quests).slice(0, 3);
   }
 
@@ -1098,8 +1068,6 @@ export class GameManager {
       { id: 'weekly_6', type: 'perfect', target: 5, reward: 600, progress: 0, completed: false },
       { id: 'weekly_7', type: 'no_hit', target: 3, reward: 800, progress: 0, completed: false }
     ];
-    
-    // Случайный выбор 5 квестов на неделю
     return this.shuffleArray(quests).slice(0, 5);
   }
 
@@ -1112,7 +1080,6 @@ export class GameManager {
   }
 
   updateQuestProgress(type, amount) {
-    // Дневные квесты
     this.data.dailyQuests.forEach(quest => {
       if (quest.type === type && !quest.completed) {
         quest.progress = Math.min(quest.progress + amount, quest.target);
@@ -1123,7 +1090,6 @@ export class GameManager {
       }
     });
     
-    // Недельные квесты
     this.data.weeklyQuests.forEach(quest => {
       if (quest.type === type && !quest.completed) {
         quest.progress = Math.min(quest.progress + amount, quest.target);
@@ -1222,7 +1188,7 @@ export class GameManager {
   // =========================================================================
 
   canPrestige() {
-    return this.getTotalStars() >= 150; // Все звезды во всех мирах
+    return this.getTotalStars() >= 150;
   }
 
   prestige() {
@@ -1231,21 +1197,19 @@ export class GameManager {
     this.data.prestigeLevel += 1;
     this.data.prestigePoints += 100 * this.data.prestigeLevel;
     
-    // Сброс прогресса, но сохранение скинов и кристаллов
     const oldCrystals = this.data.crystals;
     const oldSkins = this.data.ownedSkins;
     const oldPrestige = this.data.prestigeLevel;
     const oldPoints = this.data.prestigePoints;
     
     this.data = this.getDefaultData();
-    this.data.crystals = oldCrystals + 1000; // Бонус за престиж
+    this.data.crystals = oldCrystals + 1000;
     this.data.ownedSkins = oldSkins;
     this.data.prestigeLevel = oldPrestige;
     this.data.prestigePoints = oldPoints;
     
     this.save();
     this.emit('prestige', this.data.prestigeLevel);
-    
     return true;
   }
 
@@ -1323,9 +1287,7 @@ export class GameManager {
       } else if (window.navigator?.vibrate) {
         window.navigator.vibrate(pattern);
       }
-    } catch (e) {
-      // Игнорируем ошибки вибрации
-    }
+    } catch (e) {}
   }
 
   // =========================================================================
@@ -1397,7 +1359,7 @@ export class GameManager {
     for (let w = 0; w < 5; w++) {
       total += this.getWorldProgress(w) + 1;
     }
-    return Math.floor(total * 2); // Процент от максимума (50 уровней)
+    return Math.floor(total * 2);
   }
 
   getGameSummary() {
@@ -1463,7 +1425,6 @@ export class GameManager {
 export const gameManager = new GameManager();
 window.gameManager = gameManager;
 
-// Автоматическая инициализация при загрузке
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     gameManager.init();
