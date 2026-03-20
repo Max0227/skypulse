@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 
@@ -32,12 +33,13 @@ export class Wagon {
     this.maxHp = this.hp;
     this.active = true;
     this.protectionFrames = 0;
-    this.protectionDuration = 500; // мс защиты после получения урона
+    this.protectionDuration = 500;
     
     // Специальные эффекты для вагона
     this.specialEffects = this.getSpecialEffects();
     this.buffs = [];
     this.auraEffect = null;
+    this.glowEffect = null;
     
     // Полоска здоровья
     this.healthBar = null;
@@ -111,7 +113,6 @@ export class Wagon {
   }
 
   getTextureForWorld() {
-    // Разные текстуры для разных миров
     const textureMaps = {
       space: ['wagon_0', 'wagon_1', 'wagon_2', 'wagon_3', 'wagon_4', 'wagon_5', 'wagon_6', 'wagon_7', 'wagon_8', 'wagon_9'],
       neon: ['wagon_neon_0', 'wagon_neon_1', 'wagon_neon_2', 'wagon_neon_3', 'wagon_neon_4'],
@@ -124,7 +125,6 @@ export class Wagon {
     const texIndex = this.index % textures.length;
     const texture = textures[texIndex];
     
-    // Если текстура не существует, используем стандартную
     if (this.scene.textures.exists(texture)) {
       return texture;
     }
@@ -132,20 +132,18 @@ export class Wagon {
   }
 
   setupPhysics() {
-    // Базовая настройка физики
     this.sprite.body.setCircle(12, 8, 6);
     this.sprite.body.setAllowGravity(true);
     this.sprite.body.setMass(0.5);
     this.sprite.body.setDrag(0.9);
     
-    // Модификации физики в зависимости от мира
-    if (this.worldType === 1) { // Киберпанк - легче
+    if (this.worldType === 1) {
       this.sprite.body.setMass(0.3);
       this.sprite.body.setDrag(0.7);
-    } else if (this.worldType === 2) { // Подземелье - тяжелее
+    } else if (this.worldType === 2) {
       this.sprite.body.setMass(0.8);
       this.sprite.body.setDrag(1.2);
-    } else if (this.worldType === 4) { // Чёрная дыра - странная физика
+    } else if (this.worldType === 4) {
       this.sprite.body.setMass(0.4);
       this.sprite.body.setDrag(0.5);
     }
@@ -155,7 +153,6 @@ export class Wagon {
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
     
-    // Дополнительное свечение для редких вагонов
     if (this.index % 3 === 0 && this.worldType === 1) {
       this.createGlowEffect();
     }
@@ -164,18 +161,20 @@ export class Wagon {
   getMaxHealth() {
     let baseHealth = 1;
     
-    // Бонус от улучшений
-    if (gameManager.getUpgradeLevel('wagonHP')) {
-      baseHealth += gameManager.getUpgradeLevel('wagonHP');
+    if (gameManager && gameManager.getUpgradeLevel) {
+      const upgradeLevel = gameManager.getUpgradeLevel('wagonHP');
+      if (upgradeLevel) {
+        baseHealth += upgradeLevel;
+      }
     }
     
-    // Модификатор мира
     baseHealth = Math.floor(baseHealth * this.worldConfig.healthMultiplier);
     
-    // Бонус от выбранного скина
-    const skinStats = gameManager.getCurrentSkinStats();
-    if (skinStats && skinStats.armorBonus) {
-      baseHealth += Math.floor(skinStats.armorBonus / 10);
+    if (gameManager && gameManager.getCurrentSkinStats) {
+      const skinStats = gameManager.getCurrentSkinStats();
+      if (skinStats && skinStats.armorBonus) {
+        baseHealth += Math.floor(skinStats.armorBonus / 10);
+      }
     }
     
     return Math.max(1, baseHealth);
@@ -184,19 +183,10 @@ export class Wagon {
   getSpecialEffects() {
     const effects = [];
     
-    // Эффекты в зависимости от мира
-    if (this.worldType === 1 && this.index % 2 === 0) {
-      effects.push('glow');
-    }
-    if (this.worldType === 2 && this.index % 3 === 0) {
-      effects.push('shadow');
-    }
-    if (this.worldType === 3 && this.index % 4 === 0) {
-      effects.push('rock_armor');
-    }
-    if (this.worldType === 4 && this.index % 5 === 0) {
-      effects.push('void_energy');
-    }
+    if (this.worldType === 1 && this.index % 2 === 0) effects.push('glow');
+    if (this.worldType === 2 && this.index % 3 === 0) effects.push('shadow');
+    if (this.worldType === 3 && this.index % 4 === 0) effects.push('rock_armor');
+    if (this.worldType === 4 && this.index % 5 === 0) effects.push('void_energy');
     
     return effects;
   }
@@ -223,7 +213,6 @@ export class Wagon {
     
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
     
-    // Цвет полоски зависит от мира
     let barColor = 0x00ff00;
     if (this.worldType === 1) barColor = 0xff44ff;
     if (this.worldType === 2) barColor = 0xff6600;
@@ -257,7 +246,6 @@ export class Wagon {
   }
 
   applyWorldVisuals() {
-    // Киберпанк - мерцание
     if (this.worldType === 1) {
       this.scene.tweens.add({
         targets: this.sprite,
@@ -279,7 +267,6 @@ export class Wagon {
       }
     }
     
-    // Подземелье - тёмная аура
     if (this.worldType === 2) {
       this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
       
@@ -297,12 +284,10 @@ export class Wagon {
       });
     }
     
-    // Астероиды - каменная текстура
     if (this.worldType === 3) {
       this.sprite.setTint(0xffaa66);
     }
     
-    // Чёрная дыра - искажение
     if (this.worldType === 4) {
       this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
       
@@ -343,11 +328,11 @@ export class Wagon {
   playSpawnSound() {
     try {
       const volume = 0.3 + (this.index % 5 === 0 ? 0.2 : 0);
-      audioManager.playSound(this.scene, 'wagon_spawn', volume);
+      if (audioManager && audioManager.playSound) {
+        audioManager.playSound(this.scene, 'wagon_spawn', volume);
+      }
     } catch (e) {
-      try {
-        audioManager.playSound(this.scene, 'wagon_sound', 0.3);
-      } catch (e2) {}
+      // Игнорируем ошибки звука
     }
   }
 
@@ -367,7 +352,6 @@ export class Wagon {
   }
 
   takeDamage(amount = 1, source = null) {
-    // Проверка защиты
     if (this.protectionFrames > 0) return false;
     
     this.hp -= amount;
@@ -377,23 +361,15 @@ export class Wagon {
       return true;
     }
     
-    // Активируем защитные кадры
     this.protectionFrames = this.protectionDuration;
-    
-    // Визуальный эффект урона в зависимости от мира
     this.showDamageEffect();
-    
-    // Обновляем полоску здоровья
     this.updateHealthBar();
-    
-    // Звук урона
     this.playDamageSound();
     
     return false;
   }
 
   showDamageEffect() {
-    // Эффект вспышки
     this.sprite.setTint(0xff8888);
     this.scene.time.delayedCall(150, () => {
       if (this.sprite && this.sprite.active) {
@@ -401,7 +377,6 @@ export class Wagon {
       }
     });
     
-    // Эффект частиц в зависимости от мира
     if (this.scene.particleManager) {
       let particleColor = this.worldConfig.particleColor;
       if (this.worldType === 1) particleColor = 0xff44ff;
@@ -431,7 +406,6 @@ export class Wagon {
       }
     }
     
-    // Тряска камеры для сильного урона
     if (amount >= 2) {
       this.scene.cameras.main.shake(100, 0.002);
     }
@@ -440,18 +414,17 @@ export class Wagon {
   playDamageSound() {
     try {
       const volume = 0.2 + (this.hp / this.maxHp) * 0.2;
-      audioManager.playSound(this.scene, 'wagon_hit', volume);
+      if (audioManager && audioManager.playSound) {
+        audioManager.playSound(this.scene, 'wagon_hit', volume);
+      }
     } catch (e) {
-      try {
-        audioManager.playSound(this.scene, 'hit_sound', 0.2);
-      } catch (e2) {}
+      // Игнорируем ошибки звука
     }
   }
 
   addBuff(type, duration) {
     this.buffs.push({ type, duration, startTime: Date.now() });
     
-    // Визуальный эффект баффа
     if (type === 'shield') {
       const shield = this.scene.add.circle(this.sprite.x, this.sprite.y, 18, 0x00ffff, 0.3);
       shield.setBlendMode(Phaser.BlendModes.ADD);
@@ -480,12 +453,10 @@ export class Wagon {
       return;
     }
     
-    // Обновляем защитные кадры
     if (this.protectionFrames > 0) {
-      this.protectionFrames -= 16; // приблизительно кадр
+      this.protectionFrames -= 16;
       if (this.protectionFrames < 0) this.protectionFrames = 0;
       
-      // Визуальный эффект защиты (мерцание)
       if (this.protectionFrames % 100 < 50) {
         this.sprite.setAlpha(0.6);
       } else {
@@ -495,17 +466,14 @@ export class Wagon {
       this.sprite.setAlpha(1);
     }
     
-    // Обновляем баффы
     this.updateBuffs();
     
-    // Расчёт позиции
     const targetX = prevX - gap;
     const targetY = prevY;
     
     const dx = targetX - this.sprite.x;
     const dy = targetY - this.sprite.y;
     
-    // Пружинная физика с учётом мира
     let springFactor = spring;
     if (this.worldType === 1) springFactor = spring * 1.2;
     if (this.worldType === 2) springFactor = spring * 0.8;
@@ -518,15 +486,12 @@ export class Wagon {
       this.sprite.body.reset(this.sprite.x, this.sprite.y);
     }
     
-    // Обновляем полоску здоровья
     this.updateHealthBar();
     
-    // Обновляем эффект свечения
     if (this.glowEffect) {
       this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
     }
     
-    // Специальные эффекты для чёрной дыры
     if (this.worldType === 4) {
       const centerX = this.scene.scale.width / 2;
       const centerY = this.scene.scale.height / 2;
@@ -544,7 +509,6 @@ export class Wagon {
   }
 
   destroy() {
-    // Удаляем эффекты
     if (this.glowEffect) {
       this.glowEffect.destroy();
     }
@@ -554,14 +518,11 @@ export class Wagon {
     }
     
     if (this.sprite && this.sprite.active) {
-      // Эффект разрушения в зависимости от мира
       if (this.scene.particleManager) {
         this.scene.particleManager.createWagonDestroyEffect(this.sprite);
       }
       
-      // Дополнительные частицы для разных миров
       if (this.worldType === 1) {
-        // Киберпанк - цифровые осколки
         for (let i = 0; i < 8; i++) {
           const debris = this.scene.add.text(
             this.sprite.x + Phaser.Math.Between(-20, 20),
@@ -581,7 +542,6 @@ export class Wagon {
       }
       
       if (this.worldType === 4) {
-        // Чёрная дыра - гравитационный коллапс
         const collapse = this.scene.add.circle(this.sprite.x, this.sprite.y, 15, 0xaa88ff, 0.6);
         this.scene.tweens.add({
           targets: collapse,
@@ -592,14 +552,11 @@ export class Wagon {
         });
       }
       
-      // Звук разрушения
       try {
-        audioManager.playSound(this.scene, 'wagon_destroy', 0.5);
-      } catch (e) {
-        try {
-          audioManager.playSound(this.scene, 'hit_sound', 0.4);
-        } catch (e2) {}
-      }
+        if (audioManager && audioManager.playSound) {
+          audioManager.playSound(this.scene, 'wagon_destroy', 0.5);
+        }
+      } catch (e) {}
       
       this.sprite.destroy();
     }

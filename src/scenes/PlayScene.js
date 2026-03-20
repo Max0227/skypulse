@@ -1,19 +1,13 @@
 // В начале файла PlayScene.js, в импортах добавьте ACHIEVEMENTS
 import {
-  COLORS,
-  DIFFICULTY_CURVE,
   ACHIEVEMENTS,  // <-- ДОБАВЬТЕ ЭТУ СТРОКУ
   LEVEL_CONFIG,
   ENEMY_CONFIG,
-  WAVE_CONFIG,
-  POWERUP_TYPES,
-  UPGRADE_COSTS,
   SHOP_UPGRADES,
-  GAME_CONFIG
 } from '../config';
 // src/scenes/PlayScene.js
 import Phaser from 'phaser';
-import { COLORS, LEVEL_CONFIG, ENEMY_CONFIG, WAVE_CONFIG, POWERUP_TYPES } from '../config';
+import { LEVEL_CONFIG, ENEMY_CONFIG } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 import { ParticleEffectManager } from '../systems/ParticleEffectManager';
