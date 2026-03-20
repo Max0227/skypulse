@@ -3,38 +3,61 @@ import { audioManager } from '../managers/AudioManager';
 import { COIN_TYPES } from '../config';
 
 export class Coin {
-  constructor(scene, x, y, type = 'gold') {
+  constructor(scene, x, y, type = 'gold', worldType = null) {
     this.scene = scene;
     this.type = type;
+    this.worldType = worldType || (scene.levelManager?.currentWorld ?? 0);
     this.config = COIN_TYPES[type] || COIN_TYPES.gold;
     
-    // Создаём спрайт
-    this.sprite = scene.physics.add.image(x, y, this.config.texture)
-      .setScale(0.8)
+    // Получаем модификации для текущего мира
+    this.worldMod = this.getWorldModifications();
+    
+    // Создаём спрайт с учётом мира
+    this.sprite = scene.physics.add.image(x, y, this.getTextureForWorld())
+      .setScale(0.7)
       .setDepth(8);
     
     // Настройка физики
     this.sprite.body.setAllowGravity(false);
     this.sprite.body.setImmovable(true);
-    this.sprite.body.setVelocityX(-200);
+    this.sprite.body.setVelocityX(-scene.currentSpeed || -200);
     
-    // Визуальные эффекты
+    // Визуальные эффекты в зависимости от мира
     this.sprite.setAngularVelocity(200);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Применяем цветовую гамму мира
+    this.applyWorldTint();
     
     // Ссылка на объект монеты
     this.sprite.coinRef = this;
     
-    // Характеристики
-    this.value = this.config.value;
+    // Характеристики с учётом мира
+    this.baseValue = this.config.value;
+    this.value = this.getValueForWorld();
     this.bonus = this.config.bonus || null;
+    this.bonusDuration = this.getBonusDuration();
+    this.bonusStrength = this.getBonusStrength();
     this.collected = false;
     this.active = true;
     this.pulseDirection = 1;
-    this.baseScale = 0.8;
-    
-    // Анимация мерцания
+    this.baseScale = 0.7;
     this.pulseTimer = 0;
+    this.rotationSpeed = 200;
+    
+    // Эффекты
+    this.trailEmitter = null;
+    this.glowEffect = null;
+    this.orbitalParticles = [];
+    
+    // Создаём дополнительные эффекты для редких монет
+    if (this.isRare()) {
+      this.createGlowEffect();
+      this.createTrailEffect();
+    }
+    
+    // Анимация появления
+    this.animateSpawn();
     
     // Добавляем в группу монет
     if (scene.coinGroup) {
@@ -42,26 +65,290 @@ export class Coin {
     }
   }
 
+  // =========================================================================
+  // КОНФИГУРАЦИЯ В ЗАВИСИМОСТИ ОТ МИРА
+  // =========================================================================
+
+  getWorldModifications() {
+    const mods = {
+      0: { // Космос
+        valueMultiplier: 1.0,
+        durationMultiplier: 1.0,
+        strengthMultiplier: 1.0,
+        visualEffect: 'normal',
+        particleColor: 0xffaa00,
+        tint: null
+      },
+      1: { // Киберпанк
+        valueMultiplier: 1.3,
+        durationMultiplier: 0.8,
+        strengthMultiplier: 1.3,
+        visualEffect: 'neon',
+        particleColor: 0xff44ff,
+        tint: 0xff88ff
+      },
+      2: { // Подземелье
+        valueMultiplier: 1.2,
+        durationMultiplier: 1.2,
+        strengthMultiplier: 1.2,
+        visualEffect: 'dark',
+        particleColor: 0xff6600,
+        tint: 0xcc8866
+      },
+      3: { // Астероиды
+        valueMultiplier: 1.4,
+        durationMultiplier: 0.9,
+        strengthMultiplier: 1.4,
+        visualEffect: 'rocky',
+        particleColor: 0xffaa44,
+        tint: 0xffaa66
+      },
+      4: { // Чёрная дыра
+        valueMultiplier: 1.5,
+        durationMultiplier: 1.5,
+        strengthMultiplier: 1.5,
+        visualEffect: 'void',
+        particleColor: 0xaa88ff,
+        tint: 0xcc88ff
+      }
+    };
+    return mods[this.worldType] || mods[0];
+  }
+
+  getTextureForWorld() {
+    // Разные текстуры для разных миров
+    const textureMap = {
+      gold: 'coin_gold',
+      red: 'coin_red',
+      blue: 'coin_blue',
+      green: 'coin_green',
+      purple: 'coin_purple',
+      rainbow: 'coin_rainbow',
+      crystal: 'coin_crystal',
+      dark: 'coin_dark'
+    };
+    
+    let texture = textureMap[this.type] || 'coin_gold';
+    
+    // Специальные текстуры для миров
+    if (this.worldType === 1 && this.type === 'gold') {
+      texture = 'coin_neon';
+    } else if (this.worldType === 2 && this.type === 'gold') {
+      texture = 'coin_dark';
+    } else if (this.worldType === 4 && this.type === 'gold') {
+      texture = 'coin_void';
+    }
+    
+    // Проверяем существование текстуры
+    if (this.scene.textures.exists(texture)) {
+      return texture;
+    }
+    return textureMap[this.type] || 'coin_gold';
+  }
+
+  applyWorldTint() {
+    if (this.worldMod.tint) {
+      this.sprite.setTint(this.worldMod.tint);
+    }
+  }
+
+  getValueForWorld() {
+    let value = this.baseValue;
+    
+    // Модификатор мира
+    value = Math.floor(value * this.worldMod.valueMultiplier);
+    
+    // Бонус от престижа
+    const prestigeBonus = gameManager.getPrestigeBonus();
+    if (prestigeBonus) {
+      value = Math.floor(value * prestigeBonus.crystalMultiplier);
+    }
+    
+    // Бонус от выбранного скина
+    const skinStats = gameManager.getCurrentSkinStats();
+    if (skinStats && skinStats.crystalBonus) {
+      value = Math.floor(value * (1 + skinStats.crystalBonus / 100));
+    }
+    
+    return Math.max(1, value);
+  }
+
+  getBonusDuration() {
+    let duration = 5; // базовая длительность
+    
+    if (this.bonus === 'speed') duration = 5;
+    if (this.bonus === 'shield') duration = 5;
+    if (this.bonus === 'magnet') duration = 7;
+    if (this.bonus === 'slow') duration = 4;
+    
+    // Модификатор мира
+    duration = duration * this.worldMod.durationMultiplier;
+    
+    // Бонус от улучшений
+    const upgradeLevel = gameManager.getUpgradeLevel('powerUpDuration');
+    if (upgradeLevel) {
+      duration = duration * (1 + upgradeLevel * 0.1);
+    }
+    
+    return duration;
+  }
+
+  getBonusStrength() {
+    let strength = 1.0;
+    
+    if (this.bonus === 'speed') strength = 1.5;
+    if (this.bonus === 'slow') strength = 0.6;
+    
+    // Модификатор мира
+    strength = strength * this.worldMod.strengthMultiplier;
+    
+    return strength;
+  }
+
+  isRare() {
+    const rareTypes = ['rainbow', 'crystal', 'dark'];
+    return rareTypes.includes(this.type);
+  }
+
+  // =========================================================================
+  // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
+  // =========================================================================
+
+  createGlowEffect() {
+    this.glowEffect = this.scene.add.circle(
+      this.sprite.x,
+      this.sprite.y,
+      18,
+      this.worldMod.particleColor,
+      0.4
+    );
+    this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
+    this.glowEffect.setDepth(7);
+  }
+
+  createTrailEffect() {
+    this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
+      speed: { min: 20, max: 50 },
+      scale: { start: 0.2, end: 0 },
+      alpha: { start: 0.5, end: 0 },
+      lifespan: 200,
+      quantity: 1,
+      frequency: 30,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: this.worldMod.particleColor,
+      follow: this.sprite,
+      followOffset: { x: -15, y: 0 }
+    });
+  }
+
+  createOrbitalParticles() {
+    const count = 3;
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2;
+      const particle = this.scene.add.circle(
+        this.sprite.x + Math.cos(angle) * 15,
+        this.sprite.y + Math.sin(angle) * 15,
+        2,
+        this.worldMod.particleColor,
+        0.6
+      );
+      particle.setBlendMode(Phaser.BlendModes.ADD);
+      this.orbitalParticles.push(particle);
+    }
+    
+    this.orbitalRotation = 0;
+  }
+
+  updateOrbitals() {
+    if (!this.active) return;
+    
+    this.orbitalRotation += 0.05;
+    const count = this.orbitalParticles.length;
+    
+    this.orbitalParticles.forEach((particle, i) => {
+      if (particle && particle.active) {
+        const angle = (i / count) * Math.PI * 2 + this.orbitalRotation;
+        particle.x = this.sprite.x + Math.cos(angle) * 18;
+        particle.y = this.sprite.y + Math.sin(angle) * 18;
+        
+        const scale = 1 + Math.sin(Date.now() * 0.01 + i) * 0.3;
+        particle.setScale(scale);
+      }
+    });
+  }
+
+  animateSpawn() {
+    this.sprite.setScale(0);
+    this.sprite.setAlpha(0);
+    
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleX: this.baseScale,
+      scaleY: this.baseScale,
+      alpha: 1,
+      duration: 300,
+      ease: 'Back.out'
+    });
+    
+    if (this.glowEffect) {
+      this.glowEffect.setScale(0);
+      this.scene.tweens.add({
+        targets: this.glowEffect,
+        scale: 1.2,
+        alpha: 0.4,
+        duration: 300,
+        ease: 'Back.out'
+      });
+    }
+  }
+
+  // =========================================================================
+  // ОСНОВНЫЕ МЕТОДЫ
+  // =========================================================================
+
   update(delta) {
     if (!this.sprite || !this.sprite.active) {
       this.active = false;
       return false;
     }
     
+    // Обновляем скорость
+    if (this.scene.currentSpeed) {
+      this.sprite.body.setVelocityX(-this.scene.currentSpeed);
+    }
+    
     // Эффект пульсации
     this.pulseTimer += delta;
-    if (this.pulseTimer > 100) {
+    if (this.pulseTimer > 80) {
       this.pulseTimer = 0;
-      this.baseScale += 0.05 * this.pulseDirection;
+      this.baseScale += 0.04 * this.pulseDirection;
       
       if (this.baseScale > 0.9) {
         this.pulseDirection = -1;
-      } else if (this.baseScale < 0.7) {
+      } else if (this.baseScale < 0.6) {
         this.pulseDirection = 1;
       }
       
       this.sprite.setScale(this.baseScale);
+      
+      // Обновляем свечение
+      if (this.glowEffect) {
+        const glowScale = this.baseScale * 1.3;
+        this.glowEffect.setScale(glowScale);
+        this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+        
+        const alpha = 0.3 + Math.sin(Date.now() * 0.01) * 0.2;
+        this.glowEffect.setAlpha(alpha);
+      }
     }
+    
+    // Обновляем орбитальные частицы
+    if (this.orbitalParticles.length > 0) {
+      this.updateOrbitals();
+    }
+    
+    // Специальные эффекты для разных миров
+    this.updateWorldVisuals();
     
     // Проверка выхода за экран
     if (this.sprite.x < -100) {
@@ -72,33 +359,59 @@ export class Coin {
     return true;
   }
 
+  updateWorldVisuals() {
+    const time = Date.now() * 0.005;
+    
+    // Киберпанк - мерцание
+    if (this.worldType === 1) {
+      const intensity = 0.6 + Math.sin(time * 10) * 0.3;
+      this.sprite.setAlpha(intensity);
+      if (this.glowEffect) this.glowEffect.setAlpha(intensity * 0.5);
+    }
+    
+    // Подземелье - тёмная аура
+    if (this.worldType === 2) {
+      const darkPulse = 0.5 + Math.sin(time * 3) * 0.2;
+      this.sprite.setAlpha(darkPulse);
+    }
+    
+    // Чёрная дыра - искажение
+    if (this.worldType === 4) {
+      const distort = 1 + Math.sin(time * 8) * 0.05;
+      this.sprite.setScale(this.baseScale * distort);
+    }
+  }
+
   collect(player) {
     if (this.collected) return;
     this.collected = true;
     
-    // Определяем базовую стоимость
-    let value = this.value;
+    // Определяем итоговую стоимость
+    let finalValue = this.value;
     
     // Учитываем бонус "двойные кристаллы"
     if (player && player.doubleCrystals) {
-      value *= 2;
+      finalValue *= 2;
     }
     
     // Учитываем множитель комбо
     if (this.scene.comboSystem) {
-      value = Math.floor(value * this.scene.comboSystem.getMultiplier());
+      finalValue = Math.floor(finalValue * this.scene.comboSystem.getMultiplier());
     }
     
+    // Учитываем множитель мира
+    finalValue = Math.floor(finalValue * this.worldMod.valueMultiplier);
+    
     // Добавляем кристаллы
-    gameManager.addCrystals(value);
-    this.scene.crystals += value;
+    gameManager.addCrystals(finalValue, 'coin');
+    this.scene.crystals += finalValue;
     
     if (this.scene.crystalText) {
       this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
     }
     
     // Обновляем счётчик монет для вагонов
-    this.scene.collectedCoins += value;
+    this.scene.collectedCoins += finalValue;
     
     // Проверка на добавление вагона
     if (this.scene.collectedCoins >= this.scene.coinsForWagon && 
@@ -109,12 +422,15 @@ export class Coin {
     
     // Обновляем прогресс квеста
     if (this.scene.questSystem) {
-      this.scene.questSystem.updateProgress('coins', value);
+      this.scene.questSystem.updateProgress('coins', finalValue);
+      if (this.bonus) {
+        this.scene.questSystem.updateProgress(this.bonus, 1);
+      }
     }
     
     // Добавляем комбо
     if (this.scene.comboSystem) {
-      this.scene.comboSystem.add();
+      this.scene.comboSystem.add(finalValue > 1 ? finalValue : 1);
     }
     
     // Активируем бонус, если есть
@@ -122,55 +438,59 @@ export class Coin {
       this.activateBonus(player);
     }
     
-    // Эффект сбора
+    // Эффект сбора с учётом мира
     this.createCollectEffect();
     
-    // Звук
-    try { audioManager.playSound(this.scene, 'coin_sound', 0.3); } catch (e) {}
+    // Звук сбора
+    this.playCollectSound();
     
     // Вибро
-    try {
-      if (window.Telegram?.WebApp?.HapticFeedback) {
-        window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-      }
-    } catch (e) {}
+    this.triggerVibration();
     
     // Анимация текста кристаллов
-    if (this.scene.crystalText) {
-      this.scene.tweens.add({
-        targets: this.scene.crystalText,
-        scaleX: 1.2,
-        scaleY: 1.2,
-        duration: 100,
-        yoyo: true,
-        ease: 'Quad.out'
-      });
-    }
+    this.animateCrystalText(finalValue);
+    
+    // Показываем всплывающее значение
+    this.showValuePopup(finalValue);
     
     // Уничтожаем монету
     this.destroy();
   }
 
   activateBonus(player) {
+    const duration = this.bonusDuration;
+    const strength = this.bonusStrength;
+    
     switch(this.bonus) {
       case 'speed':
-        player.activateSpeedBoost(5, 1.5);
+        player.activateSpeedBoost(duration, strength);
+        this.scene.currentSpeed = this.scene.baseSpeed * strength;
+        this.scene.time.delayedCall(duration * 1000, () => {
+          if (!this.scene.bonusActive) {
+            this.scene.currentSpeed = this.scene.baseSpeed;
+          }
+        });
         this.scene.showNotification('🚀 УСКОРЕНИЕ!', 1500, '#ffff00');
         break;
+        
       case 'shield':
-        player.activateShield(5);
+        player.activateShield(duration);
         this.scene.showNotification('🛡️ ЩИТ!', 1500, '#00ffff');
         break;
+        
       case 'magnet':
-        player.activateMagnet(7);
+        const magnetRange = this.scene.magnetRange * strength;
+        player.activateMagnet(duration, magnetRange);
         this.scene.showNotification('🧲 МАГНИТ!', 1500, '#ff00ff');
         break;
-      case 'slow':
-        this.scene.currentSpeed = this.scene.baseSpeed * 0.6;
-        this.scene.showNotification('⏳ ЗАМЕДЛЕНИЕ!', 1500, '#ff8800');
         
-        this.scene.time.delayedCall(5000, () => {
-          this.scene.currentSpeed = this.scene.baseSpeed;
+      case 'slow':
+        this.scene.currentSpeed = this.scene.baseSpeed * strength;
+        this.scene.showNotification('⏳ ЗАМЕДЛЕНИЕ!', 1500, '#ff8800');
+        this.scene.time.delayedCall(duration * 1000, () => {
+          if (!this.scene.bonusActive) {
+            this.scene.currentSpeed = this.scene.baseSpeed;
+          }
         });
         break;
     }
@@ -178,18 +498,154 @@ export class Coin {
 
   createCollectEffect() {
     if (this.scene.particleManager) {
+      // Усиленный эффект для редких монет
+      const effectType = this.isRare() ? 'rare' : this.type;
       this.scene.particleManager.createCoinCollectEffect(
         this.sprite.x, 
         this.sprite.y, 
-        this.type
+        effectType
       );
+    }
+    
+    // Дополнительный эффект для разных миров
+    if (this.worldType === 1) {
+      // Киберпанк - цифровые искры
+      for (let i = 0; i < 5; i++) {
+        const spark = this.scene.add.text(
+          this.sprite.x + Phaser.Math.Between(-15, 15),
+          this.sprite.y + Phaser.Math.Between(-15, 15),
+          ['0','1'][Math.floor(Math.random() * 2)],
+          { fontSize: '10px', fontFamily: 'monospace', color: '#ff44ff' }
+        );
+        this.scene.tweens.add({
+          targets: spark,
+          alpha: 0,
+          y: spark.y - 40,
+          duration: 400,
+          onComplete: () => spark.destroy()
+        });
+      }
+    } else if (this.worldType === 4) {
+      // Чёрная дыра - гравитационная волна
+      const wave = this.scene.add.circle(this.sprite.x, this.sprite.y, 8, 0xaa88ff, 0.6);
+      this.scene.tweens.add({
+        targets: wave,
+        radius: 40,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => wave.destroy()
+      });
     }
   }
 
+  playCollectSound() {
+    try {
+      const volume = 0.3 + (this.isRare() ? 0.2 : 0);
+      const soundKey = this.isRare() ? 'rare_coin' : 'coin_sound';
+      audioManager.playSound(this.scene, soundKey, volume);
+    } catch (e) {
+      try {
+        audioManager.playSound(this.scene, 'coin_sound', 0.3);
+      } catch (e2) {}
+    }
+  }
+
+  triggerVibration() {
+    try {
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        const intensity = this.isRare() ? 'medium' : 'light';
+        window.Telegram.WebApp.HapticFeedback.impactOccurred(intensity);
+      }
+    } catch (e) {}
+  }
+
+  animateCrystalText(value) {
+    if (this.scene.crystalText) {
+      this.scene.tweens.add({
+        targets: this.scene.crystalText,
+        scaleX: 1.25,
+        scaleY: 1.25,
+        duration: 100,
+        yoyo: true,
+        ease: 'Quad.out'
+      });
+    }
+  }
+
+  showValuePopup(value) {
+    const w = this.scene.scale.width;
+    const popup = this.scene.add.text(
+      this.sprite.x,
+      this.sprite.y - 20,
+      `+${value}`,
+      {
+        fontSize: '16px',
+        fontFamily: "'Audiowide', sans-serif",
+        color: '#ffaa00',
+        stroke: '#000000',
+        strokeThickness: 2,
+        shadow: { blur: 5, color: '#ffaa00', fill: true }
+      }
+    ).setOrigin(0.5).setDepth(50);
+    
+    this.scene.tweens.add({
+      targets: popup,
+      y: popup.y - 40,
+      alpha: 0,
+      duration: 800,
+      onComplete: () => popup.destroy()
+    });
+  }
+
+  // =========================================================================
+  // ГЕТТЕРЫ
+  // =========================================================================
+
+  getPosition() {
+    return { x: this.sprite.x, y: this.sprite.y };
+  }
+
+  getType() {
+    return this.type;
+  }
+
+  getValue() {
+    return this.value;
+  }
+
+  getBonus() {
+    return this.bonus;
+  }
+
+  isActive() {
+    return this.active && this.sprite && this.sprite.active;
+  }
+
+  // =========================================================================
+  // ОЧИСТКА
+  // =========================================================================
+
   destroy() {
+    // Удаляем эффекты
+    if (this.glowEffect) {
+      this.glowEffect.destroy();
+    }
+    
+    if (this.trailEmitter) {
+      this.trailEmitter.stop();
+      this.trailEmitter.destroy();
+    }
+    
+    this.orbitalParticles.forEach(p => {
+      if (p && p.destroy) p.destroy();
+    });
+    this.orbitalParticles = [];
+    
+    // Удаляем спрайт
     if (this.sprite && this.sprite.active) {
       this.sprite.destroy();
     }
+    
     this.active = false;
   }
 }
