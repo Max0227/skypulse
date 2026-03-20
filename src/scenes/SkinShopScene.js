@@ -3,17 +3,136 @@ import { COLORS } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 
+// =========================================================================
+// СПИСОК СКИНОВ (6 штук, с детальным описанием)
+// =========================================================================
+
 const SKINS = [
-  // ... (список скинов остаётся без изменений) ...
+  {
+    id: 'taxi_classic',
+    name: 'КЛАССИЧЕСКОЕ ТАКСИ',
+    texture: 'player_taxi_classic',
+    price: 0,
+    rarity: 'COMMON',
+    description: 'Жёлтое такси, которое всё начинало.',
+    lore: 'Первое такси в галактике. Надёжное и простое, как космос.',
+    stats: {
+      speedBonus: 0,
+      armorBonus: 0,
+      handlingBonus: 0,
+      jumpBonus: 0,
+      special: 'Нет'
+    },
+    color: 0xffaa00,
+    glowColor: 0xffaa00,
+    effects: 'none'
+  },
+  {
+    id: 'police',
+    name: 'ПОЛИЦЕЙСКИЙ ПЕРЕХВАТЧИК',
+    texture: 'player_police',
+    price: 200,
+    rarity: 'COMMON',
+    description: 'Спецтранспорт для поимки нарушителей.',
+    lore: 'Создан для быстрой реакции. Мигалки и сирена в комплекте.',
+    stats: {
+      speedBonus: 10,
+      armorBonus: 5,
+      handlingBonus: 5,
+      jumpBonus: 2,
+      special: 'Мигалки'
+    },
+    color: 0x2244aa,
+    glowColor: 0x3366ff,
+    effects: 'siren'
+  },
+  {
+    id: 'sport',
+    name: 'ГОНОЧНЫЙ БОЛИД',
+    texture: 'player_sport',
+    price: 350,
+    rarity: 'COMMON',
+    description: 'Скорость и маневренность.',
+    lore: 'Сделан для гонок, но летает не хуже.',
+    stats: {
+      speedBonus: 15,
+      armorBonus: 2,
+      handlingBonus: 10,
+      jumpBonus: 5,
+      special: 'Турбо'
+    },
+    color: 0xff3333,
+    glowColor: 0xff5500,
+    effects: 'flames'
+  },
+  {
+    id: 'fifth_element',
+    name: 'ТАКСИ ПЯТОГО ЭЛЕМЕНТА',
+    texture: 'player_fifth_element',
+    price: 600,
+    rarity: 'EPIC',
+    description: 'Летающее такси из культового фильма.',
+    lore: 'Спасало мир, теперь спасает ваш кошелёк.',
+    stats: {
+      speedBonus: 25,
+      armorBonus: 15,
+      handlingBonus: 20,
+      jumpBonus: 15,
+      special: 'Антигравитация'
+    },
+    color: 0x44ccff,
+    glowColor: 0x88ffff,
+    effects: 'hover'
+  },
+  {
+    id: 'cyber',
+    name: 'КИБЕРПАНК 2077',
+    texture: 'player_cyber',
+    price: 1000,
+    rarity: 'EPIC',
+    description: 'Неоновый драйвер из будущего.',
+    lore: 'С искусственным интеллектом и встроенным кофеваркой.',
+    stats: {
+      speedBonus: 40,
+      armorBonus: 20,
+      handlingBonus: 35,
+      jumpBonus: 25,
+      special: 'Глитч'
+    },
+    color: 0xaa44ff,
+    glowColor: 0xcc88ff,
+    effects: 'cyber'
+  },
+  {
+    id: 'void',
+    name: 'ПОЖИРАТЕЛЬ ПУСТОТЫ',
+    texture: 'player_void',
+    price: 1500,
+    rarity: 'LEGENDARY',
+    description: 'Тёмная материя в деле.',
+    lore: 'Поглощает свет и надежды врагов.',
+    stats: {
+      speedBonus: 75,
+      armorBonus: 35,
+      handlingBonus: 35,
+      jumpBonus: 40,
+      special: 'Поглощение'
+    },
+    color: 0x4400aa,
+    glowColor: 0x8800ff,
+    effects: 'void'
+  }
 ];
+
+// =========================================================================
+// ОСНОВНОЙ КЛАСС СЦЕНЫ МАГАЗИНА СКИНОВ
+// =========================================================================
 
 export class SkinShopScene extends Phaser.Scene {
   constructor() {
     super('skinShop');
-    this.optimizeLowEnd = false;
     this.isExiting = false;
     this.skinCards = [];
-    this.stars = [];
     this.lastHoverTime = 0;
   }
 
@@ -23,105 +142,72 @@ export class SkinShopScene extends Phaser.Scene {
 
     console.log('🎮 SkinShop: create started');
 
-    // Проверяем производительность
-    this.checkPerformance();
-
-    // Создаём текстуры
+    // Создаём все текстуры
     this.createAllSkinTextures();
 
-    // Фон (без масок)
+    // Фон (статичный, без лишних анимаций)
     this.createBackground();
 
-    // Звёзды
+    // Звёзды (просто для красоты)
     this.createStars();
 
     // Заголовок
     this.createHeader();
 
-    // Баланс
+    // Баланс кристаллов (круглая панель)
     this.createBalanceDisplay();
 
-    // Список скинов (без маски)
+    // Список скинов (6 карточек, без прокрутки)
     this.createSkinList();
 
-    // Нижняя панель
-    this.createFooter();
-
-    // Обработчик клавиши ESC
-    this.input.keyboard.on('keydown-ESC', () => this.goBackToMenu());
-
-    // Обработчик ресайза
-    this.scale.on('resize', () => this.scene.restart(), this);
+    // Кнопка назад
+    this.createBackButton();
 
     console.log('✅ SkinShop: create completed');
   }
 
   // =========================================================================
-  // ПРОИЗВОДИТЕЛЬНОСТЬ
-  // =========================================================================
-
-  checkPerformance() {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const lowMemory = navigator.deviceMemory ? navigator.deviceMemory < 4 : false;
-    this.optimizeLowEnd = isMobile || lowMemory;
-    if (this.optimizeLowEnd) console.log('⚡ Low-end mode');
-  }
-
-  // =========================================================================
-  // ФОН
+  // СОЗДАНИЕ ФОНА
   // =========================================================================
 
   createBackground() {
     const w = this.scale.width;
     const h = this.scale.height;
 
+    // Чёрный фон
     this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
 
-    // Простой градиент (без анимации)
-    const gradient = this.add.graphics();
-    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 0.3);
-    gradient.fillRect(0, 0, w, h);
-    gradient.setDepth(-10);
-
-    // Неоновые углы
-    const corners = [
-      { x: 0, y: 0, color: 0x00ffff },
-      { x: w, y: 0, color: 0xff00ff },
-      { x: 0, y: h, color: 0xffff00 },
-      { x: w, y: h, color: 0x00ff00 }
-    ];
-    corners.forEach(corner => {
-      const glow = this.add.circle(corner.x, corner.y, 250, corner.color, 0.05);
-      glow.setBlendMode(Phaser.BlendModes.ADD);
-      glow.setOrigin(corner.x === 0 ? 0 : 1, corner.y === 0 ? 0 : 1);
-    });
+    // Градиентная подложка (не анимированная)
+    const grad = this.add.graphics();
+    grad.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 0.3);
+    grad.fillRect(0, 0, w, h);
+    grad.setDepth(-5);
   }
 
   createStars() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const count = this.optimizeLowEnd ? 60 : 120;
-    for (let i = 0; i < count; i++) {
+    const starCount = 120;
+    for (let i = 0; i < starCount; i++) {
       const star = this.add.circle(
         Phaser.Math.Between(0, w),
         Phaser.Math.Between(0, h),
-        Phaser.Math.FloatBetween(1, 3),
-        Phaser.Utils.Array.GetRandom([0x4444ff, 0xff44ff, 0x44ff44, 0xffff44]),
-        Phaser.Math.FloatBetween(0.3, 0.7)
+        Phaser.Math.FloatBetween(1, 2.5),
+        Phaser.Utils.Array.GetRandom([0xffffff, 0xffffaa, 0xffaaff]),
+        Phaser.Math.FloatBetween(0.2, 0.6)
       );
       star.setBlendMode(Phaser.BlendModes.ADD);
-      this.stars.push(star);
     }
   }
 
   // =========================================================================
-  // ЗАГОЛОВОК И БАЛАНС
+  // ЗАГОЛОВОК
   // =========================================================================
 
   createHeader() {
     const w = this.scale.width;
-    this.add.text(w / 2, 50, 'МАГАЗИН СКИНОВ', {
-      fontSize: '36px',
+    this.add.text(w / 2, 45, 'МАГАЗИН СКИНОВ', {
+      fontSize: '38px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#00ffff',
@@ -130,89 +216,62 @@ export class SkinShopScene extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
+  // =========================================================================
+  // БАЛАНС КРИСТАЛЛОВ (КРУГЛАЯ ПАНЕЛЬ)
+  // =========================================================================
+
   createBalanceDisplay() {
     const w = this.scale.width;
-    const container = this.add.container(w / 2, 100);
-    const bg = this.add.rectangle(0, 0, 280, 45, 0x0a0a1a, 0.9)
-      .setStrokeStyle(3, 0x00ffff, 0.8);
-    const icon = this.add.text(-80, 0, '💎', { fontSize: '32px' }).setOrigin(0.5);
+    const container = this.add.container(w / 2, 95);
+
+    // Круглая подложка (скруглённый прямоугольник)
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0a1a, 0.9);
+    bg.fillRoundedRect(-120, -20, 240, 40, 20);
+    bg.lineStyle(2, 0x00ffff, 0.8);
+    bg.strokeRoundedRect(-120, -20, 240, 40, 20);
+    container.add(bg);
+
+    // Иконка кристалла
+    const icon = this.add.text(-50, 0, '💎', { fontSize: '28px' }).setOrigin(0.5);
+    container.add(icon);
+
+    // Текст баланса
     this.balanceText = this.add.text(20, 0, `${gameManager.data.crystals}`, {
-      fontSize: '28px',
+      fontSize: '24px',
       fontFamily: '"Share Tech Mono", monospace',
       color: '#ffaa00',
       stroke: '#000000',
-      strokeThickness: 4
+      strokeThickness: 3
     }).setOrigin(0, 0.5);
-    const label = this.add.text(0, -20, 'КРИСТАЛЛЫ', {
-      fontSize: '10px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#88aaff'
-    }).setOrigin(0.5);
-    container.add([bg, icon, this.balanceText, label]);
+    container.add(this.balanceText);
   }
 
   // =========================================================================
-  // СПИСОК СКИНОВ (БЕЗ МАСКИ, ПРОСТАЯ ПРОКРУТКА)
+  // СПИСОК СКИНОВ (6 КАРТОЧЕК, БЕЗ ПРОКРУТКИ)
   // =========================================================================
 
   createSkinList() {
     const w = this.scale.width;
-    const h = this.scale.height;
-    const listTop = 150;
-    const listHeight = h - 220;
+    const startY = 140;
+    const cardHeight = 115;      // высота одной карточки
+    const spacing = 8;           // отступ между карточками
 
-    // Контейнер для всех карточек
-    this.skinContainer = this.add.container(0, listTop);
-
-    // Сортируем скины по редкости
-    const rarityOrder = { 'COMMON': 0, 'RARE': 1, 'EPIC': 2, 'LEGENDARY': 3 };
-    const sortedSkins = [...SKINS].sort((a, b) => {
-      if (rarityOrder[a.rarity] !== rarityOrder[b.rarity]) return rarityOrder[a.rarity] - rarityOrder[b.rarity];
-      return a.price - b.price;
-    });
-
-    let currentY = 10;
-    const cardHeight = 140;
-    let currentRarity = null;
-    const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'RARE': 'РЕДКИЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
-    const rarityColors = { 'COMMON': '#aaaaaa', 'RARE': '#44aaff', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
-
-    sortedSkins.forEach(skin => {
-      if (skin.rarity !== currentRarity) {
-        currentRarity = skin.rarity;
-        const sep = this.add.text(w / 2, currentY, `⚡ ${rarityNames[skin.rarity]} ТИР ⚡`, {
-          fontSize: '18px',
-          fontFamily: '"Audiowide", sans-serif',
-          color: rarityColors[skin.rarity],
-          stroke: '#000000',
-          strokeThickness: 3
-        }).setOrigin(0.5);
-        this.skinContainer.add(sep);
-        currentY += 40;
-      }
-
+    // Располагаем 6 карточек сверху вниз
+    SKINS.forEach((skin, index) => {
+      const y = startY + index * (cardHeight + spacing);
       const owned = gameManager.getOwnedSkins().includes(skin.id);
       const selected = gameManager.getCurrentSkin() === skin.id;
       const canAfford = gameManager.data.crystals >= skin.price;
-
-      const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
-      this.skinContainer.add(card);
-      currentY += cardHeight;
+      const card = this.createSkinCard(skin, w, y, owned, selected, canAfford);
+      this.add.existing(card);
     });
-
-    // Запоминаем границы прокрутки
-    this.minScrollY = -(currentY - listHeight + 20);
-    this.maxScrollY = listTop;
-    this.skinContainer.y = listTop;
-
-    // Настраиваем зону для перетаскивания
-    this.setupScrolling(listTop, listHeight);
   }
 
   createSkinCard(skin, w, y, owned, selected, canAfford) {
     const group = this.add.group();
 
-    // Цвета
+    // Цвет обводки
     let borderColor = 0x666666;
     let bgColor = 0x0a0a1a;
     if (selected) {
@@ -228,43 +287,43 @@ export class SkinShopScene extends Phaser.Scene {
     // Фон карточки
     const bg = this.add.graphics();
     bg.fillStyle(bgColor, 0.9);
-    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
     bg.lineStyle(3, borderColor, 1);
-    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
     group.add(bg);
 
-    // Превью
-    const preview = this.add.image(50, y + 60, skin.texture).setScale(1.0).setOrigin(0.5);
+    // Превью скина
+    const preview = this.add.image(50, y + 55, skin.texture).setScale(0.9).setOrigin(0.5);
     group.add(preview);
 
     // Название
-    const nameText = this.add.text(120, y + 25, skin.name, {
+    const nameText = this.add.text(110, y + 25, skin.name, {
       fontSize: '18px',
       fontFamily: '"Orbitron", sans-serif',
       color: '#ffffff',
-      stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
+      stroke: '#888888',
       strokeThickness: 1
     }).setOrigin(0, 0.5);
     group.add(nameText);
 
     // Редкость
-    const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'RARE': 'РЕДКИЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
-    const rarityColors = { 'COMMON': '#aaaaaa', 'RARE': '#44aaff', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
-    const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
+    const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
+    const rarityColors = { 'COMMON': '#aaaaaa', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
+    const rarityText = this.add.text(110, y + 50, `[${rarityNames[skin.rarity]}]`, {
       fontSize: '11px',
       fontFamily: '"Share Tech Mono", monospace',
       color: rarityColors[skin.rarity]
     }).setOrigin(0, 0.5);
     group.add(rarityText);
 
-    // Статы
-    const statsText = this.add.text(120, y + 80,
+    // Краткие статы
+    const statsText = this.add.text(110, y + 75,
       `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
-      { fontSize: '11px', fontFamily: '"Share Tech Mono", monospace', color: '#88ff88' }
+      { fontSize: '10px', fontFamily: '"Share Tech Mono", monospace', color: '#88ff88' }
     ).setOrigin(0, 0.5);
     group.add(statsText);
 
-    // Статус
+    // Статус / цена
     let statusText = '';
     let statusColor = '#666666';
     if (selected) {
@@ -280,7 +339,7 @@ export class SkinShopScene extends Phaser.Scene {
       statusText = `${skin.price} 💎`;
       statusColor = canAfford ? '#ffaa00' : '#ff4444';
     }
-    const status = this.add.text(w - 40, y + 60, statusText, {
+    const status = this.add.text(w - 40, y + 55, statusText, {
       fontSize: '14px',
       fontFamily: '"Audiowide", sans-serif',
       color: statusColor,
@@ -289,29 +348,29 @@ export class SkinShopScene extends Phaser.Scene {
     }).setOrigin(1, 0.5);
     group.add(status);
 
-    // ===== ИНТЕРАКТИВНАЯ ОБЛАСТЬ (КЛЮЧЕВОЕ) =====
-    const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
+    // Интерактивная область
+    const hitArea = this.add.rectangle(w / 2, y + 55, w - 40, 110, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
       .setOrigin(0.5)
-      .setDepth(100);  // высокий depth, чтобы быть поверх
+      .setDepth(100);
 
     hitArea.skinData = skin;
     hitArea.on('pointerover', () => {
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
       bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      preview.setScale(1.1);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+      preview.setScale(1.0);
       this.playHoverSound();
     });
     hitArea.on('pointerout', () => {
       bg.clear();
       bg.fillStyle(bgColor, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
       bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      preview.setScale(1.0);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+      preview.setScale(0.9);
     });
     hitArea.on('pointerdown', (pointer) => {
       pointer.event.stopPropagation();
@@ -321,73 +380,6 @@ export class SkinShopScene extends Phaser.Scene {
 
     group.add(hitArea);
     return group;
-  }
-
-  setupScrolling(listTop, listHeight) {
-    const w = this.scale.width;
-
-    // Создаём зону для перетаскивания (но не для кликов)
-    this.scrollZone = this.add.zone(w / 2, listTop + listHeight / 2, w, listHeight)
-      .setInteractive({ draggable: true })
-      .setDepth(0);
-
-    let isDragging = false;
-    let lastY = 0;
-    let scrollVelocity = 0;
-    let inertiaTimer = null;
-
-    const stopInertia = () => {
-      if (inertiaTimer) clearTimeout(inertiaTimer);
-      inertiaTimer = null;
-    };
-
-    const applyInertia = () => {
-      if (!this.skinContainer) return;
-      if (Math.abs(scrollVelocity) < 0.5) {
-        scrollVelocity = 0;
-        return;
-      }
-      scrollVelocity *= 0.95;
-      let newY = this.skinContainer.y + scrollVelocity;
-      if (newY < this.minScrollY) {
-        newY = this.minScrollY;
-        scrollVelocity = 0;
-      } else if (newY > this.maxScrollY) {
-        newY = this.maxScrollY;
-        scrollVelocity = 0;
-      }
-      this.skinContainer.y = newY;
-      if (Math.abs(scrollVelocity) > 0.5) {
-        inertiaTimer = setTimeout(applyInertia, 16);
-      }
-    };
-
-    this.scrollZone.on('pointerdown', (pointer) => {
-      stopInertia();
-      isDragging = true;
-      lastY = pointer.y;
-      scrollVelocity = 0;
-    });
-
-    this.scrollZone.on('pointermove', (pointer) => {
-      if (!isDragging) return;
-      const delta = pointer.y - lastY;
-      scrollVelocity = delta;
-      let newY = this.skinContainer.y + delta;
-      // Резиновый эффект
-      if (newY < this.minScrollY) {
-        newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
-      } else if (newY > this.maxScrollY) {
-        newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
-      }
-      this.skinContainer.y = newY;
-      lastY = pointer.y;
-    });
-
-    this.scrollZone.on('pointerup', () => {
-      isDragging = false;
-      if (Math.abs(scrollVelocity) > 2) applyInertia();
-    });
   }
 
   // =========================================================================
@@ -417,14 +409,8 @@ export class SkinShopScene extends Phaser.Scene {
     panel.strokeRoundedRect(w / 2 - 200, h / 2 - 250, 400, 520, 20);
     panel.setDepth(201).setScrollFactor(0);
 
-    // Превью
-    const preview = this.add.image(w / 2, h / 2 - 120, skin.texture)
-      .setScale(2.5)
-      .setDepth(202)
-      .setScrollFactor(0);
-    if (!this.optimizeLowEnd) {
-      this.tweens.add({ targets: preview, angle: 360, duration: 10000, repeat: -1, ease: 'Linear' });
-    }
+    // Превью (большое)
+    const preview = this.add.image(w / 2, h / 2 - 120, skin.texture).setScale(2.5).setDepth(202).setScrollFactor(0);
 
     // Название
     const nameText = this.add.text(w / 2, h / 2 - 20, skin.name, {
@@ -436,8 +422,8 @@ export class SkinShopScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(202).setScrollFactor(0);
 
     // Редкость
-    const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'RARE': 'РЕДКИЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
-    const rarityColors = { 'COMMON': '#aaaaaa', 'RARE': '#44aaff', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
+    const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
+    const rarityColors = { 'COMMON': '#aaaaaa', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
     const rarityText = this.add.text(w / 2, h / 2 + 5, `[${rarityNames[skin.rarity]}]`, {
       fontSize: '16px',
       fontFamily: '"Share Tech Mono", monospace',
@@ -497,7 +483,30 @@ export class SkinShopScene extends Phaser.Scene {
       }).setOrigin(1, 0.5).setDepth(203).setScrollFactor(0);
     });
 
-    // Кнопки (внизу, компактные)
+    // Спецспособность
+    if (skin.stats.special !== 'Нет') {
+      const specialY = statsY + 130;
+      const specialBg = this.add.graphics();
+      specialBg.fillStyle(0x2a1a2a, 0.8);
+      specialBg.fillRoundedRect(w / 2 - 150, specialY - 15, 300, 40, 20);
+      specialBg.lineStyle(2, 0xffaa00, 0.7);
+      specialBg.strokeRoundedRect(w / 2 - 150, specialY - 15, 300, 40, 20);
+      specialBg.setDepth(202).setScrollFactor(0);
+
+      this.add.text(w / 2 - 140, specialY, '✨ ОСОБОЕ:', {
+        fontSize: '12px',
+        fontFamily: '"Share Tech Mono", monospace',
+        color: '#ffaa00'
+      }).setOrigin(0, 0.5).setDepth(203).setScrollFactor(0);
+
+      this.add.text(w / 2 + 100, specialY, skin.stats.special, {
+        fontSize: '14px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: '#ffaa00'
+      }).setOrigin(1, 0.5).setDepth(203).setScrollFactor(0);
+    }
+
+    // Кнопки (внизу)
     const btnY = h / 2 + 240;
     if (!owned) {
       const buyBtn = this.createRoundedButton(w / 2 - 100, btnY, 'КУПИТЬ', canAfford ? '#00ff00' : '#ff4444');
@@ -527,7 +536,7 @@ export class SkinShopScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(203).setScrollFactor(0);
     }
 
-    // Кнопка закрытия (крестик)
+    // Крестик закрытия
     const closeBtn = this.add.text(w - 50, 100, '✕', {
       fontSize: '40px',
       fontFamily: 'sans-serif',
@@ -602,10 +611,7 @@ export class SkinShopScene extends Phaser.Scene {
     panel.strokeRoundedRect(w / 2 - 200, h / 2 - 180, 400, 360, 20);
     panel.setDepth(201).setScrollFactor(0);
 
-    const preview = this.add.image(w / 2, h / 2 - 60, skin.texture)
-      .setScale(2.0)
-      .setDepth(202)
-      .setScrollFactor(0);
+    const preview = this.add.image(w / 2, h / 2 - 60, skin.texture).setScale(2.0).setDepth(202).setScrollFactor(0);
 
     this.add.text(w / 2, h / 2 + 10, skin.name, {
       fontSize: '24px',
@@ -684,14 +690,13 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // НИЖНЯЯ ПАНЕЛЬ
+  // КНОПКА НАЗАД
   // =========================================================================
 
-  createFooter() {
+  createBackButton() {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // Кнопка назад
     const backBtn = this.add.text(w / 2, h - 35, '⏎ НАЗАД В МЕНЮ', {
       fontSize: '20px',
       fontFamily: '"Audiowide", sans-serif',
@@ -715,24 +720,126 @@ export class SkinShopScene extends Phaser.Scene {
       if (this.isExiting) return;
       this.isExiting = true;
       this.playClickSound();
-      this.goBackToMenu();
+      this.scene.start('menu');
     });
   }
 
-  goBackToMenu() {
-    this.tweens.killAll();
-    this.scene.start('menu');
-  }
-
   // =========================================================================
-  // ТЕКСТУРЫ (сокращённо, но достаточно)
+  // СОЗДАНИЕ ТЕКСТУР СКИНОВ (6 штук, очень детализированные)
   // =========================================================================
 
   createAllSkinTextures() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
-    // ... (оставляем код генерации текстур из предыдущей версии) ...
-    // Для краткости оставляем заглушку, но в реальном проекте нужно вставить полный код.
-    // В предыдущем ответе он есть.
+
+    // 1. Классическое такси
+    g.clear();
+    g.fillStyle(0xffaa00);
+    g.fillRoundedRect(10, 10, 60, 35, 8);
+    g.fillStyle(0xff8800);
+    g.fillRect(15, 5, 50, 8);
+    g.fillStyle(0x44aaff);
+    g.fillRect(20, 18, 15, 8);
+    g.fillRect(40, 18, 15, 8);
+    g.fillStyle(0x00ffff);
+    g.fillCircle(18, 30, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(18, 30, 2);
+    g.fillStyle(0xffff00);
+    g.fillRect(35, 30, 8, 5);
+    g.generateTexture('player_taxi_classic', 80, 50);
+
+    // 2. Полицейский перехватчик (синий, мигалки, надпись POLICE)
+    g.clear();
+    g.fillStyle(0x2244aa);
+    g.fillRoundedRect(10, 10, 60, 35, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(15, 5, 50, 4);
+    g.fillStyle(0xff3333);
+    g.fillCircle(25, 8, 3);
+    g.fillCircle(45, 8, 3);
+    g.fillStyle(0x44aaff);
+    g.fillRect(20, 18, 10, 8);
+    g.fillRect(40, 18, 10, 8);
+    g.fillStyle(0x0000ff);
+    g.fillCircle(18, 30, 4);
+    g.generateTexture('player_police', 80, 50);
+
+    // 3. Гоночный болид (красный, спойлер)
+    g.clear();
+    g.fillStyle(0xff3333);
+    g.fillRoundedRect(10, 15, 60, 25, 6);
+    g.fillStyle(0xffaa00);
+    g.fillRect(15, 10, 50, 8);
+    g.fillStyle(0x44aaff);
+    g.fillCircle(18, 30, 4);
+    g.fillCircle(48, 30, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(18, 30, 2);
+    g.fillCircle(48, 30, 2);
+    g.fillStyle(0xffaa00);
+    g.fillRect(35, 25, 10, 4);
+    g.generateTexture('player_sport', 80, 50);
+
+    // 4. Такси из Пятого элемента (летающее, с крыльями, синее)
+    g.clear();
+    g.fillStyle(0x44ccff);
+    g.fillRoundedRect(10, 10, 60, 35, 8);
+    g.fillStyle(0x88ffff);
+    g.fillRect(12, 5, 56, 6);
+    g.fillStyle(0xffffff);
+    g.fillTriangle(5, 20, 15, 15, 15, 25);
+    g.fillTriangle(75, 20, 65, 15, 65, 25);
+    g.fillStyle(0xffaa44);
+    g.fillCircle(18, 30, 4);
+    g.fillCircle(48, 30, 4);
+    g.fillStyle(0xffff00);
+    g.fillRect(35, 30, 10, 5);
+    g.generateTexture('player_fifth_element', 80, 50);
+
+    // 5. Киберпанк 2077 (фиолетовый, глитч-эффект)
+    g.clear();
+    g.fillStyle(0xaa44ff);
+    g.fillRoundedRect(10, 10, 60, 35, 8);
+    g.fillStyle(0x00ffff);
+    g.fillRect(15, 5, 50, 8);
+    g.fillStyle(0xff00ff);
+    g.fillRect(20, 18, 15, 8);
+    g.fillRect(40, 18, 15, 8);
+    g.fillStyle(0xffff00);
+    g.fillCircle(18, 30, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(18, 30, 2);
+    g.fillStyle(0xff00ff);
+    g.fillRect(35, 30, 8, 5);
+    g.lineStyle(3, 0x00ffff);
+    g.strokeRoundedRect(8, 8, 64, 39, 8);
+    g.lineStyle(2, 0xff00ff);
+    g.strokeRoundedRect(10, 10, 60, 35, 8);
+    g.generateTexture('player_cyber', 80, 50);
+
+    // 6. Пожиратель пустоты (чёрный с фиолетовым, звёздный след)
+    g.clear();
+    g.fillStyle(0x4400aa);
+    g.fillRoundedRect(10, 10, 60, 35, 8);
+    g.fillStyle(0x8800ff);
+    g.fillRect(15, 5, 50, 8);
+    g.fillStyle(0x330066);
+    g.fillRect(20, 18, 15, 8);
+    g.fillRect(40, 18, 15, 8);
+    g.fillStyle(0xaa00ff);
+    g.fillCircle(18, 30, 4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(18, 30, 2);
+    g.fillStyle(0x6600cc);
+    g.fillRect(35, 30, 8, 5);
+    g.lineStyle(2, 0xaa88ff);
+    g.strokeRoundedRect(10, 10, 60, 35, 8);
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle(0xffffff, 0.3);
+      g.fillCircle(15 + i * 10, 40, 1);
+    }
+    g.generateTexture('player_void', 80, 50);
+
     g.destroy();
   }
 
@@ -781,5 +888,5 @@ export class SkinShopScene extends Phaser.Scene {
   playPurchaseSound() { try { audioManager.playSound(this, 'purchase_sound', 0.5); } catch(e) {} }
 
   onResize() { this.scene.restart(); }
-  shutdown() { this.tweens.killAll(); this.skinCards = []; this.stars = []; console.log('SkinShopScene shutdown'); }
+  shutdown() { this.tweens.killAll(); console.log('SkinShopScene shutdown'); }
 }
