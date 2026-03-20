@@ -10,11 +10,7 @@ export class TutorialScene extends Phaser.Scene {
     this.stars = [];
     this.particles = [];
     this.animations = [];
-    this.demoPlayer = null;
-    this.demoCoins = [];
-    this.demoWagons = [];
-    this.demoAsteroid = null;
-    this.demoGate = null;
+    this.demoObjects = [];
   }
 
   create() {
@@ -73,7 +69,7 @@ export class TutorialScene extends Phaser.Scene {
     const h = this.scale.height;
 
     // Базовый черный фон
-    this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
+    this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0).setDepth(-20);
 
     // Многослойный градиент
     const gradientLayers = [0.1, 0.15, 0.2];
@@ -92,6 +88,7 @@ export class TutorialScene extends Phaser.Scene {
       
       const gradientImage = this.add.image(0, 0, `tutorial_gradient_${index}`).setOrigin(0);
       gradientImage.setAlpha(0.8);
+      gradientImage.setDepth(-19 + index);
       
       this.tweens.add({
         targets: gradientImage,
@@ -115,6 +112,7 @@ export class TutorialScene extends Phaser.Scene {
       const blur = this.add.circle(corner.x, corner.y, corner.size, corner.color, 0.03);
       blur.setBlendMode(Phaser.BlendModes.ADD);
       blur.setOrigin(corner.x === 0 ? 0 : 1, corner.y === 0 ? 0 : 1);
+      blur.setDepth(-18);
       
       this.tweens.add({
         targets: blur,
@@ -133,6 +131,7 @@ export class TutorialScene extends Phaser.Scene {
     const h = this.scale.height;
 
     this.grid = this.add.graphics();
+    this.grid.setDepth(-15);
     this.gridOffset = 0;
     
     this.tweens.add({
@@ -181,6 +180,7 @@ export class TutorialScene extends Phaser.Scene {
       
       const particle = this.add.circle(x, y, size, color, 0.3);
       particle.setBlendMode(Phaser.BlendModes.ADD);
+      particle.setDepth(-12);
       
       this.particles.push(particle);
       
@@ -201,6 +201,7 @@ export class TutorialScene extends Phaser.Scene {
   createStars() {
     const w = this.scale.width;
     const h = this.scale.height;
+    this.stars = [];
 
     for (let i = 0; i < 150; i++) {
       const star = this.add.image(
@@ -213,7 +214,7 @@ export class TutorialScene extends Phaser.Scene {
       star.setScale(scale);
       star.setTint(Phaser.Utils.Array.GetRandom([0x4444ff, 0xff44ff, 0x44ff44]));
       star.setAlpha(Phaser.Math.FloatBetween(0.2, 0.7));
-      star.setDepth(-5);
+      star.setDepth(-10);
       star.setBlendMode(Phaser.BlendModes.ADD);
       
       this.stars.push({
@@ -314,11 +315,12 @@ export class TutorialScene extends Phaser.Scene {
     this.slideContainer.setDepth(20);
     
     // Фон слайда с неоновой рамкой
-    this.slideBg = this.add.graphics();
-    this.slideBg.fillStyle(0x0a0a1a, 0.85);
-    this.slideBg.fillRoundedRect(-150, -180, 300, 360, 20);
-    this.slideBg.lineStyle(2, 0x00ffff, 0.5);
-    this.slideBg.strokeRoundedRect(-150, -180, 300, 360, 20);
+    const slideBg = this.add.graphics();
+    slideBg.fillStyle(0x0a0a1a, 0.85);
+    slideBg.fillRoundedRect(-150, -180, 300, 360, 20);
+    slideBg.lineStyle(2, 0x00ffff, 0.5);
+    slideBg.strokeRoundedRect(-150, -180, 300, 360, 20);
+    this.slideContainer.add(slideBg);
     
     // Заголовок
     this.titleObj = this.add.text(0, -150, '', {
@@ -328,11 +330,13 @@ export class TutorialScene extends Phaser.Scene {
       stroke: '#ff00ff',
       strokeThickness: 2
     }).setOrigin(0.5);
+    this.slideContainer.add(this.titleObj);
     
     // Иконка
     this.iconObj = this.add.text(0, -70, '', {
       fontSize: '64px'
     }).setOrigin(0.5);
+    this.slideContainer.add(this.iconObj);
     
     // Текст
     this.textObj = this.add.text(0, 10, '', {
@@ -343,6 +347,7 @@ export class TutorialScene extends Phaser.Scene {
       wordWrap: { width: 260 },
       lineSpacing: 8
     }).setOrigin(0.5);
+    this.slideContainer.add(this.textObj);
     
     // Детали
     this.detailObj = this.add.text(0, 70, '', {
@@ -352,12 +357,11 @@ export class TutorialScene extends Phaser.Scene {
       align: 'center',
       wordWrap: { width: 260 }
     }).setOrigin(0.5);
+    this.slideContainer.add(this.detailObj);
     
     // Индикатор цвета
-    this.colorIndicator = this.add.rectangle(0, -170, 80, 4, 0x00ffff)
-      .setOrigin(0.5);
-    
-    this.slideContainer.add([this.slideBg, this.titleObj, this.iconObj, this.textObj, this.detailObj, this.colorIndicator]);
+    this.colorIndicator = this.add.rectangle(0, -170, 80, 4, 0x00ffff).setOrigin(0.5);
+    this.slideContainer.add(this.colorIndicator);
   }
 
   createDemoContainer() {
@@ -369,8 +373,8 @@ export class TutorialScene extends Phaser.Scene {
     this.demoContainer.setVisible(false);
     
     // Фон для демо
-    const demoBg = this.add.rectangle(0, 0, 180, 260, 0x1a1a3a, 0.8)
-      .setStrokeStyle(2, 0x00ffff, 0.5);
+    const demoBg = this.add.rectangle(0, 0, 180, 260, 0x1a1a3a, 0.8);
+    demoBg.setStrokeStyle(2, 0x00ffff, 0.5);
     this.demoContainer.add(demoBg);
     
     // Текст "ДЕМОНСТРАЦИЯ"
@@ -394,8 +398,8 @@ export class TutorialScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(20);
     
     // Кнопки навигации
-    this.prevBtn = this.createNeonButton(w / 2 - 130, h - 55, '◀  НАЗАД', () => this.prevSlide());
-    this.nextBtn = this.createNeonButton(w / 2 + 130, h - 55, 'ВПЕРЁД  ▶', () => this.nextSlide());
+    this.createNeonButton(w / 2 - 130, h - 55, '◀  НАЗАД', () => this.prevSlide());
+    this.createNeonButton(w / 2 + 130, h - 55, 'ВПЕРЁД  ▶', () => this.nextSlide());
     
     // Кнопка пропуска
     this.skipBtn = this.add.text(w / 2, h - 25, 'ПРОПУСТИТЬ ТУТОРИАЛ', {
@@ -426,12 +430,13 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   createNeonButton(x, y, text, callback) {
+    const width = 110;
+    const height = 40;
+    
     const button = this.add.graphics();
     button.setDepth(20);
     
     const buttonState = { glowAlpha: 0.3 };
-    const width = 110;
-    const height = 40;
     
     const updateButton = () => {
       button.clear();
@@ -484,8 +489,22 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕМОНСТРАЦИОННЫЕ ЭФФЕКТЫ
+  // ДЕМОНСТРАЦИОННЫЕ ЭФФЕКТЫ (БЕЗ ОШИБОК)
   // =========================================================================
+
+  clearDemo() {
+    // Удаляем все объекты из демо-контейнера, кроме фона и метки
+    if (this.demoContainer) {
+      const children = this.demoContainer.getAll();
+      children.forEach(child => {
+        // Не удаляем фон и метку
+        if (child !== this.demoContainer.list[0] && child !== this.demoContainer.list[1]) {
+          child.destroy();
+        }
+      });
+    }
+    this.demoObjects = [];
+  }
 
   showDemo(type) {
     this.demoContainer.setVisible(true);
@@ -554,7 +573,8 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showCoinsDemo() {
-    const coin = this.add.image(0, 20, 'coin_gold').setScale(0.6);
+    const coin = this.add.image(0, 20, 'coin_gold');
+    coin.setScale(0.6);
     this.demoContainer.add(coin);
     
     const value = this.add.text(0, -20, '+1 💎', {
@@ -588,7 +608,8 @@ export class TutorialScene extends Phaser.Scene {
     const colors = ['coin_red', 'coin_blue', 'coin_green', 'coin_purple'];
     let index = 0;
     
-    const coin = this.add.image(0, 20, colors[0]).setScale(0.6);
+    const coin = this.add.image(0, 20, colors[0]);
+    coin.setScale(0.6);
     this.demoContainer.add(coin);
     
     this.time.addEvent({
@@ -636,7 +657,8 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showAsteroidDemo() {
-    const asteroid = this.add.image(0, 0, 'bg_asteroid_1').setScale(0.5);
+    const asteroid = this.add.image(0, 0, 'bg_asteroid_1');
+    asteroid.setScale(0.5);
     this.demoContainer.add(asteroid);
     
     const warning = this.add.text(0, -40, '💥 ОПАСНО!', {
@@ -666,7 +688,8 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showPowerupDemo() {
-    const powerup = this.add.image(0, 0, 'powerup').setScale(0.7);
+    const powerup = this.add.image(0, 0, 'powerup');
+    powerup.setScale(0.7);
     powerup.setTint(0x00ffff);
     this.demoContainer.add(powerup);
     
@@ -717,7 +740,7 @@ export class TutorialScene extends Phaser.Scene {
       duration: 1000,
       yoyo: true,
       repeat: -1,
-      onUpdate: (tween) => {
+      onUpdate: () => {
         if (player.x > -10 && player.x < 10) {
           score.setAlpha(1);
           score.setY(-20);
@@ -791,20 +814,6 @@ export class TutorialScene extends Phaser.Scene {
     });
   }
 
-  clearDemo() {
-    if (this.demoContainer) {
-      this.demoContainer.removeAll(true);
-      const demoBg = this.add.rectangle(0, 0, 180, 260, 0x1a1a3a, 0.8)
-        .setStrokeStyle(2, 0x00ffff, 0.5);
-      const demoLabel = this.add.text(0, -110, 'ДЕМОНСТРАЦИЯ', {
-        fontSize: '10px',
-        fontFamily: "'Orbitron', sans-serif",
-        color: '#88aaff'
-      }).setOrigin(0.5);
-      this.demoContainer.add([demoBg, demoLabel]);
-    }
-  }
-
   // =========================================================================
   // УПРАВЛЕНИЕ СЛАЙДАМИ
   // =========================================================================
@@ -844,23 +853,6 @@ export class TutorialScene extends Phaser.Scene {
         });
       }
     });
-    
-    // Обновляем состояние кнопок
-    this.updateButtonsState();
-  }
-
-  updateButtonsState() {
-    const isFirst = this.slideIndex === 0;
-    const isLast = this.slideIndex === this.slides.length - 1;
-    
-    this.prevBtn.buttonText.setAlpha(isFirst ? 0.5 : 1);
-    if (isFirst) {
-      this.prevBtn.button.disableInteractive();
-    } else {
-      this.prevBtn.button.setInteractive();
-    }
-    
-    this.nextBtn.buttonText.setText(isLast ? '🏆  ЗАВЕРШИТЬ  🏆' : 'ВПЕРЁД  ▶');
   }
 
   prevSlide() {
@@ -894,8 +886,10 @@ export class TutorialScene extends Phaser.Scene {
       callback: () => {
         const time = Date.now() / 1000;
         this.stars.forEach(star => {
-          star.sprite.alpha = star.baseAlpha + Math.sin(time * 5 * star.speed) * 0.3;
-          star.sprite.rotation += star.rotationSpeed;
+          if (star.sprite && star.sprite.active) {
+            star.sprite.alpha = star.baseAlpha + Math.sin(time * 5 * star.speed) * 0.3;
+            star.sprite.rotation += star.rotationSpeed;
+          }
         });
       },
       loop: true
@@ -930,7 +924,6 @@ export class TutorialScene extends Phaser.Scene {
     this.tweens.killAll();
     this.stars = [];
     this.particles = [];
-    this.demoCoins = [];
-    this.demoWagons = [];
+    this.demoObjects = [];
   }
 }
