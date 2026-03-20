@@ -2982,513 +2982,6 @@ updateWorldProgress() {
   }
 
   // =========================================================================
-// МЕТОДЫ ДЛЯ ФОНА
-// =========================================================================
-
-createBackground() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-
-  const gradient = this.add.graphics();
-  gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
-  gradient.fillRect(0, 0, w, h);
-  gradient.setDepth(-30);
-
-  for (let i = 0; i < 200; i++) {
-    const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
-    star.setScale(Phaser.Math.FloatBetween(0.2, 1.8));
-    star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
-    star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
-    star.setDepth(-25);
-    this.stars.push({
-      sprite: star,
-      speed: Phaser.Math.Between(3, 20),
-      flicker: Phaser.Math.FloatBetween(0.01, 0.03)
-    });
-  }
-}
-
-createPlanets() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-
-  for (let i = 1; i <= 5; i++) {
-    const x = Phaser.Math.Between(w, w * 15);
-    const y = Phaser.Math.Between(50, h - 50);
-    const planet = this.add.image(x, y, `planet_${i}`);
-    planet.setScale(Phaser.Math.FloatBetween(2.0, 4.0));
-    planet.setTint(0x8888ff);
-    planet.setAlpha(0.6 + Math.random() * 0.3);
-    planet.setDepth(-15);
-    planet.setBlendMode(Phaser.BlendModes.ADD);
-    this.planets.push({
-      sprite: planet,
-      speed: Phaser.Math.Between(2, 12),
-      flicker: Phaser.Math.FloatBetween(0.005, 0.01)
-    });
-  }
-}
-
-createShips() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  const shipTextures = ['bg_ship_1', 'bg_ship_2'];
-
-  for (let i = 0; i < 8; i++) {
-    const tex = shipTextures[Math.floor(Math.random() * shipTextures.length)];
-    const ship = this.add.image(Phaser.Math.Between(w, w * 12), Phaser.Math.Between(50, h - 50), tex);
-    ship.setScale(Phaser.Math.FloatBetween(0.5, 1.5));
-    ship.setTint(0x00ffff);
-    ship.setAlpha(0.7);
-    ship.setDepth(-10);
-    ship.setBlendMode(Phaser.BlendModes.ADD);
-    this.ships.push({ sprite: ship, speed: Phaser.Math.Between(3, 10) });
-  }
-}
-
-createAsteroids() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-
-  for (let i = 0; i < 10; i++) {
-    const tex = i % 2 === 0 ? 'bg_asteroid_1' : 'bg_asteroid_2';
-    const asteroid = this.add.image(Phaser.Math.Between(w, w * 12), Phaser.Math.Between(50, h - 50), tex);
-    asteroid.setScale(Phaser.Math.FloatBetween(0.6, 1.8));
-    asteroid.setTint(0xff8800);
-    asteroid.setAlpha(0.7);
-    asteroid.setDepth(-12);
-    asteroid.setBlendMode(Phaser.BlendModes.ADD);
-    this.asteroids.push({ sprite: asteroid, speed: Phaser.Math.Between(4, 14) });
-  }
-}
-
-/**
- * Создание игрока
- */
-createPlayer() {
-  const h = this.scale.height;
-  
-  let skin = 'player';
-  try {
-    const currentSkin = gameManager.getCurrentSkin?.();
-    if (currentSkin && this.textures.exists(currentSkin)) {
-      skin = currentSkin;
-    } else if (this.textures.exists('player')) {
-      skin = 'player';
-    } else {
-      console.warn('⚠️ Player texture not found, creating fallback');
-      this.createFallbackTexture();
-      skin = 'player_fallback';
-    }
-  } catch (e) {
-    console.warn('Error getting skin, using default');
-  }
-  
-  console.log(`✅ Creating player with skin: ${skin}`);
-  
-  this.player = this.physics.add.image(this.targetPlayerX, h / 2, skin);
-  this.player.setScale(0.85);
-  this.player.setCollideWorldBounds(false);
-  this.player.setMaxVelocity(600, 1000);
-  this.player.body.setCircle(22, 16, 8);
-  this.player.setBlendMode(Phaser.BlendModes.ADD);
-  this.player.body.setMass(10000);
-  this.player.body.setDrag(500, 0);
-  this.player.setDepth(15);
-  this.player.setVisible(true);
-  
-  // Эффект свечения
-  this.playerGlow = this.add.circle(this.targetPlayerX, h / 2, 32, 0x00ffff, 0.2);
-  this.playerGlow.setBlendMode(Phaser.BlendModes.ADD);
-  this.playerGlow.setDepth(14);
-  
-  this.tweens.add({
-    targets: this.playerGlow,
-    alpha: { from: 0.1, to: 0.3 },
-    scale: { from: 1, to: 1.2 },
-    duration: 800,
-    yoyo: true,
-    repeat: -1,
-    onUpdate: () => {
-      if (this.player?.active) {
-        this.playerGlow.setPosition(this.player.x, this.player.y);
-      }
-    }
-  });
-  
-  // Неоновый след
-  this.trailEmitter = this.add.particles(0, 0, 'flare', {
-    speed: { min: 30, max: 60 },
-    scale: { start: 0.35, end: 0 },
-    alpha: { start: 0.6, end: 0 },
-    lifespan: 250,
-    blendMode: Phaser.BlendModes.ADD,
-    follow: this.player,
-    followOffset: { x: -18, y: 0 },
-    quantity: 2,
-    frequency: 18,
-    tint: [0x00ffff, 0xff00ff, 0xffff00]
-  });
-  
-  this.player.doubleCrystals = false;
-  this.player.shieldActive = false;
-  this.player.magnetActive = false;
-  this.player.speedBoost = 1;
-  this.player.invincible = false;
-  
-  this.initSounds();
-}
-
-createFallbackTexture() {
-  const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-  graphics.fillStyle(0xffaa00);
-  graphics.fillRoundedRect(0, 0, 80, 60, 8);
-  graphics.fillStyle(0xff8800);
-  graphics.fillRoundedRect(8, 0, 64, 12, 4);
-  graphics.fillStyle(0x44aaff);
-  graphics.fillRect(12, 20, 20, 12);
-  graphics.fillRect(44, 20, 20, 12);
-  graphics.fillStyle(0x00ffff);
-  graphics.fillCircle(18, 42, 5);
-  graphics.fillStyle(0xffffff);
-  graphics.fillCircle(18, 42, 3);
-  graphics.generateTexture('player_fallback', 80, 60);
-  graphics.destroy();
-}
-
-initSounds() {
-  const sounds = [
-    { key: 'coin_sound', volume: 0.4, prop: 'coinSound' },
-    { key: 'item_sound', volume: 0.5, prop: 'itemSound' },
-    { key: 'tap_sound', volume: 0.3, prop: 'tapSound' },
-    { key: 'wagon_sound', volume: 0.6, prop: 'wagonSound' },
-    { key: 'level_up_sound', volume: 0.5, prop: 'levelUpSound' },
-    { key: 'purchase_sound', volume: 0.5, prop: 'purchaseSound' },
-    { key: 'revive_sound', volume: 0.5, prop: 'reviveSound' }
-  ];
-  
-  sounds.forEach(sound => {
-    try {
-      if (this.cache.audio.has(sound.key)) {
-        this[sound.prop] = this.sound.add(sound.key, { volume: sound.volume });
-      } else {
-        this[sound.prop] = null;
-      }
-    } catch (e) {
-      this[sound.prop] = null;
-    }
-  });
-  
-  this.hitSound = this.tapSound;
-}
-
-/**
- * Создание пользовательского интерфейса
- */
-createUI() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  
-  this.createTopPanel();
-  this.createBottomPanel();
-  
-  this.heartContainer = this.add.container(12, 38).setDepth(10).setScrollFactor(0);
-  this.updateHearts();
-  
-  this.introText = this.add.text(w / 2, h * 0.42, 'СОБИРАЙ МОНЕТЫ\nЧТОБЫ УДЛИНИТЬ ТАКСИ', {
-    fontSize: '14px',
-    fontFamily: "'Orbitron', sans-serif",
-    color: '#ffffff',
-    align: 'center',
-    stroke: '#7c3aed',
-    strokeThickness: 2,
-    lineSpacing: 10,
-    shadow: { blur: 8, color: '#7c3aed', fill: true }
-  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
-  
-  this.coinTipsText = this.add.text(w / 2, h * 0.52, '🟡 Золото  |  🔴 Скорость  |  🔵 Щит  |  🟢 Магнит  |  🟣 Замедление', {
-    fontSize: '8px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#cbd5e1',
-    align: 'center'
-  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
-  
-  this.createButtons();
-  this.createGameOverBox();
-  this.applySkinBonuses();
-  this.setupCollisions();
-}
-
-createTopPanel() {
-  const w = this.scale.width;
-  
-  this.scoreText = this.add.text(w / 2, 22, '0', {
-    fontSize: '48px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#ffffff',
-    stroke: '#00ffff',
-    strokeThickness: 6,
-    shadow: { blur: 15, color: '#00ffff', fill: true }
-  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
-  
-  this.bestText = this.add.text(12, 10, `🏆 ${this.best}`, {
-    fontSize: '12px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#ffaa44',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setDepth(10).setScrollFactor(0);
-  
-  this.crystalText = this.add.text(w - 12, 10, `💎 ${this.crystals}`, {
-    fontSize: '12px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#ffaa44',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
-  
-  this.bonusText = this.add.text(w - 12, 42, '', {
-    fontSize: '12px',
-    fontFamily: "'Orbitron', sans-serif",
-    stroke: '#000000',
-    strokeThickness: 2,
-    align: 'right'
-  }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
-  
-  this.levelText = this.add.text(w / 2, 100, '', {
-    fontSize: '28px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#ffffff',
-    stroke: '#ff00ff',
-    strokeThickness: 5,
-    shadow: { blur: 15, color: '#ff00ff', fill: true }
-  }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
-}
-
-createBottomPanel() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  
-  this.meterText = this.add.text(12, h - 70, `📏 ${Math.floor(this.meters)} м`, {
-    fontSize: '11px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#88ccff',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setDepth(10).setScrollFactor(0);
-  
-  this.wagonCountText = this.add.text(w - 12, h - 70, `🚃 ${this.wagons.length}/${this.maxWagons}`, {
-    fontSize: '11px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#88ccff',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
-}
-
-/**
- * Создание кнопок управления (только пауза и меню)
- */
-createButtons() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  
-  // Кнопка паузы - стильная неоновая
-  this.pauseButton = this.add.circle(w - 35, h - 35, 22, 0x1a1a3a, 0.9);
-  this.pauseButton.setStrokeStyle(2, 0x00ffff, 0.8);
-  this.pauseButton.setInteractive({ useHandCursor: true });
-  this.pauseButton.setDepth(20);
-  
-  const pauseIcon = this.add.text(w - 35, h - 35, '⏸️', {
-    fontSize: '24px'
-  }).setOrigin(0.5).setDepth(21);
-  
-  this.pauseButton.on('pointerover', () => {
-    this.pauseButton.setScale(1.1);
-    pauseIcon.setScale(1.1);
-  });
-  this.pauseButton.on('pointerout', () => {
-    this.pauseButton.setScale(1);
-    pauseIcon.setScale(1);
-  });
-  this.pauseButton.on('pointerdown', (pointer) => {
-    pointer.event.stopPropagation();
-    this.togglePause();
-  });
-  
-  // Кнопка меню - стильная неоновая
-  this.menuButton = this.add.circle(w - 95, h - 35, 22, 0x1a1a3a, 0.9);
-  this.menuButton.setStrokeStyle(2, 0xff00ff, 0.8);
-  this.menuButton.setInteractive({ useHandCursor: true });
-  this.menuButton.setDepth(20);
-  
-  const menuIcon = this.add.text(w - 95, h - 35, '⚙️', {
-    fontSize: '24px'
-  }).setOrigin(0.5).setDepth(21);
-  
-  this.menuButton.on('pointerover', () => {
-    this.menuButton.setScale(1.1);
-    menuIcon.setScale(1.1);
-  });
-  this.menuButton.on('pointerout', () => {
-    this.menuButton.setScale(1);
-    menuIcon.setScale(1);
-  });
-  this.menuButton.on('pointerdown', (pointer) => {
-    pointer.event.stopPropagation();
-    this.confirmExit();
-  });
-  
-  // Сохраняем иконки для очистки
-  this.pauseIcon = pauseIcon;
-  this.menuIcon = menuIcon;
-}
-
-applySkinBonuses() {
-  try {
-    const currentSkin = gameManager.getCurrentSkin?.();
-    const skinStats = gameManager.getSkinStats?.(currentSkin);
-    if (skinStats) {
-      this.jumpPower += skinStats.jumpBonus || 0;
-      this.baseSpeed += skinStats.speedBonus || 0;
-      if (skinStats.armorBonus) {
-        this.maxHeadHP += Math.floor(skinStats.armorBonus / 10);
-        if (this.headHP > this.maxHeadHP) this.headHP = this.maxHeadHP;
-        this.updateHearts();
-      }
-    }
-  } catch (e) {
-    console.warn('Error applying skin stats:', e);
-  }
-}
-
-setupCollisions() {
-  this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
-  
-  this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
-    if (!bullet?.active || !enemySprite?.active) return;
-    const enemy = enemySprite.enemyRef;
-    if (enemy?.health > 0 && this.damageSystem) {
-      this.damageSystem.enemyHitByBullet(enemy, bullet);
-    }
-  }, null, this);
-  
-  this.physics.add.overlap(this.enemyBullets, this.player, (bullet, player) => {
-    if (this.damageSystem) {
-      this.damageSystem.playerHitByBullet(player, bullet);
-    }
-  }, null, this);
-  
-  this.physics.add.overlap(this.enemyBullets, this.wagons, (bullet, wagon) => {
-    if (!bullet?.active || !wagon?.active) return;
-    if (wagon.takeDamage) {
-      const destroyed = wagon.takeDamage(1);
-      if (destroyed) {
-        this.wagons = this.wagons.filter(w => w !== wagon);
-      }
-    }
-    bullet.destroy();
-  }, null, this);
-}
-
-updateHearts() {
-  if (!this.heartContainer) return;
-  this.heartContainer.removeAll(true);
-  
-  const heartSpacing = 18;
-  
-  for (let i = 0; i < this.maxHeadHP; i++) {
-    const heart = this.add.image(i * heartSpacing, 0, 'heart').setScale(0.55);
-    
-    if (i >= this.headHP) {
-      heart.setTint(0x444444);
-      heart.setAlpha(0.4);
-    } else {
-      heart.setTint(0xff44ff);
-      heart.setAlpha(1);
-      
-      if (i === this.headHP - 1 && this.headHP > 0) {
-        this.tweens.add({
-          targets: heart,
-          scaleX: { from: 0.55, to: 0.7 },
-          scaleY: { from: 0.55, to: 0.7 },
-          duration: 400,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
-    }
-    
-    this.heartContainer.add(heart);
-  }
-}
-
-createGameOverBox() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  
-  this.gameOverBox = this.add.container(w / 2, h / 2);
-  this.gameOverBox.setVisible(false);
-  this.gameOverBox.setDepth(100);
-  this.gameOverBox.setScrollFactor(0);
-  
-  const panelBg = this.add.graphics();
-  panelBg.fillStyle(0x0a0a1a, 0.98);
-  panelBg.fillRoundedRect(-150, -125, 300, 280, 20);
-  panelBg.lineStyle(3, 0x00ffff, 0.9);
-  panelBg.strokeRoundedRect(-150, -125, 300, 280, 20);
-  
-  const innerGlow = this.add.graphics();
-  innerGlow.lineStyle(2, 0xff00ff, 0.4);
-  innerGlow.strokeRoundedRect(-146, -121, 292, 272, 18);
-  
-  const title = this.add.text(0, -95, 'ИГРА ОКОНЧЕНА', {
-    fontSize: '26px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#ff4444',
-    stroke: '#ff00ff',
-    strokeThickness: 4,
-    shadow: { blur: 15, color: '#ff0000', fill: true }
-  }).setOrigin(0.5);
-  
-  const subtitle = this.add.text(0, -20, '', {
-    fontSize: '12px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#88ccff',
-    align: 'center',
-    stroke: '#000000',
-    strokeThickness: 2,
-    lineSpacing: 6
-  }).setOrigin(0.5);
-  this.gameOverSubtitle = subtitle;
-  
-  const tip = this.add.text(0, 75, '👆 НАЖМИТЕ, ЧТОБЫ ПРОДОЛЖИТЬ', {
-    fontSize: '11px',
-    fontFamily: "'Orbitron', sans-serif",
-    color: '#88aaff',
-    stroke: '#000000',
-    strokeThickness: 1
-  }).setOrigin(0.5);
-  
-  const glowLine = this.add.graphics();
-  glowLine.lineStyle(2, 0x00ffff, 0.6);
-  glowLine.moveTo(-80, 105);
-  glowLine.lineTo(80, 105);
-  glowLine.strokePath();
-  
-  this.tweens.add({
-    targets: glowLine,
-    alpha: { from: 0.3, to: 0.9 },
-    duration: 800,
-    yoyo: true,
-    repeat: -1
-  });
-  
-  this.gameOverBox.add([panelBg, innerGlow, title, subtitle, tip, glowLine]);
-}
-
-// =========================================================================
 // МЕТОДЫ УПРАВЛЕНИЯ ПАУЗОЙ И ВЫХОДОМ
 // =========================================================================
 
@@ -3499,51 +2992,64 @@ togglePause() {
   this.isPaused = !this.isPaused;
   
   if (this.isPaused) {
+    // Останавливаем физику и таймеры
     this.physics.pause();
     if (this.spawnTimer) this.spawnTimer.paused = true;
     if (this.bonusTimer) this.bonusTimer.paused = true;
     if (this.stationTimer) this.stationTimer.paused = true;
     
-    // Создаём оверлей паузы
+    // Создаём оверлей паузы (НЕ интерактивный, чтобы не перехватывать клики по кнопке)
     this.pauseOverlay = this.add.rectangle(
       this.scale.width / 2, this.scale.height / 2,
       this.scale.width, this.scale.height,
       0x000000, 0.85
-    ).setDepth(100).setScrollFactor(0).setInteractive();
+    ).setDepth(100).setScrollFactor(0);
     
-    // Неоновая рамка
+    // Неоновая рамка с анимацией
     this.pauseBorder = this.add.graphics();
-    this.pauseBorder.lineStyle(3, 0x00ffff, 0.8);
+    this.pauseBorder.lineStyle(3, 0x00ffff, 0.9);
     this.pauseBorder.strokeRoundedRect(
-      this.scale.width / 2 - 140,
-      this.scale.height / 2 - 100,
-      280, 200, 20
+      this.scale.width / 2 - 150,
+      this.scale.height / 2 - 110,
+      300, 220, 25
     );
     this.pauseBorder.setDepth(101);
     
-    // Текст паузы
+    // Анимированное свечение рамки
+    this.tweens.add({
+      targets: this.pauseBorder,
+      alpha: { from: 0.6, to: 1 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    
+    // Основной текст паузы
     this.pauseText = this.add.text(
-      this.scale.width / 2, this.scale.height / 2 - 40,
+      this.scale.width / 2, this.scale.height / 2 - 50,
       '⏸️ ПАУЗА',
       {
-        fontSize: '48px',
+        fontSize: '52px',
         fontFamily: "'Audiowide', 'Orbitron', sans-serif",
         color: '#ffffff',
         stroke: '#00ffff',
         strokeThickness: 6,
-        shadow: { blur: 20, color: '#00ffff', fill: true }
+        shadow: { blur: 25, color: '#00ffff', fill: true }
       }
     ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
     
+    // Подсказка
     this.pauseTip = this.add.text(
       this.scale.width / 2, this.scale.height / 2 + 30,
-      'НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ',
+      '✦ НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ ✦',
       {
         fontSize: '12px',
         fontFamily: "'Share Tech Mono', monospace",
         color: '#88aaff',
         stroke: '#000000',
-        strokeThickness: 2
+        strokeThickness: 2,
+        letterSpacing: 1
       }
     ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
     
@@ -3557,7 +3063,43 @@ togglePause() {
       ease: 'Sine.easeInOut'
     });
     
+    // Эффект мерцания подсказки
+    this.tweens.add({
+      targets: this.pauseTip,
+      alpha: { from: 0.6, to: 1 },
+      duration: 600,
+      yoyo: true,
+      repeat: -1
+    });
+    
+    // Добавляем парящие частицы вокруг паузы
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const particle = this.add.circle(
+        this.scale.width / 2 + Math.cos(angle) * 130,
+        this.scale.height / 2 + Math.sin(angle) * 100,
+        2,
+        0x00ffff,
+        0.4
+      );
+      particle.setBlendMode(Phaser.BlendModes.ADD);
+      particle.setDepth(99);
+      this.pauseParticles = this.pauseParticles || [];
+      this.pauseParticles.push(particle);
+      
+      this.tweens.add({
+        targets: particle,
+        alpha: { from: 0.2, to: 0.6 },
+        scale: { from: 1, to: 1.5 },
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        delay: i * 150
+      });
+    }
+    
   } else {
+    // Возобновляем игру
     this.physics.resume();
     if (this.spawnTimer) this.spawnTimer.paused = false;
     if (this.bonusTimer) this.bonusTimer.paused = false;
@@ -3568,11 +3110,18 @@ togglePause() {
     if (this.pauseText) this.pauseText.destroy();
     if (this.pauseTip) this.pauseTip.destroy();
     if (this.pauseOverlay) this.pauseOverlay.destroy();
+    if (this.pauseParticles) {
+      this.pauseParticles.forEach(p => p?.destroy());
+      this.pauseParticles = [];
+    }
     
     this.pauseBorder = null;
     this.pauseText = null;
     this.pauseTip = null;
     this.pauseOverlay = null;
+    
+    // Эффект возобновления
+    this.cameras.main.flash(200, 0, 255, 255, false);
   }
 }
 
@@ -3590,66 +3139,113 @@ confirmExit() {
   const w = this.scale.width;
   const h = this.scale.height;
   
-  // Оверлей
+  // Оверлей (НЕ интерактивный, чтобы кнопки работали)
   this.exitOverlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
-    .setDepth(150).setScrollFactor(0).setInteractive();
+    .setDepth(150).setScrollFactor(0);
   
-  // Панель
+  // Анимированная панель
   this.exitPanel = this.add.graphics();
   this.exitPanel.fillStyle(0x0a0a1a, 0.98);
-  this.exitPanel.fillRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
-  this.exitPanel.lineStyle(3, 0xff00ff, 0.8);
-  this.exitPanel.strokeRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
+  this.exitPanel.fillRoundedRect(w / 2 - 150, h / 2 - 115, 300, 250, 25);
+  this.exitPanel.lineStyle(3, 0xff00ff, 0.9);
+  this.exitPanel.strokeRoundedRect(w / 2 - 150, h / 2 - 115, 300, 250, 25);
   this.exitPanel.setDepth(151);
   
-  // Иконка
-  this.exitIcon = this.add.text(w / 2, h / 2 - 55, '⚠️', {
-    fontSize: '32px'
+  // Анимация рамки
+  this.tweens.add({
+    targets: this.exitPanel,
+    alpha: { from: 0.8, to: 1 },
+    duration: 600,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  // Иконка с анимацией
+  this.exitIcon = this.add.text(w / 2, h / 2 - 65, '⚠️', {
+    fontSize: '48px'
   }).setOrigin(0.5).setDepth(152);
   
-  // Текст
-  this.exitText = this.add.text(w / 2, h / 2 - 15, 'Выйти в меню?', {
-    fontSize: '20px',
+  this.tweens.add({
+    targets: this.exitIcon,
+    scale: { from: 1, to: 1.2 },
+    duration: 500,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
+  });
+  
+  // Основной текст
+  this.exitText = this.add.text(w / 2, h / 2 - 15, 'ВЫЙТИ В МЕНЮ?', {
+    fontSize: '24px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
     color: '#ffffff',
     stroke: '#ff00ff',
-    strokeThickness: 2
+    strokeThickness: 3,
+    shadow: { blur: 10, color: '#ff00ff', fill: true }
   }).setOrigin(0.5).setDepth(152);
   
-  this.exitSubText = this.add.text(w / 2, h / 2 + 15, 'Прогресс не сохранится', {
+  // Предупреждение
+  this.exitSubText = this.add.text(w / 2, h / 2 + 15, '⚠️ Весь прогресс будет потерян ⚠️', {
     fontSize: '10px',
     fontFamily: "'Share Tech Mono', monospace",
-    color: '#ffaa66'
+    color: '#ffaa66',
+    stroke: '#000000',
+    strokeThickness: 1
   }).setOrigin(0.5).setDepth(152);
   
-  // Кнопка ДА
-  this.yesBtn = this.add.text(w / 2 - 70, h / 2 + 65, 'ДА', {
-    fontSize: '18px',
+  // Стильная кнопка ДА
+  this.yesBtn = this.add.container(w / 2 - 80, h / 2 + 70);
+  const yesBg = this.add.graphics();
+  yesBg.fillStyle(0x1a3a1a, 0.9);
+  yesBg.fillRoundedRect(-45, -15, 90, 40, 20);
+  yesBg.lineStyle(2, 0x00ff00, 0.8);
+  yesBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+  const yesText = this.add.text(0, 0, 'ДА', {
+    fontSize: '20px',
     fontFamily: "'Audiowide', sans-serif",
-    color: '#00ff00',
-    backgroundColor: '#1a3a1a',
-    padding: { x: 20, y: 8 },
-    stroke: '#00ff00',
-    strokeThickness: 2
-  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(152);
+    color: '#00ff00'
+  }).setOrigin(0.5);
+  this.yesBtn.add([yesBg, yesText]);
+  this.yesBtn.setDepth(200);
   
-  // Кнопка НЕТ
-  this.noBtn = this.add.text(w / 2 + 70, h / 2 + 65, 'НЕТ', {
-    fontSize: '18px',
+  // Стильная кнопка НЕТ
+  this.noBtn = this.add.container(w / 2 + 80, h / 2 + 70);
+  const noBg = this.add.graphics();
+  noBg.fillStyle(0x3a1a1a, 0.9);
+  noBg.fillRoundedRect(-45, -15, 90, 40, 20);
+  noBg.lineStyle(2, 0xff4444, 0.8);
+  noBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+  const noText = this.add.text(0, 0, 'НЕТ', {
+    fontSize: '20px',
     fontFamily: "'Audiowide', sans-serif",
-    color: '#ff4444',
-    backgroundColor: '#3a1a1a',
-    padding: { x: 20, y: 8 },
-    stroke: '#ff4444',
-    strokeThickness: 2
-  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(152);
+    color: '#ff4444'
+  }).setOrigin(0.5);
+  this.noBtn.add([noBg, noText]);
+  this.noBtn.setDepth(200);
   
-  // Обработчики кнопок
+  // Делаем кнопки интерактивными
+  this.yesBtn.setInteractive({ useHandCursor: true });
+  this.noBtn.setInteractive({ useHandCursor: true });
+  
+  // Анимация при наведении
   this.yesBtn.on('pointerover', () => {
-    this.yesBtn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' });
+    yesBg.clear();
+    yesBg.fillStyle(0x00aa00, 0.9);
+    yesBg.fillRoundedRect(-45, -15, 90, 40, 20);
+    yesBg.lineStyle(2, 0xffffff, 0.8);
+    yesBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+    yesText.setColor('#ffffff');
+    yesText.setScale(1.05);
   });
   this.yesBtn.on('pointerout', () => {
-    this.yesBtn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' });
+    yesBg.clear();
+    yesBg.fillStyle(0x1a3a1a, 0.9);
+    yesBg.fillRoundedRect(-45, -15, 90, 40, 20);
+    yesBg.lineStyle(2, 0x00ff00, 0.8);
+    yesBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+    yesText.setColor('#00ff00');
+    yesText.setScale(1);
   });
   this.yesBtn.on('pointerdown', (pointer) => {
     pointer.event.stopPropagation();
@@ -3657,21 +3253,40 @@ confirmExit() {
   });
   
   this.noBtn.on('pointerover', () => {
-    this.noBtn.setStyle({ color: '#ffffff', backgroundColor: '#aa0000' });
+    noBg.clear();
+    noBg.fillStyle(0xaa0000, 0.9);
+    noBg.fillRoundedRect(-45, -15, 90, 40, 20);
+    noBg.lineStyle(2, 0xffffff, 0.8);
+    noBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+    noText.setColor('#ffffff');
+    noText.setScale(1.05);
   });
   this.noBtn.on('pointerout', () => {
-    this.noBtn.setStyle({ color: '#ff4444', backgroundColor: '#3a1a1a' });
+    noBg.clear();
+    noBg.fillStyle(0x3a1a1a, 0.9);
+    noBg.fillRoundedRect(-45, -15, 90, 40, 20);
+    noBg.lineStyle(2, 0xff4444, 0.8);
+    noBg.strokeRoundedRect(-45, -15, 90, 40, 20);
+    noText.setColor('#ff4444');
+    noText.setScale(1);
   });
   this.noBtn.on('pointerdown', (pointer) => {
     pointer.event.stopPropagation();
     this.closeExitDialog();
   });
+  
+  // Сохраняем ссылки для очистки
+  this.exitYesBg = yesBg;
+  this.exitNoBg = noBg;
+  this.exitYesText = yesText;
+  this.exitNoText = noText;
 }
 
 /**
  * Закрытие диалога выхода
  */
 closeExitDialog() {
+  // Удаляем все элементы диалога
   if (this.exitOverlay) this.exitOverlay.destroy();
   if (this.exitPanel) this.exitPanel.destroy();
   if (this.exitIcon) this.exitIcon.destroy();
@@ -3687,25 +3302,29 @@ closeExitDialog() {
   this.exitSubText = null;
   this.yesBtn = null;
   this.noBtn = null;
+  this.exitYesBg = null;
+  this.exitNoBg = null;
+  this.exitYesText = null;
+  this.exitNoText = null;
   this.exitDialogActive = false;
   
+  // Возвращаем игру
   this.isPaused = false;
   this.physics.resume();
+  
+  // Возобновляем таймеры
+  if (this.spawnTimer) this.spawnTimer.paused = false;
+  if (this.bonusTimer) this.bonusTimer.paused = false;
+  if (this.stationTimer) this.stationTimer.paused = false;
+  
+  // Эффект закрытия
+  this.cameras.main.flash(200, 0, 255, 100, false);
 }
 
 /**
- * Выход в меню
+ * Выход в меню с полной очисткой
  */
 exitToMenu() {
-  // Очищаем все ресурсы перед выходом
-  this.cleanupBeforeExit();
-  this.scene.start('menu');
-}
-
-/**
- * Очистка ресурсов перед выходом
- */
-cleanupBeforeExit() {
   // Останавливаем все таймеры
   if (this.spawnTimer) this.spawnTimer.remove();
   if (this.bonusTimer) this.bonusTimer.remove();
@@ -3714,68 +3333,157 @@ cleanupBeforeExit() {
   
   // Очищаем частицы
   if (this.particleManager) this.particleManager.clearAll();
-  if (this.trailEmitter) this.trailEmitter.stop();
+  if (this.trailEmitter) {
+    this.trailEmitter.stop();
+    this.trailEmitter.destroy();
+  }
   
-  // Удаляем все элементы UI
-  if (this.pauseOverlay) this.pauseOverlay.destroy();
+  // Удаляем эффект свечения игрока
+  if (this.playerGlow) this.playerGlow.destroy();
+  
+  // Удаляем все элементы UI паузы
   if (this.pauseBorder) this.pauseBorder.destroy();
   if (this.pauseText) this.pauseText.destroy();
   if (this.pauseTip) this.pauseTip.destroy();
+  if (this.pauseOverlay) this.pauseOverlay.destroy();
+  if (this.pauseParticles) {
+    this.pauseParticles.forEach(p => p?.destroy());
+    this.pauseParticles = [];
+  }
+  
+  // Удаляем диалог выхода
   if (this.exitOverlay) this.exitOverlay.destroy();
   if (this.exitPanel) this.exitPanel.destroy();
-  if (this.gameOverBox) this.gameOverBox.destroy();
+  if (this.exitIcon) this.exitIcon.destroy();
+  if (this.exitText) this.exitText.destroy();
+  if (this.exitSubText) this.exitSubText.destroy();
+  if (this.yesBtn) this.yesBtn.destroy();
+  if (this.noBtn) this.noBtn.destroy();
   
-  // Удаляем кнопки
+  // Удаляем кнопки управления
   if (this.pauseButton) this.pauseButton.destroy();
   if (this.menuButton) this.menuButton.destroy();
   if (this.pauseIcon) this.pauseIcon.destroy();
   if (this.menuIcon) this.menuIcon.destroy();
   
+  // Удаляем окно Game Over
+  if (this.gameOverBox) this.gameOverBox.destroy();
+  
   // Очищаем массивы объектов
-  if (this.pipes) this.pipes.forEach(p => p?.destroy());
-  if (this.coins) this.coins.forEach(c => c?.destroy());
-  if (this.wagons) this.wagons.forEach(w => w?.destroy());
-  if (this.scoreZones) this.scoreZones.forEach(z => z?.destroy());
-  if (this.asteroids) this.asteroids.forEach(a => a?.destroy());
-  if (this.powerUps) this.powerUps.forEach(p => p?.destroy());
+  if (this.pipes) {
+    this.pipes.forEach(p => p?.destroy());
+    this.pipes = [];
+  }
+  if (this.coins) {
+    this.coins.forEach(c => c?.destroy());
+    this.coins = [];
+  }
+  if (this.wagons) {
+    this.wagons.forEach(w => w?.destroy());
+    this.wagons = [];
+  }
+  if (this.scoreZones) {
+    this.scoreZones.forEach(z => z?.destroy());
+    this.scoreZones = [];
+  }
+  if (this.asteroids) {
+    this.asteroids.forEach(a => a?.destroy());
+    this.asteroids = [];
+  }
+  if (this.powerUps) {
+    this.powerUps.forEach(p => p?.destroy());
+    this.powerUps = [];
+  }
   
   // Очищаем системы
-  if (this.comboSystem) this.comboSystem.destroy();
-  if (this.specialEventManager) this.specialEventManager.destroy();
-  if (this.levelManager) this.levelManager.destroy();
-  if (this.waveManager) this.waveManager.destroy();
+  if (this.comboSystem?.destroy) this.comboSystem.destroy();
+  if (this.specialEventManager?.destroy) this.specialEventManager.destroy();
+  if (this.levelManager?.destroy) this.levelManager.destroy();
+  if (this.waveManager?.destroy) this.waveManager.destroy();
+  
+  // Сбрасываем флаги
+  this.exitDialogActive = false;
+  this.isPaused = false;
+  
+  // Переходим в меню
+  this.scene.start('menu');
 }
 
 /**
- * Показать уведомление
+ * Создание кнопок управления (стильные неоновые)
  */
-showNotification(text, duration = 1500, color = '#ffffff') {
+createButtons() {
   const w = this.scale.width;
+  const h = this.scale.height;
   
-  const notification = this.add.text(w / 2, 80, text, {
-    fontSize: '16px',
-    fontFamily: "'Orbitron', monospace",
-    color: color,
-    stroke: '#000000',
-    strokeThickness: 2,
-    align: 'center'
-  }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+  // Кнопка паузы с анимацией
+  this.pauseButton = this.add.circle(w - 35, h - 35, 24, 0x1a1a3a, 0.9);
+  this.pauseButton.setStrokeStyle(2, 0x00ffff, 0.9);
+  this.pauseButton.setInteractive({ useHandCursor: true });
+  this.pauseButton.setDepth(20);
   
-  notification.setAlpha(0);
-  
+  // Пульсация кнопки
   this.tweens.add({
-    targets: notification,
-    alpha: 1,
-    duration: 100
+    targets: this.pauseButton,
+    scale: { from: 1, to: 1.05 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut'
   });
   
-  this.tweens.add({
-    targets: notification,
-    alpha: 0,
-    delay: duration - 300,
-    duration: 300,
-    onComplete: () => notification.destroy()
+  const pauseIcon = this.add.text(w - 35, h - 35, '⏸️', {
+    fontSize: '26px'
+  }).setOrigin(0.5).setDepth(21);
+  
+  this.pauseButton.on('pointerover', () => {
+    this.pauseButton.setStrokeStyle(3, 0x00ffff, 1);
+    pauseIcon.setScale(1.1);
   });
+  this.pauseButton.on('pointerout', () => {
+    this.pauseButton.setStrokeStyle(2, 0x00ffff, 0.9);
+    pauseIcon.setScale(1);
+  });
+  this.pauseButton.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.togglePause();
+  });
+  
+  // Кнопка меню с анимацией
+  this.menuButton = this.add.circle(w - 95, h - 35, 24, 0x1a1a3a, 0.9);
+  this.menuButton.setStrokeStyle(2, 0xff00ff, 0.9);
+  this.menuButton.setInteractive({ useHandCursor: true });
+  this.menuButton.setDepth(20);
+  
+  this.tweens.add({
+    targets: this.menuButton,
+    scale: { from: 1, to: 1.05 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+    delay: 400
+  });
+  
+  const menuIcon = this.add.text(w - 95, h - 35, '⚙️', {
+    fontSize: '26px'
+  }).setOrigin(0.5).setDepth(21);
+  
+  this.menuButton.on('pointerover', () => {
+    this.menuButton.setStrokeStyle(3, 0xff00ff, 1);
+    menuIcon.setScale(1.1);
+  });
+  this.menuButton.on('pointerout', () => {
+    this.menuButton.setStrokeStyle(2, 0xff00ff, 0.9);
+    menuIcon.setScale(1);
+  });
+  this.menuButton.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.confirmExit();
+  });
+  
+  this.pauseIcon = pauseIcon;
+  this.menuIcon = menuIcon;
 }
 
 /**
