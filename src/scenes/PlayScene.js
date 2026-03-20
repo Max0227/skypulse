@@ -3461,6 +3461,19 @@ updateWorldProgress() {
       .on('pointerout', () => this.menuButton.setScale(1));
 
     this.createGameOverBox();
+    
+    // Применяем бонусы от выбранного скина
+const currentSkin = gameManager.getCurrentSkin();
+const skinStats = gameManager.getSkinStats(currentSkin); // вернёт объект со stat-ами
+if (skinStats) {
+  // Изменяем базовые параметры
+  this.jumpPower += skinStats.jumpBonus;
+  // Скорость увеличивается множителем (например, добавляем к базовой скорости)
+  this.baseSpeed += skinStats.speedBonus;
+  // Броня – при получении урона уменьшаем его
+  // Управление – можно влиять на drag или на угол наклона
+  // Вам нужно адаптировать эти значения под свою физику.
+}
 
     // Коллизии
     this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);

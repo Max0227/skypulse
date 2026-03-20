@@ -132,7 +132,6 @@ export class SkinShopScene extends Phaser.Scene {
   constructor() {
     super('skinShop');
     this.isExiting = false;
-    this.skinCards = [];
     this.lastHoverTime = 0;
   }
 
@@ -157,10 +156,10 @@ export class SkinShopScene extends Phaser.Scene {
     // Баланс кристаллов (круглая панель)
     this.createBalanceDisplay();
 
-    // Список скинов (6 карточек, без прокрутки)
+    // Список скинов (6 карточек, без прокрутки, с отступом от кнопки назад)
     this.createSkinList();
 
-    // Кнопка назад
+    // Кнопка назад (под списком, с отступом)
     this.createBackButton();
 
     console.log('✅ SkinShop: create completed');
@@ -187,7 +186,7 @@ export class SkinShopScene extends Phaser.Scene {
   createStars() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const starCount = 120;
+    const starCount = 100;
     for (let i = 0; i < starCount; i++) {
       const star = this.add.circle(
         Phaser.Math.Between(0, w),
@@ -248,16 +247,15 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СПИСОК СКИНОВ (6 КАРТОЧЕК, БЕЗ ПРОКРУТКИ)
+  // СПИСОК СКИНОВ (6 КАРТОЧЕК, БЕЗ ПРОКРУТКИ, С ОТСТУПОМ ОТ КНОПКИ)
   // =========================================================================
 
   createSkinList() {
     const w = this.scale.width;
     const startY = 140;
-    const cardHeight = 115;      // высота одной карточки
-    const spacing = 8;           // отступ между карточками
+    const cardHeight = 110;      // уменьшили высоту карточки
+    const spacing = 6;           // маленький отступ между карточками
 
-    // Располагаем 6 карточек сверху вниз
     SKINS.forEach((skin, index) => {
       const y = startY + index * (cardHeight + spacing);
       const owned = gameManager.getOwnedSkins().includes(skin.id);
@@ -284,42 +282,43 @@ export class SkinShopScene extends Phaser.Scene {
       borderColor = 0xffaa00;
     }
 
-    // Фон карточки
+    // Фон карточки (уменьшили высоту)
     const bg = this.add.graphics();
     bg.fillStyle(bgColor, 0.9);
-    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
     bg.lineStyle(3, borderColor, 1);
-    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
     group.add(bg);
 
-    // Превью скина
-    const preview = this.add.image(50, y + 55, skin.texture).setScale(0.9).setOrigin(0.5);
+    // Превью скина (немного уменьшили)
+    const preview = this.add.image(50, y + 52, skin.texture).setScale(0.85).setOrigin(0.5);
     group.add(preview);
 
-    // Название
-    const nameText = this.add.text(110, y + 25, skin.name, {
-      fontSize: '18px',
+    // Название (уменьшили шрифт, чтобы "ПОЛИЦЕЙСКИЙ ПЕРЕХВАТЧИК" влезал)
+    const nameText = this.add.text(110, y + 20, skin.name, {
+      fontSize: '15px',
       fontFamily: '"Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#888888',
-      strokeThickness: 1
+      strokeThickness: 1,
+      wordWrap: { width: 200 }
     }).setOrigin(0, 0.5);
     group.add(nameText);
 
     // Редкость
     const rarityNames = { 'COMMON': 'ОБЫЧНЫЙ', 'EPIC': 'ЭПИЧЕСКИЙ', 'LEGENDARY': 'ЛЕГЕНДАРНЫЙ' };
     const rarityColors = { 'COMMON': '#aaaaaa', 'EPIC': '#ff44aa', 'LEGENDARY': '#ffaa00' };
-    const rarityText = this.add.text(110, y + 50, `[${rarityNames[skin.rarity]}]`, {
-      fontSize: '11px',
+    const rarityText = this.add.text(110, y + 45, `[${rarityNames[skin.rarity]}]`, {
+      fontSize: '10px',
       fontFamily: '"Share Tech Mono", monospace',
       color: rarityColors[skin.rarity]
     }).setOrigin(0, 0.5);
     group.add(rarityText);
 
-    // Краткие статы
-    const statsText = this.add.text(110, y + 75,
+    // Краткие статы (в одну строку, мелкий шрифт)
+    const statsText = this.add.text(110, y + 70,
       `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
-      { fontSize: '10px', fontFamily: '"Share Tech Mono", monospace', color: '#88ff88' }
+      { fontSize: '9px', fontFamily: '"Share Tech Mono", monospace', color: '#88ff88' }
     ).setOrigin(0, 0.5);
     group.add(statsText);
 
@@ -339,8 +338,8 @@ export class SkinShopScene extends Phaser.Scene {
       statusText = `${skin.price} 💎`;
       statusColor = canAfford ? '#ffaa00' : '#ff4444';
     }
-    const status = this.add.text(w - 40, y + 55, statusText, {
-      fontSize: '14px',
+    const status = this.add.text(w - 40, y + 52, statusText, {
+      fontSize: '13px',
       fontFamily: '"Audiowide", sans-serif',
       color: statusColor,
       stroke: '#000000',
@@ -349,7 +348,7 @@ export class SkinShopScene extends Phaser.Scene {
     group.add(status);
 
     // Интерактивная область
-    const hitArea = this.add.rectangle(w / 2, y + 55, w - 40, 110, 0x000000, 0)
+    const hitArea = this.add.rectangle(w / 2, y + 52, w - 40, 105, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
       .setOrigin(0.5)
       .setDepth(100);
@@ -358,19 +357,19 @@ export class SkinShopScene extends Phaser.Scene {
     hitArea.on('pointerover', () => {
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
       bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
-      preview.setScale(1.0);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
+      preview.setScale(0.9);
       this.playHoverSound();
     });
     hitArea.on('pointerout', () => {
       bg.clear();
       bg.fillStyle(bgColor, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
       bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 110, 12);
-      preview.setScale(0.9);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 105, 12);
+      preview.setScale(0.85);
     });
     hitArea.on('pointerdown', (pointer) => {
       pointer.event.stopPropagation();
@@ -383,7 +382,7 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕТАЛЬНОЕ ОКНО СКИНА
+  // ДЕТАЛЬНОЕ ОКНО СКИНА (С КРАСИВЫМИ КНОПКАМИ И КРЕСТИКОМ)
   // =========================================================================
 
   openSkinDetail(skin) {
@@ -401,19 +400,45 @@ export class SkinShopScene extends Phaser.Scene {
       .setInteractive();
     this.tweens.add({ targets: overlay, alpha: 0.9, duration: 300 });
 
-    // Панель
+    // Панель (смещена вверх, чтобы кнопки внизу не перекрывали)
     const panel = this.add.graphics();
     panel.fillStyle(0x0a0a1a, 0.98);
-    panel.fillRoundedRect(w / 2 - 200, h / 2 - 250, 400, 520, 20);
+    panel.fillRoundedRect(w / 2 - 200, h / 2 - 250, 400, 550, 20);
     panel.lineStyle(4, skin.rarity === 'LEGENDARY' ? 0xffaa00 : 0x00ffff, 1);
-    panel.strokeRoundedRect(w / 2 - 200, h / 2 - 250, 400, 520, 20);
+    panel.strokeRoundedRect(w / 2 - 200, h / 2 - 250, 400, 550, 20);
     panel.setDepth(201).setScrollFactor(0);
 
-    // Превью (большое)
-    const preview = this.add.image(w / 2, h / 2 - 120, skin.texture).setScale(2.5).setDepth(202).setScrollFactor(0);
+    // Круглая кнопка закрытия (в правом верхнем углу)
+    const closeX = this.add.circle(w / 2 + 180, h / 2 - 230, 18, 0x440000, 0.8)
+      .setStrokeStyle(2, 0xff8888, 1)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(203)
+      .setScrollFactor(0);
+    const closeIcon = this.add.text(w / 2 + 180, h / 2 - 230, '✕', {
+      fontSize: '24px',
+      fontFamily: 'sans-serif',
+      color: '#ff8888',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5).setDepth(204).setScrollFactor(0);
+    closeX.on('pointerover', () => {
+      closeX.setFillStyle(0xaa0000);
+      closeIcon.setColor('#ffffff');
+    });
+    closeX.on('pointerout', () => {
+      closeX.setFillStyle(0x440000);
+      closeIcon.setColor('#ff8888');
+    });
+    closeX.on('pointerdown', () => {
+      this.playClickSound();
+      this.closeDetail(overlay, panel, closeX, closeIcon);
+    });
+
+    // Превью (немного ниже из-за крестика)
+    const preview = this.add.image(w / 2, h / 2 - 140, skin.texture).setScale(2.5).setDepth(202).setScrollFactor(0);
 
     // Название
-    const nameText = this.add.text(w / 2, h / 2 - 20, skin.name, {
+    const nameText = this.add.text(w / 2, h / 2 - 30, skin.name, {
       fontSize: '28px',
       fontFamily: '"Audiowide", sans-serif',
       color: '#ffffff',
@@ -484,8 +509,8 @@ export class SkinShopScene extends Phaser.Scene {
     });
 
     // Спецспособность
+    const specialY = statsY + 130;
     if (skin.stats.special !== 'Нет') {
-      const specialY = statsY + 130;
       const specialBg = this.add.graphics();
       specialBg.fillStyle(0x2a1a2a, 0.8);
       specialBg.fillRoundedRect(w / 2 - 150, specialY - 15, 300, 40, 20);
@@ -507,27 +532,27 @@ export class SkinShopScene extends Phaser.Scene {
     }
 
     // Кнопки (внизу)
-    const btnY = h / 2 + 240;
+    const buttonY = h / 2 + 220;
     if (!owned) {
-      const buyBtn = this.createRoundedButton(w / 2 - 100, btnY, 'КУПИТЬ', canAfford ? '#00ff00' : '#ff4444');
+      const buyBtn = this.createRoundedButton(w / 2 - 100, buttonY, 'КУПИТЬ', canAfford ? '#00ff00' : '#ff4444');
       buyBtn.setDepth(203).setScrollFactor(0);
       buyBtn.on('pointerdown', () => {
         if (canAfford) {
-          this.closeDetail(overlay, panel, preview, nameText, rarityText, descText, loreText, buyBtn);
+          this.closeDetail(overlay, panel, closeX, closeIcon);
           this.showPurchaseConfirm(skin);
         } else {
           this.showMessage('⚠ НЕДОСТАТОЧНО КРИСТАЛЛОВ', '#ff4444');
         }
       });
     } else if (!selected) {
-      const selectBtn = this.createRoundedButton(w / 2 - 100, btnY, 'ВЫБРАТЬ', '#00ffff');
+      const selectBtn = this.createRoundedButton(w / 2 - 100, buttonY, 'ВЫБРАТЬ', '#00ffff');
       selectBtn.setDepth(203).setScrollFactor(0);
       selectBtn.on('pointerdown', () => {
         this.selectSkin(skin);
-        this.closeDetail(overlay, panel, preview, nameText, rarityText, descText, loreText, selectBtn);
+        this.closeDetail(overlay, panel, closeX, closeIcon);
       });
     } else {
-      const equipped = this.add.text(w / 2, btnY, '✓ ВЫБРАНО', {
+      const equipped = this.add.text(w / 2, buttonY, '✓ ВЫБРАНО', {
         fontSize: '20px',
         fontFamily: '"Audiowide", sans-serif',
         color: '#00ff00',
@@ -535,18 +560,6 @@ export class SkinShopScene extends Phaser.Scene {
         padding: { x: 20, y: 10 }
       }).setOrigin(0.5).setDepth(203).setScrollFactor(0);
     }
-
-    // Крестик закрытия
-    const closeBtn = this.add.text(w - 50, 100, '✕', {
-      fontSize: '40px',
-      fontFamily: 'sans-serif',
-      color: '#ff4444',
-      stroke: '#000000',
-      strokeThickness: 3
-    }).setInteractive({ useHandCursor: true }).setDepth(203).setScrollFactor(0).setOrigin(0.5);
-    closeBtn.on('pointerover', () => closeBtn.setStyle({ color: '#ff8888', scale: 1.2 }));
-    closeBtn.on('pointerout', () => closeBtn.setStyle({ color: '#ff4444', scale: 1 }));
-    closeBtn.on('pointerdown', () => this.closeDetail(overlay, panel, preview, nameText, rarityText, descText, loreText, closeBtn));
   }
 
   createRoundedButton(x, y, text, color) {
@@ -690,14 +703,14 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КНОПКА НАЗАД
+  // КНОПКА НАЗАД (СНИЗУ, НЕ ПЕРЕКРЫВАЕТ ПОСЛЕДНИЙ СКИН)
   // =========================================================================
 
   createBackButton() {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    const backBtn = this.add.text(w / 2, h - 35, '⏎ НАЗАД В МЕНЮ', {
+    const backBtn = this.add.text(w / 2, h - 25, '⏎ НАЗАД В МЕНЮ', {
       fontSize: '20px',
       fontFamily: '"Audiowide", sans-serif',
       color: '#ffffff',
@@ -725,7 +738,7 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СОЗДАНИЕ ТЕКСТУР СКИНОВ (6 штук, очень детализированные)
+  // СОЗДАНИЕ ТЕКСТУР СКИНОВ (6 штук, детализированные)
   // =========================================================================
 
   createAllSkinTextures() {
