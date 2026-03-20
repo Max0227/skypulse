@@ -662,17 +662,19 @@ updateCameraZoom() {
    * Обновление параметров сложности на основе gameLevel
    */
   updateDifficulty() {
-    const diff = this.getDifficulty();
-    this.baseSpeed = diff.speed;
-    this.gapSize = diff.gap;
-    this.spawnDelay = diff.spawnDelay;
-    
-    if (!this.bonusActive) {
-      this.currentSpeed = this.baseSpeed;
-    }
-    
-    this.updateExistingObjectsSpeed();
+  const diff = this.getDifficulty();
+  this.baseSpeed = diff.speed; // Обновляем базовую скорость
+  this.gapSize = diff.gap;
+  this.spawnDelay = diff.spawnDelay;
+  
+  if (!this.bonusActive) {
+    this.currentSpeed = this.baseSpeed;
   }
+  
+  this.updateExistingObjectsSpeed();
+  
+  console.log(`Уровень ${this.gameLevel}: скорость ${this.baseSpeed}px/с, зазор ${this.gapSize}px`);
+}
 
   /**
    * Обновление скорости существующих объектов
@@ -1721,8 +1723,9 @@ activateBonus(type) {
   // Применяем эффекты в зависимости от типа
   switch (type) {
     case 'speed':
-      this.currentSpeed = this.baseSpeed * cfg.speedMult;
-      this.bonusMultiplier = cfg.multiplier;
+  this.currentSpeed = this.baseSpeed * cfg.speedMult;
+  this.bonusMultiplier = cfg.multiplier;
+  // Фон автоматически ускорится через update методы, так как они используют currentSpeed
       if (this.player) {
         this.player.setTint(cfg.color);
         this.player.speedBoost = cfg.speedMult;
@@ -2254,6 +2257,8 @@ playBonusSound(type) {
 deactivateBonus() {
   if (!this.bonusActive) return;
   this.particleManager.clearAll();
+  this.currentSpeed = this.baseSpeed;
+  // Фон автоматически вернётся к нормальной скорости
   
   this.bonusActive = false;
   this.bonusType = null;
@@ -2996,14 +3001,20 @@ createBackground() {
 
   for (let i = 0; i < 200; i++) {
     const star = this.add.image(Phaser.Math.Between(0, w), Phaser.Math.Between(0, h), 'star');
-    star.setScale(Phaser.Math.FloatBetween(0.2, 1.8));
+    const scale = Phaser.Math.FloatBetween(0.2, 1.8);
+    star.setScale(scale);
     star.setTint(Phaser.Math.Between(0x4444ff, 0xff44ff));
     star.setAlpha(Phaser.Math.FloatBetween(0.3, 0.9));
     star.setDepth(-25);
     this.stars.push({
       sprite: star,
-      speed: Phaser.Math.Between(3, 20),
-      flicker: Phaser.Math.FloatBetween(0.01, 0.03)
+      speed: Phaser.Math.Between(30, 80), // Скорость в пикселях в секунду
+      baseSpeed: Phaser.Math.Between(30, 80),
+      baseAlpha: Phaser.Math.FloatBetween(0.3, 0.9),
+      scale: scale,
+      flicker: Phaser.Math.FloatBetween(0.01, 0.03),
+      x: star.x,
+      y: star.y
     });
   }
 }
@@ -3016,15 +3027,19 @@ createPlanets() {
     const x = Phaser.Math.Between(w, w * 15);
     const y = Phaser.Math.Between(50, h - 50);
     const planet = this.add.image(x, y, `planet_${i}`);
-    planet.setScale(Phaser.Math.FloatBetween(2.0, 4.0));
+    const scale = Phaser.Math.FloatBetween(2.0, 4.0);
+    planet.setScale(scale);
     planet.setTint(0x8888ff);
     planet.setAlpha(0.6 + Math.random() * 0.3);
     planet.setDepth(-15);
     planet.setBlendMode(Phaser.BlendModes.ADD);
     this.planets.push({
       sprite: planet,
-      speed: Phaser.Math.Between(2, 12),
-      flicker: Phaser.Math.FloatBetween(0.005, 0.01)
+      speed: Phaser.Math.Between(20, 80), // Скорость в пикселях в секунду
+      baseSpeed: Phaser.Math.Between(20, 80),
+      scale: scale,
+      x: planet.x,
+      y: planet.y
     });
   }
 }
@@ -3034,15 +3049,25 @@ createShips() {
   const h = this.scale.height;
   const shipTextures = ['bg_ship_1', 'bg_ship_2'];
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 12; i++) { // Увеличил количество
     const tex = shipTextures[Math.floor(Math.random() * shipTextures.length)];
-    const ship = this.add.image(Phaser.Math.Between(w, w * 12), Phaser.Math.Between(50, h - 50), tex);
-    ship.setScale(Phaser.Math.FloatBetween(0.5, 1.5));
+    const x = Phaser.Math.Between(w, w * 12);
+    const y = Phaser.Math.Between(50, h - 50);
+    const ship = this.add.image(x, y, tex);
+    const scale = Phaser.Math.FloatBetween(0.5, 1.5);
+    ship.setScale(scale);
     ship.setTint(0x00ffff);
     ship.setAlpha(0.7);
     ship.setDepth(-10);
     ship.setBlendMode(Phaser.BlendModes.ADD);
-    this.ships.push({ sprite: ship, speed: Phaser.Math.Between(3, 10) });
+    this.ships.push({
+      sprite: ship,
+      speed: Phaser.Math.Between(40, 120), // Скорость в пикселях в секунду
+      baseSpeed: Phaser.Math.Between(40, 120),
+      scale: scale,
+      x: ship.x,
+      y: ship.y
+    });
   }
 }
 
@@ -3050,15 +3075,26 @@ createAsteroids() {
   const w = this.scale.width;
   const h = this.scale.height;
 
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 15; i++) { // Увеличил количество
     const tex = i % 2 === 0 ? 'bg_asteroid_1' : 'bg_asteroid_2';
-    const asteroid = this.add.image(Phaser.Math.Between(w, w * 12), Phaser.Math.Between(50, h - 50), tex);
-    asteroid.setScale(Phaser.Math.FloatBetween(0.6, 1.8));
+    const x = Phaser.Math.Between(w, w * 12);
+    const y = Phaser.Math.Between(50, h - 50);
+    const asteroid = this.add.image(x, y, tex);
+    const scale = Phaser.Math.FloatBetween(0.6, 1.8);
+    asteroid.setScale(scale);
     asteroid.setTint(0xff8800);
     asteroid.setAlpha(0.7);
     asteroid.setDepth(-12);
     asteroid.setBlendMode(Phaser.BlendModes.ADD);
-    this.asteroids.push({ sprite: asteroid, speed: Phaser.Math.Between(4, 14) });
+    this.asteroids.push({
+      sprite: asteroid,
+      speed: Phaser.Math.Between(30, 100), // Скорость в пикселях в секунду
+      baseSpeed: Phaser.Math.Between(30, 100),
+      scale: scale,
+      x: asteroid.x,
+      y: asteroid.y,
+      rotationSpeed: Phaser.Math.Between(-50, 50)
+    });
   }
 }
 
@@ -5186,68 +5222,93 @@ completeLevel() {
   }
 
   updateStars(time, delta) {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const factor = this.started && !this.dead ? 1 : 0.3;
-    const dt = delta / 1000;
-
-    for (let s of this.stars) {
-      if (!s || !s.sprite) continue;
-      s.sprite.x -= s.speed * factor * dt;
-      if (s.flicker) {
-        s.sprite.alpha = 0.5 + Math.sin(time * s.flicker) * 0.3;
-      }
-      if (s.sprite.x < -10) {
-        s.sprite.x = w + Phaser.Math.Between(5, 50);
-        s.sprite.y = Phaser.Math.Between(0, h);
-      }
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const dt = delta / 1000;
+  const speedMultiplier = this.currentSpeed / this.baseSpeed || 1;
+  
+  for (let s of this.stars) {
+    if (!s || !s.sprite) continue;
+    
+    // Скорость звёзд зависит от текущей скорости игры
+    const moveSpeed = s.baseSpeed * speedMultiplier * 0.3;
+    s.sprite.x -= moveSpeed * dt;
+    
+    if (s.flicker) {
+      s.sprite.alpha = s.baseAlpha + Math.sin(time * s.flicker) * 0.3;
+    }
+    
+    // Респавн звёзд
+    if (s.sprite.x < -50) {
+      s.sprite.x = w + Phaser.Math.Between(50, 200);
+      s.sprite.y = Phaser.Math.Between(0, h);
+      s.baseAlpha = Phaser.Math.FloatBetween(0.3, 0.9);
+      s.flicker = Phaser.Math.FloatBetween(0.01, 0.03);
     }
   }
+}
 
   updatePlanets(delta) {
-    const w = this.scale.width;
-    const factor = this.started && !this.dead ? 0.2 : 0.05;
-    const dt = delta / 1000;
-
-    for (let p of this.planets) {
-      if (!p || !p.sprite) continue;
-      p.sprite.x -= p.speed * factor * dt;
-      if (p.sprite.x < -300) {
-        p.sprite.x = w + Phaser.Math.Between(400, 2000);
-        p.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
-      }
+  const w = this.scale.width;
+  const dt = delta / 1000;
+  const speedMultiplier = this.currentSpeed / this.baseSpeed || 1;
+  
+  for (let p of this.planets) {
+    if (!p || !p.sprite) continue;
+    
+    // Скорость планет зависит от текущей скорости игры
+    const moveSpeed = p.speed * speedMultiplier * 0.2;
+    p.sprite.x -= moveSpeed * dt;
+    
+    // Респавн планет
+    if (p.sprite.x < -300) {
+      p.sprite.x = w + Phaser.Math.Between(400, 2000);
+      p.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
     }
   }
+}
 
   updateShips(delta) {
-    const w = this.scale.width;
-    const factor = this.started && !this.dead ? 0.3 : 0.1;
-    const dt = delta / 1000;
-
-    for (let s of this.ships) {
-      if (!s || !s.sprite) continue;
-      s.sprite.x -= s.speed * factor * dt;
-      if (s.sprite.x < -200) {
-        s.sprite.x = w + Phaser.Math.Between(300, 1500);
-        s.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
-      }
+  const w = this.scale.width;
+  const dt = delta / 1000;
+  const speedMultiplier = this.currentSpeed / this.baseSpeed || 1;
+  
+  for (let s of this.ships) {
+    if (!s || !s.sprite) continue;
+    
+    // Скорость кораблей зависит от текущей скорости игры
+    const moveSpeed = s.speed * speedMultiplier * 0.3;
+    s.sprite.x -= moveSpeed * dt;
+    
+    // Респавн кораблей
+    if (s.sprite.x < -200) {
+      s.sprite.x = w + Phaser.Math.Between(300, 1500);
+      s.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
     }
   }
+}
 
   updateAsteroids(delta) {
-    const w = this.scale.width;
-    const factor = this.started && !this.dead ? 0.3 : 0.1;
-    const dt = delta / 1000;
-
-    for (let a of this.asteroids) {
-      if (!a || !a.sprite) continue;
-      a.sprite.x -= a.speed * factor * dt;
-      if (a.sprite.x < -200) {
-        a.sprite.x = w + Phaser.Math.Between(300, 1500);
-        a.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
-      }
+  const w = this.scale.width;
+  const dt = delta / 1000;
+  const speedMultiplier = this.currentSpeed / this.baseSpeed || 1;
+  
+  for (let a of this.asteroids) {
+    if (!a || !a.sprite) continue;
+    
+    // Скорость астероидов зависит от текущей скорости игры
+    const moveSpeed = a.speed * speedMultiplier * 0.25;
+    a.sprite.x -= moveSpeed * dt;
+    a.sprite.angle += a.rotationSpeed * dt;
+    
+    // Респавн астероидов
+    if (a.sprite.x < -200) {
+      a.sprite.x = w + Phaser.Math.Between(300, 1500);
+      a.sprite.y = Phaser.Math.Between(50, this.scale.height - 50);
+      a.rotationSpeed = Phaser.Math.Between(-50, 50);
     }
   }
+}
 
   onResize() {
     const w = this.scale.width;
