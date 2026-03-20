@@ -3678,6 +3678,9 @@ confirmExit() {
 /**
  * Закрытие диалога выхода
  */
+/**
+ * Закрытие диалога выхода
+ */
 closeExitDialog() {
   if (this.exitOverlay) this.exitOverlay.destroy();
   if (this.exitPanel) this.exitPanel.destroy();
@@ -3696,9 +3699,11 @@ closeExitDialog() {
   this.noBtn = null;
   this.exitDialogActive = false;
   
+  // Возвращаем игру
   this.isPaused = false;
   this.physics.resume();
   
+  // Возобновляем таймеры
   if (this.spawnTimer) this.spawnTimer.paused = false;
   if (this.bonusTimer) this.bonusTimer.paused = false;
   if (this.stationTimer) this.stationTimer.paused = false;
@@ -3972,42 +3977,41 @@ togglePause() {
     if (this.bonusTimer) this.bonusTimer.paused = true;
     if (this.stationTimer) this.stationTimer.paused = true;
     
-    // Создаём стильный оверлей паузы
+    // ВАЖНО: НЕ добавляем setInteractive() на оверлей!
     this.pauseOverlay = this.add.rectangle(
       this.scale.width / 2, this.scale.height / 2,
       this.scale.width, this.scale.height,
       0x000000, 0.85
-    ).setDepth(100).setScrollFactor(0).setInteractive();
+    ).setDepth(100).setScrollFactor(0);
+    // НЕТ .setInteractive() - это важно!
     
     // Неоновая рамка
-    const border = this.add.graphics();
-    border.lineStyle(3, 0x00ffff, 0.8);
-    border.strokeRoundedRect(
-      this.scale.width / 2 - 140,
-      this.scale.height / 2 - 100,
-      280, 200, 20
+    this.pauseBorder = this.add.graphics();
+    this.pauseBorder.lineStyle(3, 0x00ffff, 0.9);
+    this.pauseBorder.strokeRoundedRect(
+      this.scale.width / 2 - 150,
+      this.scale.height / 2 - 110,
+      300, 220, 25
     );
-    border.setDepth(101);
-    this.pauseTexts = [border];
+    this.pauseBorder.setDepth(101);
     
-    // Текст паузы с анимацией
-    const pauseText = this.add.text(
-      this.scale.width / 2, this.scale.height / 2 - 40,
+    // Текст паузы
+    this.pauseText = this.add.text(
+      this.scale.width / 2, this.scale.height / 2 - 50,
       '⏸️ ПАУЗА',
       {
-        fontSize: '48px',
+        fontSize: '52px',
         fontFamily: "'Audiowide', 'Orbitron', sans-serif",
         color: '#ffffff',
         stroke: '#00ffff',
         strokeThickness: 6,
-        shadow: { blur: 20, color: '#00ffff', fill: true }
+        shadow: { blur: 25, color: '#00ffff', fill: true }
       }
     ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
     
-    // Подсказка
-    const tipText = this.add.text(
+    this.pauseTip = this.add.text(
       this.scale.width / 2, this.scale.height / 2 + 30,
-      'НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ',
+      '✦ НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ ✦',
       {
         fontSize: '12px',
         fontFamily: "'Share Tech Mono', monospace",
@@ -4017,16 +4021,22 @@ togglePause() {
       }
     ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
     
-    this.pauseTexts.push(pauseText, tipText);
+    // Анимация рамки
+    this.tweens.add({
+      targets: this.pauseBorder,
+      alpha: { from: 0.6, to: 1 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1
+    });
     
     // Пульсация текста
     this.tweens.add({
-      targets: pauseText,
+      targets: this.pauseText,
       scale: { from: 1, to: 1.05 },
       duration: 800,
       yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+      repeat: -1
     });
     
   } else {
@@ -4035,15 +4045,16 @@ togglePause() {
     if (this.bonusTimer) this.bonusTimer.paused = false;
     if (this.stationTimer) this.stationTimer.paused = false;
     
-    this.pauseTexts.forEach(obj => {
-      if (obj && obj.destroy) obj.destroy();
-    });
-    this.pauseTexts = [];
-    if (this.pauseOverlay) {
-      this.pauseOverlay.destroy();
-      this.pauseOverlay = null;
-    }
-    this.hideShop();
+    // Удаляем элементы паузы
+    if (this.pauseBorder) this.pauseBorder.destroy();
+    if (this.pauseText) this.pauseText.destroy();
+    if (this.pauseTip) this.pauseTip.destroy();
+    if (this.pauseOverlay) this.pauseOverlay.destroy();
+    
+    this.pauseBorder = null;
+    this.pauseText = null;
+    this.pauseTip = null;
+    this.pauseOverlay = null;
   }
 }
 
@@ -4062,104 +4073,92 @@ openShop() {
  */
 confirmExit() {
   if (this.dead) return;
+  if (this.exitDialogActive) return;
+  this.exitDialogActive = true;
+  
   this.isPaused = true;
   this.physics.pause();
   
   const w = this.scale.width;
   const h = this.scale.height;
   
-  // Оверлей
-  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
-    .setDepth(150).setScrollFactor(0).setInteractive();
+  // ВАЖНО: НЕ добавляем setInteractive() на оверлей!
+  this.exitOverlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+    .setDepth(150).setScrollFactor(0);
+  // НЕТ .setInteractive() - это важно!
   
   // Панель
-  const panel = this.add.graphics();
-  panel.fillStyle(0x0a0a1a, 0.98);
-  panel.fillRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
-  panel.lineStyle(3, 0xff00ff, 0.8);
-  panel.strokeRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
-  panel.setDepth(151);
+  this.exitPanel = this.add.graphics();
+  this.exitPanel.fillStyle(0x0a0a1a, 0.98);
+  this.exitPanel.fillRoundedRect(w / 2 - 150, h / 2 - 115, 300, 250, 25);
+  this.exitPanel.lineStyle(3, 0xff00ff, 0.9);
+  this.exitPanel.strokeRoundedRect(w / 2 - 150, h / 2 - 115, 300, 250, 25);
+  this.exitPanel.setDepth(151);
   
-  // Иконка предупреждения
-  const warningIcon = this.add.text(w / 2, h / 2 - 55, '⚠️', {
-    fontSize: '32px'
+  // Иконка
+  this.exitIcon = this.add.text(w / 2, h / 2 - 65, '⚠️', {
+    fontSize: '48px'
   }).setOrigin(0.5).setDepth(152);
   
   // Текст
-  const text = this.add.text(w / 2, h / 2 - 15, 'Выйти в меню?', {
-    fontSize: '20px',
+  this.exitText = this.add.text(w / 2, h / 2 - 15, 'ВЫЙТИ В МЕНЮ?', {
+    fontSize: '24px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
     color: '#ffffff',
     stroke: '#ff00ff',
-    strokeThickness: 2
+    strokeThickness: 3
   }).setOrigin(0.5).setDepth(152);
   
-  const subText = this.add.text(w / 2, h / 2 + 15, 'Прогресс не сохранится', {
+  this.exitSubText = this.add.text(w / 2, h / 2 + 15, '⚠️ Весь прогресс будет потерян ⚠️', {
     fontSize: '10px',
     fontFamily: "'Share Tech Mono', monospace",
     color: '#ffaa66'
   }).setOrigin(0.5).setDepth(152);
   
-  // Кнопки
-  const yesBtn = this.createNeonDialogButton(w / 2 - 70, h / 2 + 65, 'ДА', '#00ff00');
-  const noBtn = this.createNeonDialogButton(w / 2 + 70, h / 2 + 65, 'НЕТ', '#ff4444');
-  
-  yesBtn.setDepth(152);
-  noBtn.setDepth(152);
-  
-  yesBtn.on('pointerdown', () => {
-    this.scene.start('menu');
-  });
-  
-  noBtn.on('pointerdown', () => {
-    overlay.destroy();
-    panel.destroy();
-    warningIcon.destroy();
-    text.destroy();
-    subText.destroy();
-    yesBtn.destroy();
-    noBtn.destroy();
-    this.isPaused = false;
-    this.physics.resume();
-  });
-}
-
-/**
- * Создание неоновой диалоговой кнопки
- */
-createNeonDialogButton(x, y, text, color) {
-  const container = this.add.container(x, y);
-  
-  const bg = this.add.rectangle(0, 0, 90, 38, 0x1a1a3a, 0.9);
-  bg.setStrokeStyle(2, color, 0.8);
-  
-  const btnText = this.add.text(0, 0, text, {
-    fontSize: '16px',
+  // Кнопка ДА
+  this.yesBtn = this.add.text(w / 2 - 80, h / 2 + 75, 'ДА', {
+    fontSize: '20px',
     fontFamily: "'Audiowide', sans-serif",
-    color: '#ffffff',
-    stroke: color,
-    strokeThickness: 1
-  }).setOrigin(0.5);
+    color: '#00ff00',
+    backgroundColor: '#1a3a1a',
+    padding: { x: 25, y: 10 },
+    stroke: '#00ff00',
+    strokeThickness: 2
+  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(200);
   
-  container.add([bg, btnText]);
+  // Кнопка НЕТ
+  this.noBtn = this.add.text(w / 2 + 80, h / 2 + 75, 'НЕТ', {
+    fontSize: '20px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ff4444',
+    backgroundColor: '#3a1a1a',
+    padding: { x: 25, y: 10 },
+    stroke: '#ff4444',
+    strokeThickness: 2
+  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(200);
   
-  const hitArea = this.add.rectangle(0, 0, 90, 38, 0x000000, 0)
-    .setInteractive({ useHandCursor: true });
-  
-  hitArea.on('pointerover', () => {
-    bg.setFillStyle(color, 0.8);
-    bg.setStrokeStyle(2, '#ffffff', 1);
-    btnText.setScale(1.05);
+  // Обработчики кнопок
+  this.yesBtn.on('pointerover', () => {
+    this.yesBtn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' });
+  });
+  this.yesBtn.on('pointerout', () => {
+    this.yesBtn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' });
+  });
+  this.yesBtn.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.exitToMenu();
   });
   
-  hitArea.on('pointerout', () => {
-    bg.setFillStyle(0x1a1a3a, 0.9);
-    bg.setStrokeStyle(2, color, 0.8);
-    btnText.setScale(1);
+  this.noBtn.on('pointerover', () => {
+    this.noBtn.setStyle({ color: '#ffffff', backgroundColor: '#aa0000' });
   });
-  
-  container.add(hitArea);
-  return container;
+  this.noBtn.on('pointerout', () => {
+    this.noBtn.setStyle({ color: '#ff4444', backgroundColor: '#3a1a1a' });
+  });
+  this.noBtn.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.closeExitDialog();
+  });
 }
 
 /**
