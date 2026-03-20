@@ -1,14 +1,10 @@
 // src/scenes/PlayScene.js
 import Phaser from 'phaser';
 import {
-  COLORS,
   LEVEL_CONFIG,
   ENEMY_CONFIG,
-  WAVE_CONFIG,
-  POWERUP_TYPES,
   ACHIEVEMENTS,
   SHOP_UPGRADES,
-  GAME_CONFIG
 } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
@@ -21,8 +17,7 @@ import { MultiplierSystem } from '../systems/MultiplierSystem';
 import { WaveManager } from '../systems/WaveManager';
 import { Asteroid } from '../entities/Asteroid';
 import { PowerUp } from '../entities/PowerUp';
-// Wagon не импортируем, так как используем локальный класс
-// ... остальной код PlayScene
+import { Wagon } from '../entities/Wagon';
 
 // =========================================================================
 // ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
@@ -586,7 +581,63 @@ export class PlayScene extends Phaser.Scene {
       gameManager.save();
     }
   }
+// =========================================================================
+// МЕТОДЫ ДЛЯ ВАГОНОВ (используем импортированный класс Wagon)
+// =========================================================================
 
+/**
+ * Добавить вагон
+ */
+addWagon() {
+  if (this.wagons.length >= this.maxWagons || !this.player) return;
+
+  const last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
+  const spawnX = last.x - this.wagonGap * 2;
+  const spawnY = last.y;
+
+  // Используем импортированный класс Wagon
+  const wagon = new Wagon(this, spawnX, spawnY, this.wagons.length);
+  wagon.setHP(this.wagonBaseHP, this.wagonBaseHP);
+  
+  this.wagons.push(wagon);
+
+  if (this.wagonCountText) {
+    this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+  }
+  this.updateCameraZoom();
+}
+
+/**
+ * Обновить позиции вагонов
+ */
+updateWagons() {
+  if (this.wagons.length === 0 || !this.player) return;
+  let prev = this.player;
+
+  for (let i = 0; i < this.wagons.length; i++) {
+    const wagon = this.wagons[i];
+    if (!wagon || !wagon.isActive()) continue;
+    
+    wagon.update(prev.x, prev.y, this.wagonGap, this.wagonSpring);
+    prev = wagon.sprite;
+  }
+}
+
+/**
+ * Столкновение вагона с воротами
+ */
+wagonHit(wagon, pipe) {
+  if (!wagon || !wagon.isActive()) return;
+  
+  const destroyed = wagon.takeDamage(1);
+  if (destroyed) {
+    this.wagons = this.wagons.filter(w => w !== wagon);
+  }
+  
+  if (this.wagonCountText) {
+    this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+  }
+}
   /**
    * Обновление параметров сложности на основе gameLevel
    */
@@ -1426,154 +1477,6 @@ export class PlayScene extends Phaser.Scene {
         });
       }
     }
-  }
-
-  // =========================================================================
-  // МЕТОДЫ ДЛЯ ВАГОНОВ
-  // =========================================================================
-
-  /**
-   * Добавить вагон
-   */
-  addWagon() {
-    if (this.wagons.length >= this.maxWagons || !this.player) return;
-
-    const last =
-      this.wagons.length > 0
-        ? this.wagons[this.wagons.length - 1]
-        : this.player;
-    const spawnX = last.x - this.wagonGap * 2;
-    const spawnY = last.y;
-    const texIndex = Phaser.Math.Between(0, 9);
-
-    const wagon = this.physics.add
-      .image(spawnX, spawnY, `wagon_${texIndex}`)
-      .setScale(0.8)
-      .setDepth(5 + this.wagons.length);
-
-    if (!wagon || !wagon.body) return;
-    
-    wagon.body.setCircle(12, 8, 6);
-    wagon.body.setAllowGravity(true);
-    wagon.body.setMass(0.5);
-    wagon.body.setDrag(0.9);
-    wagon.setData('hp', this.wagonBaseHP);
-    wagon.setData('maxHP', this.wagonBaseHP);
-    wagon.setTint(0x88aaff);
-    wagon.setBlendMode(Phaser.BlendModes.ADD);
-    wagon.isWagon = true;
-
-    this.wagons.push(wagon);
-
-    wagon.setAlpha(0);
-    this.tweens.add({
-      targets: wagon,
-      alpha: 1,
-      x: spawnX,
-      duration: 500,
-      ease: 'Sine.easeOut'
-    });
-
-    // Коллизия вагонов с воротами
-    this.physics.add.collider(
-      wagon,
-      this.gateGroup,
-      (w, pipe) => this.wagonHit(w, pipe),
-      null,
-      this
-    );
-
-    // Коллизия вагонов с врагами
-    this.physics.add.overlap(
-      wagon,
-      this.enemyGroup,
-      (w, enemySprite) => {
-        const enemy = enemySprite?.enemyRef;
-        if (enemy && this.damageSystem) {
-          this.damageSystem.enemyHitByWagon(enemy, w);
-        }
-      },
-      null,
-      this
-    );
-
-    try {
-      if (this.wagonSound) this.wagonSound.play();
-    } catch (e) {}
-
-    if (this.wagonCountText) {
-      this.wagonCountText.setText(
-        `🚃 ${this.wagons.length}/${this.maxWagons}`
-      );
-    }
-    this.updateCameraZoom();
-  }
-
-  /**
-   * Обновить позиции вагонов
-   */
-  updateWagons() {
-    if (this.wagons.length === 0 || !this.player) return;
-    let prev = this.player;
-
-    for (let i = 0; i < this.wagons.length; i++) {
-      const wagon = this.wagons[i];
-      if (!wagon || !wagon.active) continue;
-      
-      const targetX = prev.x - this.wagonGap;
-      const targetY = prev.y;
-
-      const dx = targetX - wagon.x;
-      const dy = targetY - wagon.y;
-
-      wagon.x += dx * this.wagonSpring;
-      wagon.y += dy * this.wagonSpring;
-
-      if (wagon.body) wagon.body.reset(wagon.x, wagon.y);
-      prev = wagon;
-    }
-  }
-
-  /**
-   * Столкновение вагона с воротами
-   */
-  wagonHit(wagon, pipe) {
-    if (!wagon || !wagon.active) return;
-    
-    const hp = wagon.getData('hp') - 1;
-    if (hp <= 0) {
-      this.wagons = this.wagons.filter((w) => w !== wagon);
-      this.particleManager.createWagonDestroyEffect(wagon);
-      wagon.destroy();
-    } else {
-      wagon.setData('hp', hp);
-      wagon.setTint(0xff8888);
-      this.time.delayedCall(200, () => {
-        if (wagon && wagon.active) wagon.setTint(0x88aaff);
-      });
-    }
-    if (this.wagonCountText) {
-      this.wagonCountText.setText(
-        `🚃 ${this.wagons.length}/${this.maxWagons}`
-      );
-    }
-  }
-
-  /**
-   * Обновить зум камеры в зависимости от количества вагонов
-   */
-  updateCameraZoom() {
-    const totalLength = (this.wagons.length + 1) * this.wagonGap;
-    const screenWidth = this.scale.width;
-    let targetZoom = Math.min(1, screenWidth / (totalLength + 100));
-    targetZoom = Math.max(0.7, targetZoom);
-
-    this.tweens.add({
-      targets: this.cameras.main,
-      zoom: targetZoom,
-      duration: 500,
-      ease: 'Sine.easeInOut'
-    });
   }
 
   // =========================================================================
