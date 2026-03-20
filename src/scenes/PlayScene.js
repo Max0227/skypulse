@@ -3065,6 +3065,9 @@ updateWorldProgress() {
   /**
  * Создание игрока
  */
+/**
+ * Создание игрока
+ */
 createPlayer() {
   const h = this.scale.height;
   
@@ -3087,9 +3090,9 @@ createPlayer() {
   
   console.log(`✅ Creating player with skin: ${skin}`);
   
-  // Создаём игрока с анимацией появления
+  // Создаём игрока
   this.player = this.physics.add.image(this.targetPlayerX, h / 2, skin);
-  this.player.setScale(0);
+  this.player.setScale(0.85);
   this.player.setCollideWorldBounds(false);
   this.player.setMaxVelocity(600, 1000);
   this.player.body.setCircle(22, 16, 8);
@@ -3097,43 +3100,24 @@ createPlayer() {
   this.player.body.setMass(10000);
   this.player.body.setDrag(500, 0);
   this.player.setDepth(15);
-  
-  // Анимация появления
-  this.tweens.add({
-    targets: this.player,
-    scale: 0.85,
-    duration: 400,
-    ease: 'Back.out',
-    onComplete: () => {
-      this.player.setVisible(true);
-    }
-  });
+  this.player.setVisible(true);
   
   // Эффект свечения
-  this.playerGlow = this.add.circle(this.targetPlayerX, h / 2, 32, 0x00ffff, 0);
+  this.playerGlow = this.add.circle(this.targetPlayerX, h / 2, 32, 0x00ffff, 0.2);
   this.playerGlow.setBlendMode(Phaser.BlendModes.ADD);
   this.playerGlow.setDepth(14);
   
   this.tweens.add({
     targets: this.playerGlow,
-    alpha: { from: 0, to: 0.25 },
-    scale: { from: 0.8, to: 1.2 },
-    duration: 600,
-    onComplete: () => {
-      this.tweens.add({
-        targets: this.playerGlow,
-        alpha: { from: 0.15, to: 0.35 },
-        scale: { from: 1, to: 1.3 },
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-        onUpdate: () => {
-          if (this.player?.active) {
-            this.playerGlow.setPosition(this.player.x, this.player.y);
-          }
-        }
-      });
+    alpha: { from: 0.1, to: 0.3 },
+    scale: { from: 1, to: 1.2 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1,
+    onUpdate: () => {
+      if (this.player?.active) {
+        this.playerGlow.setPosition(this.player.x, this.player.y);
+      }
     }
   });
   
@@ -3464,7 +3448,6 @@ updateHearts() {
       heart.setTint(0xff44ff);
       heart.setAlpha(1);
       
-      // Пульсация для последнего сердца
       if (i === this.headHP - 1 && this.headHP > 0) {
         this.tweens.add({
           targets: heart,
@@ -3489,25 +3472,21 @@ createGameOverBox() {
   const w = this.scale.width;
   const h = this.scale.height;
   
-  // Контейнер
   this.gameOverBox = this.add.container(w / 2, h / 2);
   this.gameOverBox.setVisible(false);
   this.gameOverBox.setDepth(100);
   this.gameOverBox.setScrollFactor(0);
   
-  // Фон
   const panelBg = this.add.graphics();
   panelBg.fillStyle(0x0a0a1a, 0.98);
   panelBg.fillRoundedRect(-150, -125, 300, 280, 20);
   panelBg.lineStyle(3, 0x00ffff, 0.9);
   panelBg.strokeRoundedRect(-150, -125, 300, 280, 20);
   
-  // Внутреннее свечение
   const innerGlow = this.add.graphics();
   innerGlow.lineStyle(2, 0xff00ff, 0.4);
   innerGlow.strokeRoundedRect(-146, -121, 292, 272, 18);
   
-  // Заголовок
   const title = this.add.text(0, -95, 'ИГРА ОКОНЧЕНА', {
     fontSize: '26px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
@@ -3517,7 +3496,6 @@ createGameOverBox() {
     shadow: { blur: 15, color: '#ff0000', fill: true }
   }).setOrigin(0.5);
   
-  // Подзаголовок (статистика)
   const subtitle = this.add.text(0, -20, '', {
     fontSize: '12px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3529,7 +3507,6 @@ createGameOverBox() {
   }).setOrigin(0.5);
   this.gameOverSubtitle = subtitle;
   
-  // Подсказка
   const tip = this.add.text(0, 75, '👆 НАЖМИТЕ, ЧТОБЫ ПРОДОЛЖИТЬ', {
     fontSize: '11px',
     fontFamily: "'Orbitron', sans-serif",
@@ -3538,7 +3515,6 @@ createGameOverBox() {
     strokeThickness: 1
   }).setOrigin(0.5);
   
-  // Анимированная линия
   const glowLine = this.add.graphics();
   glowLine.lineStyle(2, 0x00ffff, 0.6);
   glowLine.moveTo(-80, 105);
@@ -3554,6 +3530,467 @@ createGameOverBox() {
   });
   
   this.gameOverBox.add([panelBg, innerGlow, title, subtitle, tip, glowLine]);
+}
+
+// =========================================================================
+// МЕТОДЫ УПРАВЛЕНИЯ ПАУЗОЙ И ВЫХОДОМ
+// =========================================================================
+
+/**
+ * Переключение паузы
+ */
+togglePause() {
+  this.isPaused = !this.isPaused;
+  
+  if (this.isPaused) {
+    // Останавливаем физику и таймеры
+    this.physics.pause();
+    if (this.spawnTimer) this.spawnTimer.paused = true;
+    if (this.bonusTimer) this.bonusTimer.paused = true;
+    if (this.stationTimer) this.stationTimer.paused = true;
+    
+    // Создаём оверлей паузы
+    this.pauseOverlay = this.add.rectangle(
+      this.scale.width / 2, this.scale.height / 2,
+      this.scale.width, this.scale.height,
+      0x000000, 0.85
+    ).setDepth(100).setScrollFactor(0).setInteractive();
+    
+    // Неоновая рамка
+    const border = this.add.graphics();
+    border.lineStyle(3, 0x00ffff, 0.8);
+    border.strokeRoundedRect(
+      this.scale.width / 2 - 140,
+      this.scale.height / 2 - 100,
+      280, 200, 20
+    );
+    border.setDepth(101);
+    
+    // Текст паузы
+    const pauseText = this.add.text(
+      this.scale.width / 2, this.scale.height / 2 - 40,
+      '⏸️ ПАУЗА',
+      {
+        fontSize: '48px',
+        fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+        color: '#ffffff',
+        stroke: '#00ffff',
+        strokeThickness: 6,
+        shadow: { blur: 20, color: '#00ffff', fill: true }
+      }
+    ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
+    
+    const tipText = this.add.text(
+      this.scale.width / 2, this.scale.height / 2 + 30,
+      'НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ',
+      {
+        fontSize: '12px',
+        fontFamily: "'Share Tech Mono', monospace",
+        color: '#88aaff',
+        stroke: '#000000',
+        strokeThickness: 2
+      }
+    ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
+    
+    this.pauseTexts = [border, pauseText, tipText];
+    
+    // Пульсация текста
+    this.tweens.add({
+      targets: pauseText,
+      scale: { from: 1, to: 1.05 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+    
+  } else {
+    // Возобновляем игру
+    this.physics.resume();
+    if (this.spawnTimer) this.spawnTimer.paused = false;
+    if (this.bonusTimer) this.bonusTimer.paused = false;
+    if (this.stationTimer) this.stationTimer.paused = false;
+    
+    // Удаляем элементы паузы
+    if (this.pauseTexts) {
+      this.pauseTexts.forEach(obj => {
+        if (obj?.destroy) obj.destroy();
+      });
+      this.pauseTexts = [];
+    }
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy();
+      this.pauseOverlay = null;
+    }
+    this.hideShop();
+  }
+}
+
+/**
+ * Подтверждение выхода в меню
+ */
+confirmExit() {
+  if (this.dead) return;
+  
+  // Предотвращаем создание нескольких диалогов
+  if (this.exitDialogActive) return;
+  this.exitDialogActive = true;
+  
+  this.isPaused = true;
+  this.physics.pause();
+  
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  // Оверлей
+  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
+    .setDepth(150).setScrollFactor(0).setInteractive();
+  
+  // Панель
+  const panel = this.add.graphics();
+  panel.fillStyle(0x0a0a1a, 0.98);
+  panel.fillRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
+  panel.lineStyle(3, 0xff00ff, 0.8);
+  panel.strokeRoundedRect(w / 2 - 140, h / 2 - 100, 280, 200, 20);
+  panel.setDepth(151);
+  
+  // Иконка
+  const warningIcon = this.add.text(w / 2, h / 2 - 55, '⚠️', {
+    fontSize: '32px'
+  }).setOrigin(0.5).setDepth(152);
+  
+  // Текст
+  const text = this.add.text(w / 2, h / 2 - 15, 'Выйти в меню?', {
+    fontSize: '20px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#ffffff',
+    stroke: '#ff00ff',
+    strokeThickness: 2
+  }).setOrigin(0.5).setDepth(152);
+  
+  const subText = this.add.text(w / 2, h / 2 + 15, 'Прогресс не сохранится', {
+    fontSize: '10px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#ffaa66'
+  }).setOrigin(0.5).setDepth(152);
+  
+  // Кнопка ДА
+  const yesBtn = this.add.text(w / 2 - 70, h / 2 + 65, 'ДА', {
+    fontSize: '18px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#00ff00',
+    backgroundColor: '#1a3a1a',
+    padding: { x: 20, y: 8 },
+    stroke: '#00ff00',
+    strokeThickness: 2
+  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(152);
+  
+  // Кнопка НЕТ
+  const noBtn = this.add.text(w / 2 + 70, h / 2 + 65, 'НЕТ', {
+    fontSize: '18px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ff4444',
+    backgroundColor: '#3a1a1a',
+    padding: { x: 20, y: 8 },
+    stroke: '#ff4444',
+    strokeThickness: 2
+  }).setInteractive({ useHandCursor: true }).setOrigin(0.5).setDepth(152);
+  
+  // Обработчики кнопок
+  yesBtn.on('pointerover', () => {
+    yesBtn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' });
+  });
+  yesBtn.on('pointerout', () => {
+    yesBtn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' });
+  });
+  yesBtn.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.exitDialogActive = false;
+    this.scene.start('menu');
+  });
+  
+  noBtn.on('pointerover', () => {
+    noBtn.setStyle({ color: '#ffffff', backgroundColor: '#aa0000' });
+  });
+  noBtn.on('pointerout', () => {
+    noBtn.setStyle({ color: '#ff4444', backgroundColor: '#3a1a1a' });
+  });
+  noBtn.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.exitDialogActive = false;
+    overlay.destroy();
+    panel.destroy();
+    warningIcon.destroy();
+    text.destroy();
+    subText.destroy();
+    yesBtn.destroy();
+    noBtn.destroy();
+    this.isPaused = false;
+    this.physics.resume();
+  });
+}
+
+/**
+ * Открыть магазин
+ */
+openShop() {
+  if (this.dead) return;
+  if (this.countdownActive) this.cancelResumeCountdown();
+  if (!this.isPaused) this.togglePause();
+  this.showShop();
+}
+
+/**
+ * Скрыть магазин
+ */
+hideShop() {
+  if (!this.shopVisible) return;
+  if (this.shopElements) {
+    this.shopElements.forEach(el => { 
+      if (el?.destroy) el.destroy(); 
+    });
+    this.shopElements = [];
+  }
+  this.shopVisible = false;
+}
+
+/**
+ * Показать магазин
+ */
+showShop() {
+  if (this.shopVisible) return;
+  this.shopVisible = true;
+  
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
+  
+  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x0a0a1a, 0.95)
+    .setDepth(80).setScrollFactor(0).setInteractive();
+  
+  const panel = this.add.graphics();
+  panel.fillStyle(0x0d0d1a, 0.98);
+  panel.fillRoundedRect(w / 2 - (w - 40) / 2, 20, w - 40, h - 40, 20);
+  panel.lineStyle(3, 0x00ffff, 0.8);
+  panel.strokeRoundedRect(w / 2 - (w - 40) / 2, 20, w - 40, h - 40, 20);
+  panel.setDepth(81);
+  
+  const title = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
+    fontSize: '26px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#00ffff',
+    stroke: '#ff00ff',
+    strokeThickness: 3,
+    shadow: { blur: 15, color: '#00ffff', fill: true }
+  }).setOrigin(0.5).setDepth(82);
+  
+  const balanceBg = this.add.graphics();
+  balanceBg.fillStyle(0x1a1a3a, 0.9);
+  balanceBg.fillRoundedRect(w / 2 - 70, 80, 140, 32, 16);
+  balanceBg.lineStyle(1, 0xffaa00, 0.5);
+  balanceBg.strokeRoundedRect(w / 2 - 70, 80, 140, 32, 16);
+  balanceBg.setDepth(82);
+  
+  const balance = this.add.text(w / 2, 96, `💎 ${this.crystals}`, {
+    fontSize: '18px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ffaa00',
+    stroke: '#ff5500',
+    strokeThickness: 2
+  }).setOrigin(0.5).setDepth(83);
+  
+  this.shopElements = [overlay, panel, title, balanceBg, balance];
+  
+  const upgrades = SHOP_UPGRADES || [];
+  let y = 130;
+  const col1X = 50;
+  const col2X = w - 170;
+  
+  for (let up of upgrades) {
+    if (!up?.key) continue;
+    
+    const level = this.upgradeSystem?.upgrades?.[up.key] || 0;
+    const maxLevel = up.maxLevel || 10;
+    const currentValue = this.upgradeSystem?.getUpgradeValue(up.key) || 0;
+    const cost = this.upgradeSystem?.getUpgradeCost(up.key) || 999999;
+    const canAfford = this.crystals >= cost && level < maxLevel;
+    const isMax = level >= maxLevel;
+    
+    const nameText = this.add.text(col1X, y, `${up.icon} ${up.name}`, {
+      fontSize: '12px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: '#ffffff'
+    }).setDepth(82);
+    
+    const valueText = this.add.text(col1X + 130, y, `${currentValue}`, {
+      fontSize: '11px',
+      fontFamily: "'Share Tech Mono', monospace",
+      color: '#88ff88'
+    }).setDepth(82);
+    
+    const levelText = this.add.text(col1X + 170, y, `${level}/${maxLevel}`, {
+      fontSize: '10px',
+      fontFamily: "'Share Tech Mono', monospace",
+      color: isMax ? '#00ff00' : '#88aaff'
+    }).setDepth(82);
+    
+    const priceText = this.add.text(col2X, y, isMax ? 'MAX' : `${cost} 💎`, {
+      fontSize: '12px',
+      fontFamily: "'Audiowide', sans-serif",
+      color: isMax ? '#00ff00' : (canAfford ? '#ffaa00' : '#ff4444')
+    }).setOrigin(1, 0.5).setDepth(82);
+    
+    this.shopElements.push(nameText, valueText, levelText, priceText);
+    
+    if (canAfford && !isMax) {
+      const btn = this.add.text(col2X + 45, y, 'КУПИТЬ', {
+        fontSize: '10px',
+        fontFamily: "'Audiowide', sans-serif",
+        color: '#00ff00',
+        backgroundColor: '#1a3a1a',
+        padding: { x: 8, y: 3 }
+      }).setInteractive({ useHandCursor: true }).setDepth(83);
+      
+      btn.on('pointerover', () => btn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' }));
+      btn.on('pointerout', () => btn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' }));
+      btn.on('pointerdown', (pointer) => {
+        pointer.event?.stopPropagation();
+        this.buyUpgrade(up.key);
+      });
+      
+      this.shopElements.push(btn);
+    }
+    
+    y += 32;
+  }
+  
+  const closeBtn = this.add.text(w / 2, h - 45, 'ЗАКРЫТЬ', {
+    fontSize: '18px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ff00ff',
+    backgroundColor: '#1a1a2e',
+    padding: { x: 30, y: 8 },
+    shadow: { blur: 10, color: '#ff00ff', fill: true }
+  }).setInteractive({ useHandCursor: true }).setDepth(83);
+  
+  closeBtn.on('pointerover', () => closeBtn.setStyle({ color: '#ffffff', backgroundColor: '#ff00ff' }));
+  closeBtn.on('pointerout', () => closeBtn.setStyle({ color: '#ff00ff', backgroundColor: '#1a1a2e' }));
+  closeBtn.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.startResumeCountdown();
+  });
+  
+  this.shopElements.push(closeBtn);
+}
+
+/**
+ * Покупка улучшения
+ */
+buyUpgrade(key) {
+  if (!this.upgradeSystem) return;
+  
+  const cost = this.upgradeSystem.getUpgradeCost(key);
+  if (this.crystals < cost) {
+    this.showNotification('Недостаточно кристаллов!', 1500, '#ff4444');
+    return;
+  }
+  
+  this.crystals -= cost;
+  if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
+  
+  this.upgradeSystem.applyUpgrade(key);
+  
+  try { if (this.purchaseSound) this.purchaseSound.play(); } catch (e) {}
+  this.showNotification('✨ Улучшение куплено! ✨', 1500, '#00ff00');
+  
+  if (this.shopVisible) {
+    this.hideShop();
+    this.showShop();
+  }
+  
+  if (gameManager.data) {
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
+  }
+}
+
+/**
+ * Старт обратного отсчёта
+ */
+startResumeCountdown() {
+  if (this.countdownActive) return;
+  this.hideShop();
+  
+  this.countdownActive = true;
+  let count = 3;
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  this.countdownOverlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.7)
+    .setDepth(150).setScrollFactor(0);
+  
+  this.countdownText = this.add.text(w / 2, h / 2 - 30, '3', {
+    fontSize: '80px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#00ffff',
+    stroke: '#ff00ff',
+    strokeThickness: 8,
+    shadow: { blur: 25, color: '#00ffff', fill: true }
+  }).setOrigin(0.5).setDepth(151).setScrollFactor(0);
+  
+  this.countdownPrepareText = this.add.text(w / 2, h / 2 + 45, 'ПРИГОТОВЬСЯ', {
+    fontSize: '18px',
+    fontFamily: "'Orbitron', sans-serif",
+    color: '#ffffff',
+    stroke: '#00aaff',
+    strokeThickness: 2
+  }).setOrigin(0.5).setDepth(151).setScrollFactor(0);
+  
+  this.resumeCountdownTimer = this.time.addEvent({
+    delay: 1000,
+    callback: () => {
+      count--;
+      if (count > 0) {
+        if (this.countdownText) this.countdownText.setText(count.toString());
+      } else {
+        if (this.countdownText) {
+          this.countdownText.setText('ПОЕХАЛИ!');
+          this.time.delayedCall(500, () => {
+            if (this.countdownOverlay) this.countdownOverlay.destroy();
+            if (this.countdownText) this.countdownText.destroy();
+            if (this.countdownPrepareText) this.countdownPrepareText.destroy();
+            this.countdownActive = false;
+            if (this.isPaused) this.togglePause();
+          });
+        }
+        if (this.resumeCountdownTimer) this.resumeCountdownTimer.remove();
+      }
+    },
+    repeat: 2
+  });
+}
+
+/**
+ * Отмена обратного отсчёта
+ */
+cancelResumeCountdown() {
+  if (this.resumeCountdownTimer) {
+    this.resumeCountdownTimer.remove();
+    this.resumeCountdownTimer = null;
+  }
+  if (this.countdownOverlay) {
+    this.countdownOverlay.destroy();
+    this.countdownOverlay = null;
+  }
+  if (this.countdownText) {
+    this.countdownText.destroy();
+    this.countdownText = null;
+  }
+  if (this.countdownPrepareText) {
+    this.countdownPrepareText.destroy();
+    this.countdownPrepareText = null;
+  }
+  this.countdownActive = false;
 }
 
 /**
