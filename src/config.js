@@ -35,26 +35,26 @@ export const GAME_CONFIG = {
 
 export const DIFFICULTY_CURVE = {
   0: { speed: 240, gap: 240, spawnDelay: 1500, coinChance: 0.8, asteroidChance: 0.3, powerUpChance: 0.1 },
-  1: { speed: 264, gap: 235, spawnDelay: 1450, coinChance: 0.8, asteroidChance: 0.32, powerUpChance: 0.11 }, // +10%
-  2: { speed: 290, gap: 230, spawnDelay: 1400, coinChance: 0.8, asteroidChance: 0.34, powerUpChance: 0.12 }, // +10%
-  3: { speed: 319, gap: 225, spawnDelay: 1350, coinChance: 0.8, asteroidChance: 0.36, powerUpChance: 0.13 }, // +10%
-  4: { speed: 351, gap: 220, spawnDelay: 1300, coinChance: 0.8, asteroidChance: 0.38, powerUpChance: 0.14 }, // +10%
-  5: { speed: 386, gap: 215, spawnDelay: 1250, coinChance: 0.8, asteroidChance: 0.4, powerUpChance: 0.15 },  // +10%
-  6: { speed: 425, gap: 210, spawnDelay: 1200, coinChance: 0.8, asteroidChance: 0.42, powerUpChance: 0.16 }, // +10%
-  7: { speed: 468, gap: 205, spawnDelay: 1150, coinChance: 0.8, asteroidChance: 0.44, powerUpChance: 0.17 }, // +10%
-  8: { speed: 515, gap: 200, spawnDelay: 1100, coinChance: 0.8, asteroidChance: 0.46, powerUpChance: 0.18 }, // +10%
-  9: { speed: 567, gap: 195, spawnDelay: 1050, coinChance: 0.8, asteroidChance: 0.48, powerUpChance: 0.19 }, // +10%
-  10: { speed: 624, gap: 190, spawnDelay: 1000, coinChance: 0.8, asteroidChance: 0.5, powerUpChance: 0.2 },  // +10%
-  11: { speed: 686, gap: 185, spawnDelay: 950, coinChance: 0.8, asteroidChance: 0.52, powerUpChance: 0.21 }, // +10%
-  12: { speed: 755, gap: 180, spawnDelay: 900, coinChance: 0.8, asteroidChance: 0.54, powerUpChance: 0.22 }, // +10%
-  13: { speed: 831, gap: 175, spawnDelay: 850, coinChance: 0.8, asteroidChance: 0.56, powerUpChance: 0.23 }, // +10%
-  14: { speed: 914, gap: 170, spawnDelay: 800, coinChance: 0.8, asteroidChance: 0.58, powerUpChance: 0.24 }, // +10%
-  15: { speed: 1005, gap: 165, spawnDelay: 750, coinChance: 0.8, asteroidChance: 0.6, powerUpChance: 0.25 }, // +10%
-  16: { speed: 1106, gap: 160, spawnDelay: 700, coinChance: 0.8, asteroidChance: 0.62, powerUpChance: 0.26 }, // +10%
-  17: { speed: 1217, gap: 155, spawnDelay: 650, coinChance: 0.8, asteroidChance: 0.64, powerUpChance: 0.27 }, // +10%
-  18: { speed: 1339, gap: 150, spawnDelay: 600, coinChance: 0.8, asteroidChance: 0.66, powerUpChance: 0.28 }, // +10%
-  19: { speed: 1473, gap: 145, spawnDelay: 550, coinChance: 0.8, asteroidChance: 0.68, powerUpChance: 0.29 }, // +10%
-  20: { speed: 1620, gap: 140, spawnDelay: 500, coinChance: 0.8, asteroidChance: 0.7, powerUpChance: 0.3 },   // +10%
+  1: { speed: 264, gap: 235, spawnDelay: 1450, coinChance: 0.8, asteroidChance: 0.32, powerUpChance: 0.11 },
+  2: { speed: 290, gap: 230, spawnDelay: 1400, coinChance: 0.8, asteroidChance: 0.34, powerUpChance: 0.12 },
+  3: { speed: 319, gap: 225, spawnDelay: 1350, coinChance: 0.8, asteroidChance: 0.36, powerUpChance: 0.13 },
+  4: { speed: 351, gap: 220, spawnDelay: 1300, coinChance: 0.8, asteroidChance: 0.38, powerUpChance: 0.14 },
+  5: { speed: 386, gap: 215, spawnDelay: 1250, coinChance: 0.8, asteroidChance: 0.4, powerUpChance: 0.15 },
+  6: { speed: 425, gap: 210, spawnDelay: 1200, coinChance: 0.8, asteroidChance: 0.42, powerUpChance: 0.16 },
+  7: { speed: 468, gap: 205, spawnDelay: 1150, coinChance: 0.8, asteroidChance: 0.44, powerUpChance: 0.17 },
+  8: { speed: 515, gap: 200, spawnDelay: 1100, coinChance: 0.8, asteroidChance: 0.46, powerUpChance: 0.18 },
+  9: { speed: 567, gap: 195, spawnDelay: 1050, coinChance: 0.8, asteroidChance: 0.48, powerUpChance: 0.19 },
+  10: { speed: 624, gap: 190, spawnDelay: 1000, coinChance: 0.8, asteroidChance: 0.5, powerUpChance: 0.2 },
+  11: { speed: 686, gap: 185, spawnDelay: 950, coinChance: 0.8, asteroidChance: 0.52, powerUpChance: 0.21 },
+  12: { speed: 755, gap: 180, spawnDelay: 900, coinChance: 0.8, asteroidChance: 0.54, powerUpChance: 0.22 },
+  13: { speed: 831, gap: 175, spawnDelay: 850, coinChance: 0.8, asteroidChance: 0.56, powerUpChance: 0.23 },
+  14: { speed: 914, gap: 170, spawnDelay: 800, coinChance: 0.8, asteroidChance: 0.58, powerUpChance: 0.24 },
+  15: { speed: 1005, gap: 165, spawnDelay: 750, coinChance: 0.8, asteroidChance: 0.6, powerUpChance: 0.25 },
+  16: { speed: 1106, gap: 160, spawnDelay: 700, coinChance: 0.8, asteroidChance: 0.62, powerUpChance: 0.26 },
+  17: { speed: 1217, gap: 155, spawnDelay: 650, coinChance: 0.8, asteroidChance: 0.64, powerUpChance: 0.27 },
+  18: { speed: 1339, gap: 150, spawnDelay: 600, coinChance: 0.8, asteroidChance: 0.66, powerUpChance: 0.28 },
+  19: { speed: 1473, gap: 145, spawnDelay: 550, coinChance: 0.8, asteroidChance: 0.68, powerUpChance: 0.29 },
+  20: { speed: 1620, gap: 140, spawnDelay: 500, coinChance: 0.8, asteroidChance: 0.7, powerUpChance: 0.3 },
 };
 
 export const SHOP_UPGRADES = [
@@ -91,6 +91,11 @@ export const ACHIEVEMENTS = {
   world_3_complete: { id: 'world_3_complete', name: 'Хозяин подземелий', icon: '🗝️', reward: 300 },
   world_4_complete: { id: 'world_4_complete', name: 'Астероидный рейнджер', icon: '☄️', reward: 400 },
   world_5_complete: { id: 'world_5_complete', name: 'Повелитель бездны', icon: '⚫', reward: 500 },
+  // Достижения для новых миров
+  cyberpunk_master: { id: 'cyberpunk_master', name: 'Неоновый драйвер', icon: '🌃', reward: 150, condition: 'Пройти Киберпанк без потери здоровья' },
+  dungeon_master: { id: 'dungeon_master', name: 'Повелитель тьмы', icon: '🏰', reward: 200, condition: 'Собрать 20 вагонов в Подземелье' },
+  asteroid_hunter: { id: 'asteroid_hunter', name: 'Астероидный охотник', icon: '☄️', reward: 175, condition: 'Уничтожить 50 астероидов' },
+  blackhole_survivor: { id: 'blackhole_survivor', name: 'Выживший у бездны', icon: '⚫', reward: 250, condition: 'Прожить в Чёрной дыре 3 минуты' },
 };
 
 export const UPGRADE_COSTS = {
@@ -108,58 +113,181 @@ export const UPGRADE_COSTS = {
   weaponFireRate: { base: 25, multiplier: 1.3 },
 };
 
-export const LEVEL_CONFIG = {
+// =========================================================================
+// РАСШИРЕННЫЙ КОНФИГ МИРОВ
+// =========================================================================
+
+export const WORLD_CONFIG = {
   0: {
+    id: 'space',
     name: 'КОСМОС',
+    shortName: 'Space',
     bgColor: 0x0a0a1a,
+    gradientStart: 0x030712,
+    gradientEnd: 0x0a0a1a,
     gateColors: ['gate_blue', 'gate_green', 'gate_yellow', 'gate_red', 'gate_purple'],
     enemyTypes: [],
+    bossType: null,
     description: 'Начни свой путь в открытом космосе',
+    longDescription: 'Бескрайние просторы космоса ждут тебя. Здесь ты научишься управлять такси и собирать первые монеты.',
     goalScore: 500,
-    unlockPrice: 100,
+    unlockPrice: 0,
     specialEvent: 'none',
+    gravity: 1300,
+    speedMultiplier: 1.0,
+    backgroundSpeed: 0.2,
+    parallaxLayers: 3,
+    coinMultiplier: 1.0,
+    enemySpawnRate: 0.1,
+    powerUpSpawnRate: 0.1,
+    asteroidSpawnRate: 0.3,
+    music: 'space_ambient',
+    ambience: 'stars',
+    visualTheme: 'cosmic',
+    particleColor: [0xffffff, 0x88aaff],
+    fogColor: 0x0a0a1a,
+    fogIntensity: 0.1,
+    starCount: 200,
+    planetCount: 5,
+    specialMechanic: null,
   },
   1: {
+    id: 'cyberpunk',
     name: 'КИБЕРПАНК',
+    shortName: 'Neon City',
     bgColor: 0x1a0a2a,
+    gradientStart: 0x0a0a2a,
+    gradientEnd: 0x2a0a3a,
     gateColors: ['gate_purple', 'gate_blue', 'gate_green', 'gate_yellow', 'gate_red'],
-    enemyTypes: ['drone'],
+    enemyTypes: ['drone', 'sentinel'],
+    bossType: 'boss_cyber',
     description: 'Неоновые огни и летающие враги',
+    longDescription: 'Добро пожаловать в Неон-Сити! Здесь каждый закоулок светится, а опасность поджидает за каждым поворотом.',
     goalScore: 800,
     unlockPrice: 200,
     specialEvent: 'neon',
+    gravity: 1100,
+    speedMultiplier: 1.15,
+    backgroundSpeed: 0.3,
+    parallaxLayers: 5,
+    coinMultiplier: 1.2,
+    enemySpawnRate: 0.25,
+    powerUpSpawnRate: 0.15,
+    asteroidSpawnRate: 0.2,
+    music: 'cyberpunk_theme',
+    ambience: 'neon_hum',
+    visualTheme: 'neon',
+    particleColor: [0xff00ff, 0x00ffff, 0xffff00],
+    fogColor: 0x1a0a2a,
+    fogIntensity: 0.05,
+    starCount: 50,
+    buildingCount: 20,
+    specialMechanic: 'digital_rain',
   },
   2: {
+    id: 'dungeon',
     name: 'ПОДЗЕМЕЛЬЕ',
+    shortName: 'Dark Depths',
     bgColor: 0x2a1a0a,
+    gradientStart: 0x1a0a05,
+    gradientEnd: 0x3a2a1a,
     gateColors: ['gate_red', 'gate_yellow', 'gate_green', 'gate_blue', 'gate_purple'],
-    enemyTypes: ['skeleton'],
+    enemyTypes: ['skeleton', 'sentinel'],
+    bossType: 'boss_dungeon',
     description: 'Тёмные коридоры и древние ловушки',
+    longDescription: 'Древние подземелья хранят множество тайн и опасностей. Будь осторожен — тьма скрывает не только сокровища.',
     goalScore: 1200,
     unlockPrice: 400,
     specialEvent: 'dungeon',
+    gravity: 1600,
+    speedMultiplier: 0.85,
+    backgroundSpeed: 0.15,
+    parallaxLayers: 4,
+    coinMultiplier: 1.3,
+    enemySpawnRate: 0.3,
+    powerUpSpawnRate: 0.12,
+    asteroidSpawnRate: 0.15,
+    music: 'dungeon_ambient',
+    ambience: 'echo',
+    visualTheme: 'dark',
+    particleColor: [0xff6600, 0xaa4422],
+    fogColor: 0x2a1a0a,
+    fogIntensity: 0.2,
+    starCount: 30,
+    stalactiteCount: 15,
+    specialMechanic: 'gravity_pulse',
   },
   3: {
+    id: 'asteroids',
     name: 'АСТЕРОИДЫ',
+    shortName: 'Asteroid Field',
     bgColor: 0x0a2a2a,
+    gradientStart: 0x051a1a,
+    gradientEnd: 0x0a3a3a,
     gateColors: ['gate_blue', 'gate_purple', 'gate_yellow', 'gate_green', 'gate_red'],
-    enemyTypes: ['drone', 'skeleton'],
+    enemyTypes: ['drone', 'skeleton', 'sentinel'],
+    bossType: 'boss_asteroid',
     description: 'Опасное путешествие через метеориты',
+    longDescription: 'Астероидное поле — настоящее испытание для пилота. Уворачивайся от камней и собирай редкие ресурсы.',
     goalScore: 1600,
     unlockPrice: 600,
     specialEvent: 'asteroids',
+    gravity: 1450,
+    speedMultiplier: 1.1,
+    backgroundSpeed: 0.35,
+    parallaxLayers: 3,
+    coinMultiplier: 1.4,
+    enemySpawnRate: 0.2,
+    powerUpSpawnRate: 0.1,
+    asteroidSpawnRate: 0.7,
+    music: 'asteroids_theme',
+    ambience: 'rocks',
+    visualTheme: 'rocky',
+    particleColor: [0xffaa66, 0xcc8866],
+    fogColor: 0x0a2a2a,
+    fogIntensity: 0.1,
+    starCount: 80,
+    asteroidCount: 40,
+    specialMechanic: 'asteroid_rain',
   },
   4: {
+    id: 'blackhole',
     name: 'ЧЁРНАЯ ДЫРА',
+    shortName: 'Event Horizon',
     bgColor: 0x000000,
+    gradientStart: 0x000000,
+    gradientEnd: 0x110022,
     gateColors: ['gate_red', 'gate_purple', 'gate_blue', 'gate_green', 'gate_yellow'],
     enemyTypes: ['sentinel', 'drone', 'skeleton'],
+    bossType: 'boss_final',
     description: 'Финальное испытание у края вселенной',
+    longDescription: 'Ты достиг края вселенной. Чёрная дыра искажает пространство и время. Сможешь ли ты вырваться из её объятий?',
     goalScore: 2000,
     unlockPrice: 800,
     specialEvent: 'blackhole',
+    gravity: 700,
+    speedMultiplier: 0.7,
+    backgroundSpeed: 0.1,
+    parallaxLayers: 6,
+    coinMultiplier: 1.5,
+    enemySpawnRate: 0.35,
+    powerUpSpawnRate: 0.08,
+    asteroidSpawnRate: 0.1,
+    music: 'void_ambient',
+    ambience: 'distortion',
+    visualTheme: 'void',
+    particleColor: [0xaa88ff, 0x8844aa, 0xff88ff],
+    fogColor: 0x000000,
+    fogIntensity: 0.3,
+    starCount: 100,
+    ringCount: 8,
+    specialMechanic: 'gravity_pull',
   },
 };
+
+// =========================================================================
+// КОНФИГ ВРАГОВ С УЧЁТОМ МИРОВ
+// =========================================================================
 
 export const ENEMY_CONFIG = {
   drone: {
@@ -173,6 +301,12 @@ export const ENEMY_CONFIG = {
     bulletSpeed: 400,
     bulletDamage: 1,
     texture: 'enemy_drone',
+    variants: {
+      cyberpunk: { color: 0xff00ff, speed: 180, health: 2 },
+      dungeon: { color: 0xff6600, speed: 120, health: 1 },
+      asteroids: { color: 0xffaa44, speed: 160, health: 2 },
+      blackhole: { color: 0xaa88ff, speed: 140, health: 3 },
+    }
   },
   sentinel: {
     health: 3,
@@ -185,6 +319,11 @@ export const ENEMY_CONFIG = {
     bulletSpeed: 500,
     bulletDamage: 1,
     texture: 'enemy_sentinel',
+    variants: {
+      cyberpunk: { color: 0x00ffff, speed: 220, health: 3, fireDelay: 500 },
+      dungeon: { color: 0xaa4422, speed: 180, health: 4, damage: 2 },
+      blackhole: { color: 0xaa88ff, speed: 160, health: 5, bulletSpeed: 600 },
+    }
   },
   skeleton: {
     health: 1,
@@ -197,8 +336,69 @@ export const ENEMY_CONFIG = {
     bulletSpeed: 300,
     bulletDamage: 1,
     texture: 'enemy_skeleton',
+    variants: {
+      dungeon: { color: 0x886644, health: 2, speed: 100 },
+      asteroids: { color: 0xaa8866, health: 1, speed: 130 },
+    }
+  },
+  // Новые враги для миров
+  cyber_drone: {
+    health: 2,
+    speed: 200,
+    attackRange: 320,
+    detectionRange: 420,
+    damage: 1,
+    scoreValue: 7,
+    fireDelay: 600,
+    bulletSpeed: 500,
+    bulletDamage: 1,
+    texture: 'enemy_drone',
+    special: 'teleport',
+  },
+  shadow_wraith: {
+    health: 3,
+    speed: 100,
+    attackRange: 280,
+    detectionRange: 380,
+    damage: 2,
+    scoreValue: 12,
+    fireDelay: 1200,
+    bulletSpeed: 350,
+    bulletDamage: 2,
+    texture: 'enemy_skeleton',
+    special: 'invisible',
+  },
+  rock_spitter: {
+    health: 2,
+    speed: 80,
+    attackRange: 400,
+    detectionRange: 500,
+    damage: 1,
+    scoreValue: 8,
+    fireDelay: 1500,
+    bulletSpeed: 400,
+    bulletDamage: 1,
+    texture: 'bg_asteroid_1',
+    special: 'spread_shot',
+  },
+  void_sentinel: {
+    health: 5,
+    speed: 150,
+    attackRange: 450,
+    detectionRange: 550,
+    damage: 2,
+    scoreValue: 20,
+    fireDelay: 400,
+    bulletSpeed: 700,
+    bulletDamage: 2,
+    texture: 'enemy_sentinel',
+    special: 'gravity_pull',
   },
 };
+
+// =========================================================================
+// КОНФИГ БОССОВ
+// =========================================================================
 
 export const BOSS_CONFIG = {
   boss_cyber: {
@@ -211,6 +411,13 @@ export const BOSS_CONFIG = {
     bulletSpeed: 600,
     bulletDamage: 2,
     texture: 'boss_cyber',
+    phases: [
+      { healthThreshold: 0.7, ability: 'laser_beam', description: 'Лазерная атака!' },
+      { healthThreshold: 0.4, ability: 'drone_swarm', description: 'Рой дронов!' },
+      { healthThreshold: 0.2, ability: 'overcharge', description: 'Перегрузка системы!' },
+    ],
+    abilities: ['teleport', 'shield', 'spread_shot'],
+    specialEffect: 'neon_explosion',
   },
   boss_dungeon: {
     health: 60,
@@ -222,6 +429,13 @@ export const BOSS_CONFIG = {
     bulletSpeed: 550,
     bulletDamage: 2,
     texture: 'boss_dungeon',
+    phases: [
+      { healthThreshold: 0.7, ability: 'darkness', description: 'Тьма сгущается!' },
+      { healthThreshold: 0.4, ability: 'summon_ghosts', description: 'Призраки восстают!' },
+      { healthThreshold: 0.2, ability: 'rage', description: 'Ярость древнего!' },
+    ],
+    abilities: ['shadow_clone', 'life_drain', 'earthquake'],
+    specialEffect: 'dark_explosion',
   },
   boss_asteroid: {
     health: 70,
@@ -233,6 +447,13 @@ export const BOSS_CONFIG = {
     bulletSpeed: 700,
     bulletDamage: 3,
     texture: 'boss_asteroid',
+    phases: [
+      { healthThreshold: 0.7, ability: 'meteor_rain', description: 'Метеоритный дождь!' },
+      { healthThreshold: 0.4, ability: 'rock_armor', description: 'Каменная броня!' },
+      { healthThreshold: 0.2, ability: 'fragmentation', description: 'Раскол!' },
+    ],
+    abilities: ['rock_shield', 'debris_field', 'stomp'],
+    specialEffect: 'asteroid_explosion',
   },
   boss_final: {
     health: 100,
@@ -244,25 +465,50 @@ export const BOSS_CONFIG = {
     bulletSpeed: 800,
     bulletDamage: 4,
     texture: 'boss_final',
+    phases: [
+      { healthThreshold: 0.8, ability: 'gravity_well', description: 'Гравитационный колодец!' },
+      { healthThreshold: 0.6, ability: 'black_hole', description: 'Чёрная дыра формируется!' },
+      { healthThreshold: 0.4, ability: 'time_distortion', description: 'Искривление времени!' },
+      { healthThreshold: 0.2, ability: 'supernova', description: 'Сверхновая!' },
+    ],
+    abilities: ['time_slow', 'gravity_reverse', 'dimensional_rift', 'quantum_blast'],
+    specialEffect: 'void_explosion',
   },
 };
 
+// =========================================================================
+// МОНЕТЫ И БОНУСЫ
+// =========================================================================
+
 export const COIN_TYPES = {
-  gold: { value: 1, color: 0xffaa00, texture: 'coin_gold' },
-  red: { value: 2, color: 0xff4444, texture: 'coin_red', bonus: 'speed' },
-  blue: { value: 1, color: 0x4444ff, texture: 'coin_blue', bonus: 'shield' },
-  green: { value: 1, color: 0x44ff44, texture: 'coin_green', bonus: 'magnet' },
-  purple: { value: 1, color: 0xff44ff, texture: 'coin_purple', bonus: 'slow' },
+  gold: { value: 1, color: 0xffaa00, texture: 'coin_gold', description: 'Обычная монета' },
+  red: { value: 2, color: 0xff4444, texture: 'coin_red', bonus: 'speed', description: 'Монета скорости' },
+  blue: { value: 1, color: 0x4444ff, texture: 'coin_blue', bonus: 'shield', description: 'Монета щита' },
+  green: { value: 1, color: 0x44ff44, texture: 'coin_green', bonus: 'magnet', description: 'Монета магнита' },
+  purple: { value: 1, color: 0xff44ff, texture: 'coin_purple', bonus: 'slow', description: 'Монета замедления' },
+  // Новые монеты
+  rainbow: { value: 5, color: 0xff88ff, texture: 'coin_rainbow', bonus: 'all', description: 'Радужная монета! Активирует все бонусы!' },
+  crystal: { value: 10, color: 0x88aaff, texture: 'coin_crystal', bonus: 'double', description: 'Кристальная монета! Удваивает очки!' },
+  dark: { value: 3, color: 0xaa66ff, texture: 'coin_dark', bonus: 'invincible', description: 'Тёмная монета! Краткая неуязвимость!' },
 };
 
 export const POWERUP_TYPES = {
-  booster: { name: 'Ускорение', color: 0x00ffff, duration: 5000, effect: 'speed', icon: '🚀' },
-  shield: { name: 'Щит', color: 0x00ff00, duration: 5000, effect: 'shield', icon: '🛡️' },
-  magnet: { name: 'Магнит', color: 0xff00ff, duration: 7000, effect: 'magnet', icon: '🧲' },
-  slowmo: { name: 'Замедление', color: 0xffaa00, duration: 4000, effect: 'slow', icon: '⏳' },
-  double: { name: 'Двойные кристаллы', color: 0xffff00, duration: 8000, effect: 'double', icon: '💎' },
-  invincible: { name: 'Неуязвимость', color: 0x00ffff, duration: 5000, effect: 'invincible', icon: '✨' },
+  booster: { name: 'Ускорение', color: 0x00ffff, duration: 5000, effect: 'speed', icon: '🚀', description: '+50% скорости' },
+  shield: { name: 'Щит', color: 0x00ff00, duration: 5000, effect: 'shield', icon: '🛡️', description: 'Блокирует один удар' },
+  magnet: { name: 'Магнит', color: 0xff00ff, duration: 7000, effect: 'magnet', icon: '🧲', description: 'Притягивает монеты' },
+  slowmo: { name: 'Замедление', color: 0xffaa00, duration: 4000, effect: 'slow', icon: '⏳', description: 'Замедляет время' },
+  double: { name: 'Двойные кристаллы', color: 0xffff00, duration: 8000, effect: 'double', icon: '💎', description: 'x2 кристаллы' },
+  invincible: { name: 'Неуязвимость', color: 0x00ffff, duration: 5000, effect: 'invincible', icon: '✨', description: 'Неуязвимость ко всему' },
+  // Новые усилители
+  hyper_boost: { name: 'Гипер-ускорение', color: 0xff6600, duration: 3000, effect: 'hyper_speed', icon: '⚡', description: 'x3 скорость!' },
+  gravity_control: { name: 'Контроль гравитации', color: 0x88aaff, duration: 6000, effect: 'low_gravity', icon: '🌌', description: 'Уменьшает гравитацию' },
+  time_freeze: { name: 'Остановка времени', color: 0x88ccff, duration: 2000, effect: 'freeze', icon: '⏸️', description: 'Останавливает врагов!' },
+  ghost: { name: 'Призрак', color: 0xcc88ff, duration: 4000, effect: 'ghost', icon: '👻', description: 'Проходишь сквозь врагов' },
 };
+
+// =========================================================================
+// ВОЛНЫ ВРАГОВ ДЛЯ КАЖДОГО МИРА
+// =========================================================================
 
 export const WAVE_CONFIG = {
   space: [
@@ -273,17 +519,29 @@ export const WAVE_CONFIG = {
     { wave: 1, count: 3, type: 'drone' },
     { wave: 2, count: 2, type: 'sentinel' },
     { wave: 3, count: 3, type: 'sentinel' },
+    { wave: 4, count: 2, type: 'cyber_drone' },
+    { wave: 5, count: 4, type: 'drone' },
+    { wave: 6, count: 3, type: 'sentinel' },
+    { wave: 7, count: 1, type: 'boss_cyber', isBoss: true },
   ],
   dungeon: [
     { wave: 0, count: 2, type: 'skeleton' },
     { wave: 1, count: 3, type: 'skeleton' },
     { wave: 2, count: 4, type: 'skeleton' },
     { wave: 3, count: 5, type: 'skeleton' },
+    { wave: 4, count: 2, type: 'shadow_wraith' },
+    { wave: 5, count: 3, type: 'sentinel' },
+    { wave: 6, count: 4, type: 'skeleton' },
+    { wave: 7, count: 1, type: 'boss_dungeon', isBoss: true },
   ],
   asteroids: [
     { wave: 0, count: 3, type: 'drone' },
     { wave: 1, count: 2, type: 'sentinel' },
     { wave: 2, count: 4, type: 'drone' },
+    { wave: 3, count: 3, type: 'rock_spitter' },
+    { wave: 4, count: 2, type: 'sentinel' },
+    { wave: 5, count: 5, type: 'drone' },
+    { wave: 6, count: 1, type: 'boss_asteroid', isBoss: true },
   ],
   station: [
     { wave: 0, count: 2, type: 'sentinel' },
@@ -296,18 +554,216 @@ export const WAVE_CONFIG = {
     { wave: 1, count: 5, type: 'drone' },
     { wave: 2, count: 3, type: 'skeleton' },
     { wave: 3, count: 6, type: 'sentinel' },
+    { wave: 4, count: 2, type: 'void_sentinel' },
+    { wave: 5, count: 4, type: 'drone' },
+    { wave: 6, count: 3, type: 'void_sentinel' },
+    { wave: 7, count: 1, type: 'boss_final', isBoss: true },
   ],
 };
 
+// =========================================================================
+// СКИНЫ С УНИКАЛЬНЫМИ БОНУСАМИ
+// =========================================================================
+
 export const SKINS = [
-  { id: 'default', name: 'Классика', price: 0, texture: 'player', description: 'Стандартное такси' },
-  { id: 'neon', name: 'Неоновое', price: 100, texture: 'player_neon', description: 'Светится в темноте' },
-  { id: 'cyber', name: 'Киберпанк', price: 250, texture: 'player_cyber', description: 'Стиль будущего' },
-  { id: 'gold', name: 'Золотое', price: 500, texture: 'player_gold', description: 'Для коллекционеров' },
-  { id: 'rainbow', name: 'Радужное', price: 1000, texture: 'player_rainbow', description: 'Переливается цветами' },
-  { id: 'crystal', name: 'Кристальное', price: 1500, texture: 'player_crystal', description: 'Сверкает как алмаз' },
-  { id: 'stealth', name: 'Стелс', price: 750, texture: 'player_stealth', description: 'Почти невидимое' },
-  { id: 'fire', name: 'Огненное', price: 2000, texture: 'player_fire', description: 'Оставляет огненный след' },
-  { id: 'ice', name: 'Ледяное', price: 2000, texture: 'player_ice', description: 'Холодный стиль' },
-  { id: 'void', name: 'Бездна', price: 3000, texture: 'player_void', description: 'Поглощает свет' },
+  { 
+    id: 'default', 
+    name: 'Классика', 
+    price: 0, 
+    texture: 'player', 
+    description: 'Стандартное такси',
+    rarity: 'common',
+    stats: { speedBonus: 0, armorBonus: 0, handlingBonus: 0, jumpBonus: 0 },
+    effects: 'none',
+  },
+  { 
+    id: 'neon', 
+    name: 'Неоновое', 
+    price: 100, 
+    texture: 'player_neon', 
+    description: 'Светится в темноте',
+    rarity: 'rare',
+    stats: { speedBonus: 5, armorBonus: 0, handlingBonus: 5, jumpBonus: 0 },
+    effects: 'glow',
+  },
+  { 
+    id: 'cyber', 
+    name: 'Киберпанк', 
+    price: 250, 
+    texture: 'player_cyber', 
+    description: 'Стиль будущего',
+    rarity: 'rare',
+    stats: { speedBonus: 8, armorBonus: 2, handlingBonus: 5, jumpBonus: 3 },
+    effects: 'digital_trail',
+  },
+  { 
+    id: 'gold', 
+    name: 'Золотое', 
+    price: 500, 
+    texture: 'player_gold', 
+    description: 'Для коллекционеров',
+    rarity: 'epic',
+    stats: { speedBonus: 10, armorBonus: 5, handlingBonus: 5, jumpBonus: 5 },
+    effects: 'sparkle',
+  },
+  { 
+    id: 'rainbow', 
+    name: 'Радужное', 
+    price: 1000, 
+    texture: 'player_rainbow', 
+    description: 'Переливается цветами',
+    rarity: 'epic',
+    stats: { speedBonus: 12, armorBonus: 5, handlingBonus: 10, jumpBonus: 8 },
+    effects: 'rainbow_trail',
+  },
+  { 
+    id: 'crystal', 
+    name: 'Кристальное', 
+    price: 1500, 
+    texture: 'player_crystal', 
+    description: 'Сверкает как алмаз',
+    rarity: 'epic',
+    stats: { speedBonus: 15, armorBonus: 8, handlingBonus: 12, jumpBonus: 10 },
+    effects: 'crystal_shards',
+  },
+  { 
+    id: 'stealth', 
+    name: 'Стелс', 
+    price: 750, 
+    texture: 'player_stealth', 
+    description: 'Почти невидимое',
+    rarity: 'rare',
+    stats: { speedBonus: 5, armorBonus: 10, handlingBonus: 15, jumpBonus: 0 },
+    effects: 'invisible_trail',
+  },
+  { 
+    id: 'fire', 
+    name: 'Огненное', 
+    price: 2000, 
+    texture: 'player_fire', 
+    description: 'Оставляет огненный след',
+    rarity: 'epic',
+    stats: { speedBonus: 18, armorBonus: 5, handlingBonus: 8, jumpBonus: 12 },
+    effects: 'fire_trail',
+  },
+  { 
+    id: 'ice', 
+    name: 'Ледяное', 
+    price: 2000, 
+    texture: 'player_ice', 
+    description: 'Холодный стиль',
+    rarity: 'epic',
+    stats: { speedBonus: 15, armorBonus: 10, handlingBonus: 10, jumpBonus: 8 },
+    effects: 'ice_trail',
+  },
+  { 
+    id: 'void', 
+    name: 'Бездна', 
+    price: 3000, 
+    texture: 'player_void', 
+    description: 'Поглощает свет',
+    rarity: 'legendary',
+    stats: { speedBonus: 25, armorBonus: 15, handlingBonus: 20, jumpBonus: 15 },
+    effects: 'void_trail',
+    specialAbility: 'gravity_resistance',
+  },
+  // Новые скины
+  { 
+    id: 'cyber_knight', 
+    name: 'Кибер-рыцарь', 
+    price: 2500, 
+    texture: 'player_cyber_knight', 
+    description: 'Защитник Неон-Сити',
+    rarity: 'legendary',
+    stats: { speedBonus: 20, armorBonus: 20, handlingBonus: 15, jumpBonus: 10 },
+    effects: 'knight_aura',
+    specialAbility: 'shield_regen',
+  },
+  { 
+    id: 'void_phoenix', 
+    name: 'Феникс Бездны', 
+    price: 5000, 
+    texture: 'player_void_phoenix', 
+    description: 'Возрождается из тьмы',
+    rarity: 'mythic',
+    stats: { speedBonus: 35, armorBonus: 25, handlingBonus: 25, jumpBonus: 25 },
+    effects: 'phoenix_flames',
+    specialAbility: 'revive',
+  },
 ];
+
+// =========================================================================
+// УНИКАЛЬНЫЕ ЭФФЕКТЫ МИРОВ
+// =========================================================================
+
+export const WORLD_EFFECTS = {
+  space: {
+    name: 'Космическое спокойствие',
+    description: 'Стандартная гравитация',
+    visual: 'Звёздное небо',
+    mechanic: 'Нет',
+  },
+  cyberpunk: {
+    name: 'Неоновая лихорадка',
+    description: 'Скорость увеличена, монеты дают больше',
+    visual: 'Неоновые огни, здания',
+    mechanic: 'Цифровой дождь',
+  },
+  dungeon: {
+    name: 'Тёмное проклятие',
+    description: 'Гравитация увеличена, враги сильнее',
+    visual: 'Туман, тени',
+    mechanic: 'Пульсация гравитации',
+  },
+  asteroids: {
+    name: 'Астероидная опасность',
+    description: 'Множество астероидов, высокая награда',
+    visual: 'Летящие камни',
+    mechanic: 'Астероидный дождь',
+  },
+  blackhole: {
+    name: 'Гравитационная аномалия',
+    description: 'Низкая гравитация, притяжение к центру',
+    visual: 'Вращающиеся кольца',
+    mechanic: 'Гравитационное притяжение',
+  },
+};
+
+// =========================================================================
+// ДОСТИЖЕНИЯ ДЛЯ КАЖДОГО МИРА
+// =========================================================================
+
+export const WORLD_ACHIEVEMENTS = {
+  0: [
+    { id: 'space_traveler', name: 'Космический странник', condition: 'Пройти 5 уровней Космоса', reward: 50 },
+    { id: 'space_master', name: 'Мастер космоса', condition: 'Пройти все уровни Космоса', reward: 100 },
+  ],
+  1: [
+    { id: 'neon_rider', name: 'Неоновый гонщик', condition: 'Собрать 500 монет в Киберпанке', reward: 75 },
+    { id: 'cyber_samurai', name: 'Кибер-самурай', condition: 'Уничтожить 50 врагов', reward: 150 },
+  ],
+  2: [
+    { id: 'dungeon_crawler', name: 'Исследователь подземелий', condition: 'Пройти 10 км в Подземелье', reward: 100 },
+    { id: 'shadow_hunter', name: 'Охотник на теней', condition: 'Уничтожить 30 призраков', reward: 125 },
+  ],
+  3: [
+    { id: 'asteroid_survivor', name: 'Выживший в поле', condition: 'Избежать 100 астероидов', reward: 150 },
+    { id: 'rock_crusher', name: 'Дробитель камней', condition: 'Уничтожить 50 астероидов', reward: 175 },
+  ],
+  4: [
+    { id: 'void_walker', name: 'Странник бездны', condition: 'Прожить 5 минут в Чёрной дыре', reward: 200 },
+    { id: 'singularity_breaker', name: 'Разрушитель сингулярности', condition: 'Победить финального босса', reward: 500 },
+  ],
+};
+
+// =========================================================================
+// ЭКСПОРТ ВСЕХ КОНФИГОВ
+// =========================================================================
+
+export const LEVEL_CONFIG = {
+  0: WORLD_CONFIG[0],
+  1: WORLD_CONFIG[1],
+  2: WORLD_CONFIG[2],
+  3: WORLD_CONFIG[3],
+  4: WORLD_CONFIG[4],
+};

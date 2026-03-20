@@ -1,65 +1,302 @@
 import Phaser from 'phaser';
 import { audioManager } from '../managers/AudioManager';
+import { WORLD_CONFIG } from '../config';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('boot');
+    this.loadingProgress = 0;
+    this.loadingTexts = [];
+    this.particles = [];
   }
 
   preload() {
-    // Загружаем звуки через AudioManager
-    audioManager.preloadSounds(this);
     console.log('BootScene: preload started');
     
-    // Показываем прогресс загрузки
-    this.createLoadingBar();
+    // Загружаем звуки
+    audioManager.preloadSounds(this);
+    
+    // Создаём красивую анимацию загрузки
+    this.createAdvancedLoadingBar();
+    
+    // Добавляем фоновые эффекты
+    this.createLoadingBackground();
   }
 
-  createLoadingBar() {
+  createAdvancedLoadingBar() {
     const w = this.scale.width;
     const h = this.scale.height;
     
-    // Фон для прогресс-бара
-    const bg = this.add.rectangle(w / 2, h / 2, 300, 30, 0x333333)
-      .setStrokeStyle(2, 0x00ffff);
+    // Центральная точка
+    const centerX = w / 2;
+    const centerY = h / 2;
     
-    // Сам прогресс-бар
-    const progressBar = this.add.rectangle(w / 2 - 150, h / 2, 0, 20, 0x00ffff)
-      .setOrigin(0, 0.5);
+    // Фоновый круг
+    const bgCircle = this.add.circle(centerX, centerY, 80, 0x1a1a3a, 0.8)
+      .setStrokeStyle(3, 0x00ffff, 0.5);
+    
+    // Анимированный круг загрузки
+    this.loadingCircle = this.add.circle(centerX, centerY, 70, 0x00ffff, 0);
+    this.loadingCircle.setStrokeStyle(4, 0x00ffff, 1);
+    
+    // Внутренний круг
+    const innerCircle = this.add.circle(centerX, centerY, 50, 0x00ffff, 0.1)
+      .setBlendMode(Phaser.BlendModes.ADD);
     
     // Текст загрузки
-    const loadingText = this.add.text(w / 2, h / 2 - 40, 'ЗАГРУЗКА...', {
-      fontSize: '18px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: '#00ffff'
+    this.loadingPercent = this.add.text(centerX, centerY, '0%', {
+      fontSize: '28px',
+      fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+      color: '#00ffff',
+      stroke: '#ffffff',
+      strokeThickness: 2
     }).setOrigin(0.5);
     
-    // Обновление прогресса
+    // Текст "ЗАГРУЗКА"
+    const loadingLabel = this.add.text(centerX, centerY + 80, 'ЗАГРУЗКА АССЕТОВ', {
+      fontSize: '14px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: '#88aaff',
+      letterSpacing: 2
+    }).setOrigin(0.5);
+    
+    // Анимированные точки
+    this.dots = this.add.text(centerX + 100, centerY + 80, '...', {
+      fontSize: '14px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: '#00ffff'
+    }).setOrigin(0, 0.5);
+    
+    // Мелкие частицы вокруг
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const particle = this.add.circle(
+        centerX + Math.cos(angle) * 95,
+        centerY + Math.sin(angle) * 95,
+        2,
+        0x00ffff,
+        0.6
+      );
+      particle.setBlendMode(Phaser.BlendModes.ADD);
+      this.particles.push(particle);
+    }
+    
+    // Анимация вращения частиц
+    this.particleAngle = 0;
+    this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        this.particleAngle += 0.05;
+        this.particles.forEach((particle, i) => {
+          const angle = (i / this.particles.length) * Math.PI * 2 + this.particleAngle;
+          particle.x = centerX + Math.cos(angle) * 95;
+          particle.y = centerY + Math.sin(angle) * 95;
+        });
+      },
+      loop: true
+    });
+    
+    // Анимация точек
+    let dotCount = 0;
+    this.time.addEvent({
+      delay: 400,
+      callback: () => {
+        dotCount = (dotCount + 1) % 4;
+        this.dots.setText('.'.repeat(dotCount) + ' '.repeat(3 - dotCount));
+      },
+      loop: true
+    });
+    
+    // Прогресс загрузки
     this.load.on('progress', (value) => {
-      progressBar.width = 300 * value;
+      this.loadingProgress = value;
+      const percent = Math.floor(value * 100);
+      this.loadingPercent.setText(`${percent}%`);
+      
+      // Анимация круга
+      const angle = percent * 3.6;
+      this.updateLoadingCircle(angle);
+      
+      // Пульсация
+      const scale = 1 + Math.sin(Date.now() * 0.01) * 0.05;
+      this.loadingCircle.setScale(scale);
     });
     
     this.load.on('complete', () => {
-      progressBar.destroy();
-      bg.destroy();
-      loadingText.destroy();
+      // Финальная анимация
+      this.tweens.add({
+        targets: [bgCircle, this.loadingCircle, innerCircle, this.loadingPercent, loadingLabel, this.dots],
+        alpha: 0,
+        scale: 1.5,
+        duration: 500,
+        ease: 'Power2.easeIn'
+      });
+      
+      this.tweens.add({
+        targets: this.particles,
+        alpha: 0,
+        scale: 0,
+        duration: 400,
+        stagger: 50
+      });
+    });
+  }
+
+  updateLoadingCircle(angleDegrees) {
+    if (!this.loadingCircle) return;
+    
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const radius = 70;
+    
+    // Очищаем старую графику
+    if (this.loadingGraphics) {
+      this.loadingGraphics.destroy();
+    }
+    
+    this.loadingGraphics = this.add.graphics();
+    this.loadingGraphics.lineStyle(4, 0x00ffff, 1);
+    
+    const startAngle = -Math.PI / 2;
+    const endAngle = startAngle + (angleDegrees * Math.PI / 180);
+    
+    this.loadingGraphics.beginPath();
+    this.loadingGraphics.arc(centerX, centerY, radius, startAngle, endAngle);
+    this.loadingGraphics.strokePath();
+  }
+
+  createLoadingBackground() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    
+    // Градиентный фон
+    const gradient = this.add.graphics();
+    gradient.fillGradientStyle(0x030712, 0x030712, 0x0a0a1a, 0x0a0a1a, 1);
+    gradient.fillRect(0, 0, w, h);
+    gradient.setDepth(-10);
+    
+    // Мерцающие звёзды
+    for (let i = 0; i < 100; i++) {
+      const star = this.add.circle(
+        Phaser.Math.Between(0, w),
+        Phaser.Math.Between(0, h),
+        Phaser.Math.Between(1, 3),
+        0xffffff,
+        Phaser.Math.FloatBetween(0.2, 0.6)
+      );
+      star.setBlendMode(Phaser.BlendModes.ADD);
+      
+      this.tweens.add({
+        targets: star,
+        alpha: { from: 0.2, to: 0.8 },
+        scale: { from: 1, to: 1.5 },
+        duration: Phaser.Math.Between(1000, 3000),
+        yoyo: true,
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 2000)
+      });
+    }
+    
+    // Неоновые линии по краям
+    const glowLines = this.add.graphics();
+    glowLines.lineStyle(2, 0x00ffff, 0.3);
+    glowLines.strokeRect(15, 15, w - 30, h - 30);
+    
+    this.tweens.add({
+      targets: glowLines,
+      alpha: { from: 0.2, to: 0.5 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1
     });
   }
 
   create() {
     console.log('BootScene: create started');
-    this.createTextures();
     
-    // Небольшая задержка перед переходом в меню
-    this.time.delayedCall(100, () => {
+    // Создаём все текстуры
+    this.createAllTextures();
+    
+    // Небольшая задержка для плавного перехода
+    this.time.delayedCall(300, () => {
       this.scene.start('menu');
     });
   }
 
-  createTextures() {
+  createAllTextures() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
-
+    
     // ===== БАЗОВОЕ ТАКСИ (ИГРОК) =====
+    this.createPlayerTexture(g);
+    
+    // ===== СКИНЫ =====
+    this.createSkinTextures(g);
+    
+    // ===== ВАГОНЧИКИ =====
+    this.createWagonTextures(g);
+    
+    // ===== ВОРОТА =====
+    this.createGateTextures(g);
+    
+    // ===== МОНЕТЫ =====
+    this.createCoinTextures(g);
+    
+    // ===== ПЛАНЕТЫ =====
+    this.createPlanetTextures(g);
+    
+    // ===== КОРАБЛИ =====
+    this.createShipTextures(g);
+    
+    // ===== ВРАГИ =====
+    this.createEnemyTextures(g);
+    
+    // ===== БОССЫ =====
+    this.createBossTextures(g);
+    
+    // ===== АСТЕРОИДЫ =====
+    this.createAsteroidTextures(g);
+    
+    // ===== УСИЛИТЕЛИ =====
+    this.createPowerUpTextures(g);
+    
+    // ===== ЛАЗЕРЫ =====
+    this.createLaserTextures(g);
+    
+    // ===== ЧАСТИЦЫ =====
+    this.createParticleTextures(g);
+    
+    // ===== СЕРДЦЕ =====
+    this.createHeartTexture(g);
+    
+    // ===== СТАНЦИЯ =====
+    this.createStationTexture(g);
+    
+    // ===== КНОПКИ =====
+    this.createButtonTextures(g);
+    
+    // ===== ЭФФЕКТЫ =====
+    this.createEffectTextures(g);
+    
+    // ===== ТЕКСТУРЫ ДЛЯ МИРОВ =====
+    this.createWorldTextures(g);
+    
+    // ===== ДОПОЛНИТЕЛЬНЫЕ ТЕКСТУРЫ ДЛЯ ВАГОНОВ =====
+    this.createWagonVariants(g);
+    
+    // ===== ДОПОЛНИТЕЛЬНЫЕ ТЕКСТУРЫ ДЛЯ УСИЛИТЕЛЕЙ =====
+    this.createPowerUpVariants(g);
+    
+    g.destroy();
+    console.log('BootScene: all textures created');
+  }
+
+  // =========================================================================
+  // МЕТОДЫ СОЗДАНИЯ ТЕКСТУР
+  // =========================================================================
+
+  createPlayerTexture(g) {
     g.clear();
     g.fillStyle(0xffaa00);
     g.fillRoundedRect(12, 12, 56, 32, 8);
@@ -81,8 +318,9 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(10, 34, 20, 6);
     g.generateTexture('player', 80, 60);
     g.generateTexture('default', 80, 60);
+  }
 
-    // ===== СКИНЫ ТАКСИ =====
+  createSkinTextures(g) {
     const skinColors = {
       neon: 0x00ffff,
       cyber: 0xff00ff,
@@ -94,13 +332,12 @@ export class BootScene extends Phaser.Scene {
       ice: 0x44aaff,
       void: 0x220066
     };
-
+    
     for (let [id, color] of Object.entries(skinColors)) {
       g.clear();
       g.fillStyle(color);
       g.fillRoundedRect(12, 12, 56, 32, 8);
       
-      // Добавляем небольшие детали для разных скинов
       if (id === 'neon') {
         g.fillStyle(0xffffff);
         g.fillCircle(18, 28, 2);
@@ -124,8 +361,9 @@ export class BootScene extends Phaser.Scene {
       
       g.generateTexture(id, 80, 60);
     }
+  }
 
-    // ===== ВАГОНЧИКИ (10 разных цветов) =====
+  createWagonTextures(g) {
     const wagonColors = [
       0xffaa00, 0x44aa88, 0xaa44aa, 0x88aa44, 0xaa8844,
       0x44aaff, 0xff66aa, 0x66ffaa, 0xaa66ff, 0xffaa66
@@ -148,8 +386,73 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(6, 26, 36, 2);
       g.generateTexture(`wagon_${i}`, 48, 34);
     }
+  }
 
-    // ===== ВОРОТА =====
+  createWagonVariants(g) {
+    // Вагоны для киберпанка
+    const neonColors = [0xff44ff, 0xff88ff, 0xaa44ff, 0xdd66ff];
+    for (let i = 0; i < neonColors.length; i++) {
+      g.clear();
+      g.fillStyle(neonColors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0xffffff);
+      g.fillRect(8, 8, 6, 4);
+      g.fillRect(20, 8, 6, 4);
+      g.fillStyle(0xffff00);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.lineStyle(1, 0xffffff, 0.5);
+      g.strokeRoundedRect(6, 6, 36, 22, 6);
+      g.generateTexture(`wagon_neon_${i}`, 48, 34);
+    }
+    
+    // Вагоны для подземелья
+    const darkColors = [0x886644, 0xaa6644, 0x664422, 0x442211];
+    for (let i = 0; i < darkColors.length; i++) {
+      g.clear();
+      g.fillStyle(darkColors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0x442200);
+      g.fillRect(12, 16, 6, 4);
+      g.fillRect(22, 16, 6, 4);
+      g.fillStyle(0xaa8866);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.generateTexture(`wagon_dark_${i}`, 48, 34);
+    }
+    
+    // Вагоны для астероидов
+    const rockColors = [0xffaa66, 0xcc8866, 0xaa6644, 0x886644];
+    for (let i = 0; i < rockColors.length; i++) {
+      g.clear();
+      g.fillStyle(rockColors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0xaa8866);
+      g.fillRect(12, 16, 6, 4);
+      g.fillRect(22, 16, 6, 4);
+      g.fillStyle(0xccaa88);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.generateTexture(`wagon_rock_${i}`, 48, 34);
+    }
+    
+    // Вагоны для чёрной дыры
+    const voidColors = [0xaa88ff, 0x8866cc, 0x6644aa, 0x442288];
+    for (let i = 0; i < voidColors.length; i++) {
+      g.clear();
+      g.fillStyle(voidColors[i]);
+      g.fillRoundedRect(6, 6, 36, 22, 6);
+      g.fillStyle(0xcc88ff);
+      g.fillRect(12, 16, 6, 4);
+      g.fillRect(22, 16, 6, 4);
+      g.fillStyle(0xff88ff);
+      g.fillCircle(12, 24, 3);
+      g.fillCircle(28, 24, 3);
+      g.generateTexture(`wagon_void_${i}`, 48, 34);
+    }
+  }
+
+  createGateTextures(g) {
     const createGate = (color, light, name) => {
       g.clear();
       g.fillStyle(color);
@@ -166,8 +469,9 @@ export class BootScene extends Phaser.Scene {
     createGate(0x2a2a0a, 0xffff00, 'gate_yellow');
     createGate(0x2a0a0a, 0xff00aa, 'gate_red');
     createGate(0x2a0a2a, 0xff00ff, 'gate_purple');
+  }
 
-    // ===== МОНЕТЫ =====
+  createCoinTextures(g) {
     const createCoin = (color, lineColor, name) => {
       g.clear();
       g.fillStyle(color);
@@ -188,8 +492,37 @@ export class BootScene extends Phaser.Scene {
     createCoin(0x4444ff, 0xffffff, 'coin_blue');
     createCoin(0x44ff44, 0xffffff, 'coin_green');
     createCoin(0xff44ff, 0xffffff, 'coin_purple');
+    
+    // Радужная монета
+    g.clear();
+    g.fillStyle(0xff88ff);
+    g.fillCircle(16, 16, 14);
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      g.fillStyle(Phaser.Display.Color.HSLToColor(i / 6, 1, 0.6).color);
+      g.fillCircle(16 + Math.cos(angle) * 8, 16 + Math.sin(angle) * 8, 3);
+    }
+    g.generateTexture('coin_rainbow', 32, 32);
+    
+    // Кристальная монета
+    g.clear();
+    g.fillStyle(0x88aaff);
+    g.fillCircle(16, 16, 14);
+    g.fillStyle(0xffffff);
+    g.fillTriangle(16, 6, 22, 16, 10, 16);
+    g.fillTriangle(16, 26, 22, 16, 10, 16);
+    g.generateTexture('coin_crystal', 32, 32);
+    
+    // Тёмная монета
+    g.clear();
+    g.fillStyle(0xaa66ff);
+    g.fillCircle(16, 16, 14);
+    g.fillStyle(0x442288);
+    g.fillCircle(16, 16, 8);
+    g.generateTexture('coin_dark', 32, 32);
+  }
 
-    // ===== ПЛАНЕТЫ (5 штук) =====
+  createPlanetTextures(g) {
     for (let i = 1; i <= 5; i++) {
       g.clear();
       const hue = (i * 60) % 360;
@@ -202,8 +535,9 @@ export class BootScene extends Phaser.Scene {
       g.fillCircle(30, 45, 5);
       g.generateTexture(`planet_${i}`, 64, 64);
     }
+  }
 
-    // ===== КОРАБЛИ (фоновые) =====
+  createShipTextures(g) {
     g.clear();
     g.fillStyle(0x2244aa);
     g.fillEllipse(40, 30, 70, 20);
@@ -216,7 +550,7 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0x00ffff, 0.5);
     g.strokeEllipse(40, 30, 70, 20);
     g.generateTexture('bg_ship_1', 90, 50);
-
+    
     g.clear();
     g.fillStyle(0xaa2222);
     g.fillRoundedRect(20, 20, 70, 30, 8);
@@ -229,8 +563,9 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xff00aa, 0.5);
     g.strokeRoundedRect(20, 20, 70, 30, 8);
     g.generateTexture('bg_ship_2', 120, 60);
+  }
 
-    // ===== ВРАГИ =====
+  createEnemyTextures(g) {
     g.clear();
     g.fillStyle(0x00ffaa);
     g.fillCircle(15, 15, 12);
@@ -240,7 +575,7 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xffffff);
     g.strokeCircle(15, 15, 15);
     g.generateTexture('enemy_drone', 30, 30);
-
+    
     g.clear();
     g.fillStyle(0xff00aa);
     g.fillRect(5, 5, 30, 30);
@@ -248,7 +583,7 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(10, 10, 10, 10);
     g.fillRect(20, 20, 10, 10);
     g.generateTexture('enemy_sentinel', 40, 40);
-
+    
     g.clear();
     g.fillStyle(0xcccccc);
     g.fillRect(8, 8, 24, 24);
@@ -257,8 +592,47 @@ export class BootScene extends Phaser.Scene {
     g.fillCircle(26, 14, 3);
     g.fillRect(16, 22, 8, 4);
     g.generateTexture('enemy_skeleton', 40, 40);
+    
+    // Кибер-дрон
+    g.clear();
+    g.fillStyle(0xff44ff);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xffffff);
+    g.fillCircle(10, 10, 2);
+    g.fillCircle(20, 20, 2);
+    g.lineStyle(1, 0x00ffff);
+    g.strokeCircle(15, 15, 14);
+    g.generateTexture('cyber_drone', 30, 30);
+    
+    // Теневой призрак
+    g.clear();
+    g.fillStyle(0x8866cc);
+    g.fillEllipse(20, 20, 16, 20);
+    g.fillStyle(0x442288);
+    g.fillEllipse(20, 22, 12, 14);
+    g.generateTexture('shadow_wraith', 40, 40);
+    
+    // Каменный плюватель
+    g.clear();
+    g.fillStyle(0xaa8866);
+    g.fillCircle(20, 20, 15);
+    g.fillStyle(0x664422);
+    g.fillCircle(12, 12, 4);
+    g.fillCircle(28, 12, 4);
+    g.generateTexture('rock_spitter', 40, 40);
+    
+    // Пустотный страж
+    g.clear();
+    g.fillStyle(0xaa88ff);
+    g.fillCircle(20, 20, 14);
+    g.fillStyle(0x6644aa);
+    g.fillCircle(20, 20, 8);
+    g.lineStyle(2, 0xffffff);
+    g.strokeCircle(20, 20, 16);
+    g.generateTexture('void_sentinel', 40, 40);
+  }
 
-    // ===== БОССЫ =====
+  createBossTextures(g) {
     g.clear();
     g.fillStyle(0xff0000);
     g.fillCircle(30, 30, 25);
@@ -293,8 +667,9 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x00ffff);
     g.fillCircle(30, 30, 15);
     g.generateTexture('boss_final', 60, 60);
+  }
 
-    // ===== АСТЕРОИДЫ =====
+  createAsteroidTextures(g) {
     g.clear();
     g.fillStyle(0x888888);
     g.fillCircle(20, 20, 15);
@@ -304,7 +679,7 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xaaaaaa, 0.5);
     g.strokeCircle(20, 20, 16);
     g.generateTexture('bg_asteroid_1', 40, 40);
-
+    
     g.clear();
     g.fillStyle(0x999999);
     g.fillRect(5, 5, 30, 30);
@@ -314,8 +689,16 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xbbbbbb, 0.4);
     g.strokeRect(5, 5, 30, 30);
     g.generateTexture('bg_asteroid_2', 40, 40);
+    
+    g.clear();
+    g.fillStyle(0x886644);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xaa8866);
+    g.fillCircle(10, 10, 6);
+    g.generateTexture('bg_asteroid_small', 30, 30);
+  }
 
-    // ===== УСИЛИТЕЛИ (PowerUp) =====
+  createPowerUpTextures(g) {
     g.clear();
     g.fillStyle(0x3366ff);
     g.fillRoundedRect(0, 0, 20, 20, 4);
@@ -324,15 +707,52 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xffffff);
     g.strokeRoundedRect(0, 0, 20, 20, 4);
     g.generateTexture('modification', 20, 20);
-
+    
     g.clear();
     g.fillStyle(0x00ffff);
     g.fillCircle(12, 12, 10);
     g.fillStyle(0xffffff);
     g.fillCircle(6, 6, 3);
     g.generateTexture('powerup', 24, 24);
+  }
 
-    // ===== ЛАЗЕРЫ =====
+  createPowerUpVariants(g) {
+    // Неоновый усилитель
+    g.clear();
+    g.fillStyle(0xff44ff);
+    g.fillCircle(12, 12, 10);
+    g.fillStyle(0xffffff);
+    g.fillCircle(6, 6, 3);
+    g.lineStyle(1, 0x00ffff);
+    g.strokeCircle(12, 12, 11);
+    g.generateTexture('powerup_neon', 24, 24);
+    
+    // Тёмный усилитель
+    g.clear();
+    g.fillStyle(0x8866cc);
+    g.fillCircle(12, 12, 10);
+    g.fillStyle(0x442288);
+    g.fillCircle(6, 6, 3);
+    g.generateTexture('powerup_dark', 24, 24);
+    
+    // Каменный усилитель
+    g.clear();
+    g.fillStyle(0xccaa88);
+    g.fillCircle(12, 12, 10);
+    g.fillStyle(0xaa8866);
+    g.fillCircle(6, 6, 3);
+    g.generateTexture('powerup_rock', 24, 24);
+    
+    // Пустотный усилитель
+    g.clear();
+    g.fillStyle(0xaa88ff);
+    g.fillCircle(12, 12, 10);
+    g.fillStyle(0x8866cc);
+    g.fillCircle(6, 6, 3);
+    g.generateTexture('powerup_void', 24, 24);
+  }
+
+  createLaserTextures(g) {
     g.clear();
     g.fillStyle(0xff4444);
     g.fillRect(0, 0, 12, 3);
@@ -342,8 +762,9 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x00ffff);
     g.fillRect(0, 0, 12, 3);
     g.generateTexture('laser_player', 12, 3);
+  }
 
-    // ===== ЧАСТИЦЫ =====
+  createParticleTextures(g) {
     g.clear();
     g.fillStyle(0xffffff);
     g.fillCircle(2, 2, 2);
@@ -358,8 +779,9 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0xff00ff, 0.8);
     g.fillCircle(3, 3, 3);
     g.generateTexture('spark', 6, 6);
+  }
 
-    // ===== СЕРДЦЕ (здоровье) =====
+  createHeartTexture(g) {
     g.clear();
     g.fillStyle(0xff4444);
     g.fillTriangle(8, 6, 16, 18, 24, 6);
@@ -368,8 +790,9 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(1, 0xff00ff, 0.5);
     g.strokeTriangle(8, 6, 16, 18, 24, 6);
     g.generateTexture('heart', 32, 24);
+  }
 
-    // ===== СТАНЦИЯ (для бонусов) =====
+  createStationTexture(g) {
     g.clear();
     g.fillStyle(0x220066);
     g.fillCircle(48, 48, 40);
@@ -380,66 +803,48 @@ export class BootScene extends Phaser.Scene {
     g.lineStyle(4, 0x00ffff, 0.8);
     g.strokeCircle(48, 48, 45);
     g.generateTexture('station_planet', 96, 96);
+  }
 
-    // ===== КНОПКИ =====
-    // Кнопка паузы
-    g.clear();
-    g.fillStyle(0x1a1a3a);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0x00ffff);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 15, 8, 20);
-    g.fillRect(27, 15, 8, 20);
-    g.generateTexture('pause_button', 50, 50);
+  createButtonTextures(g) {
+    const buttons = [
+      { name: 'pause_button', color: 0x1a1a3a, stroke: 0x00ffff, icon: 'pause' },
+      { name: 'menu_button', color: 0xff00ff, stroke: 0xff00ff, icon: 'menu' },
+      { name: 'shop_button', color: 0xffaa00, stroke: 0xffaa00, icon: 'shop' },
+      { name: 'skin_button', color: 0x00ffff, stroke: 0x00ffff, icon: 'skin' },
+      { name: 'attack_button', color: 0xff4444, stroke: 0xff0000, icon: 'attack' }
+    ];
+    
+    buttons.forEach(btn => {
+      g.clear();
+      g.fillStyle(btn.color);
+      g.fillRoundedRect(0, 0, 50, 50, 8);
+      g.lineStyle(2, btn.stroke);
+      g.strokeRoundedRect(0, 0, 50, 50, 8);
+      g.fillStyle(0xffffff);
+      
+      if (btn.icon === 'pause') {
+        g.fillRect(15, 15, 8, 20);
+        g.fillRect(27, 15, 8, 20);
+      } else if (btn.icon === 'menu') {
+        g.fillRect(15, 15, 8, 8);
+        g.fillRect(27, 15, 8, 8);
+        g.fillRect(15, 27, 20, 8);
+      } else if (btn.icon === 'shop') {
+        g.fillRect(15, 8, 20, 5);
+        g.fillRoundedRect(10, 13, 30, 25, 5);
+      } else if (btn.icon === 'skin') {
+        g.fillRect(10, 10, 12, 30);
+        g.fillRect(28, 10, 12, 30);
+      } else if (btn.icon === 'attack') {
+        g.fillTriangle(15, 10, 25, 30, 35, 10);
+        g.fillRect(20, 30, 10, 15);
+      }
+      
+      g.generateTexture(btn.name, 50, 50);
+    });
+  }
 
-    // Кнопка меню
-    g.clear();
-    g.fillStyle(0xff00ff);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0xff00ff);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(15, 15, 8, 8);
-    g.fillRect(27, 15, 8, 8);
-    g.fillRect(15, 27, 20, 8);
-    g.generateTexture('menu_button', 50, 50);
-
-    // Кнопка магазина
-    g.clear();
-    g.fillStyle(0xffaa00);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0xffaa00);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xcc8800);
-    g.fillRect(15, 8, 20, 5);
-    g.fillStyle(0xffcc00);
-    g.fillRoundedRect(10, 13, 30, 25, 5);
-    g.generateTexture('shop_button', 50, 50);
-
-    // Кнопка магазина скинов
-    g.clear();
-    g.fillStyle(0x00ffff);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0x00ffff);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffffff);
-    g.fillRect(10, 10, 12, 30);
-    g.fillRect(28, 10, 12, 30);
-    g.generateTexture('skin_button', 50, 50);
-
-    // Кнопка атаки
-    g.clear();
-    g.fillStyle(0xff4444);
-    g.fillRoundedRect(0, 0, 50, 50, 8);
-    g.lineStyle(2, 0xff0000);
-    g.strokeRoundedRect(0, 0, 50, 50, 8);
-    g.fillStyle(0xffff00);
-    g.fillTriangle(15, 10, 25, 30, 35, 10);
-    g.fillRect(20, 30, 10, 15);
-    g.generateTexture('attack_button', 50, 50);
-
-    // ===== ЭФФЕКТЫ =====
+  createEffectTextures(g) {
     g.clear();
     g.lineStyle(3, 0x00ffff, 0.8);
     g.strokeCircle(32, 32, 28);
@@ -450,7 +855,7 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x00ffff, 0.1);
     g.fillCircle(32, 32, 28);
     g.generateTexture('shield_effect', 64, 64);
-
+    
     g.clear();
     g.fillStyle(0xff00ff);
     g.fillRect(10, 5, 12, 22);
@@ -462,7 +867,7 @@ export class BootScene extends Phaser.Scene {
     g.strokeRect(10, 5, 12, 22);
     g.strokeRect(20, 5, 12, 22);
     g.generateTexture('magnet_effect', 40, 32);
-
+    
     g.clear();
     g.fillStyle(0xffff00);
     g.fillTriangle(16, 8, 24, 16, 16, 24);
@@ -471,9 +876,52 @@ export class BootScene extends Phaser.Scene {
     g.strokeTriangle(16, 8, 24, 16, 16, 24);
     g.strokeTriangle(16, 8, 8, 16, 16, 24);
     g.generateTexture('speed_effect', 32, 32);
+  }
 
-    g.destroy();
+  createWorldTextures(g) {
+    // Киберпанк: здание
+    g.clear();
+    g.fillStyle(0x222266);
+    g.fillRect(0, 0, 40, 100);
+    g.fillStyle(0x44aaff);
+    g.fillRect(5, 20, 10, 15);
+    g.fillRect(20, 20, 10, 15);
+    g.fillRect(5, 50, 10, 15);
+    g.fillRect(20, 50, 10, 15);
+    g.generateTexture('cyber_building', 40, 100);
     
-    console.log('BootScene: all textures created');
+    // Подземелье: тень
+    g.clear();
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(20, 20, 20);
+    g.generateTexture('dungeon_shadow', 40, 40);
+    
+    // Чёрная дыра: кольцо
+    g.clear();
+    g.lineStyle(2, 0x8800ff, 0.8);
+    g.strokeCircle(30, 30, 25);
+    g.lineStyle(2, 0xff00ff, 0.5);
+    g.strokeCircle(30, 30, 20);
+    g.generateTexture('blackhole_ring', 60, 60);
+    
+    // Неоновая вывеска
+    g.clear();
+    g.fillStyle(0xff00ff);
+    g.fillRoundedRect(0, 0, 60, 20, 4);
+    g.fillStyle(0xffffff);
+    g.fillText('NEON', 10, 12);
+    g.generateTexture('neon_sign', 60, 20);
+    
+    // Сталактит
+    g.clear();
+    g.fillStyle(0x886644);
+    g.fillTriangle(0, 0, 15, 40, 30, 0);
+    g.generateTexture('stalactite', 30, 40);
+    
+    // Сталагмит
+    g.clear();
+    g.fillStyle(0x886644);
+    g.fillTriangle(0, 40, 15, 0, 30, 40);
+    g.generateTexture('stalagmite', 30, 40);
   }
 }
