@@ -436,7 +436,7 @@ export class SkinShopScene extends Phaser.Scene {
   const w = this.scale.width;
   const h = this.scale.height;
 
-  // Базовый черный фон (не белый!)
+  // Базовый черный фон (гарантия, что не будет белого)
   this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
 
   // Многослойный градиент (как в MenuScene)
@@ -739,6 +739,7 @@ export class SkinShopScene extends Phaser.Scene {
     maskArea.fillStyle(0xffffff);
     maskArea.fillRect(10, listTop, w - 20, listHeight);
     const mask = maskArea.createGeometryMask();
+    maskArea.setVisible(false); // Скрываем маску, чтобы она не мешала кликам
 
     // Контейнер
     this.skinContainer = this.add.container(0, listTop);
@@ -818,16 +819,13 @@ export class SkinShopScene extends Phaser.Scene {
   // Цвета в зависимости от статуса
   let borderColor = 0x666666;
   let bgColor = 0x0a0a1a;
-  let textColor = '#ffffff';
   
   if (selected) {
     borderColor = 0x00ff00;
     bgColor = 0x1a3a1a;
-    textColor = '#88ff88';
   } else if (owned) {
     borderColor = 0x00ffff;
     bgColor = 0x1a2a3a;
-    textColor = '#88ccff';
   } else if (skin.price === 0) {
     borderColor = 0xffaa00;
   } else if (canAfford) {
@@ -857,7 +855,7 @@ export class SkinShopScene extends Phaser.Scene {
     strokeThickness: 1
   }).setOrigin(0, 0.5).setDepth(2);
 
-  // Редкость (русские названия)
+  // Редкость
   const rarityNames = {
     'COMMON': 'ОБЫЧНЫЙ',
     'RARE': 'РЕДКИЙ',
@@ -896,7 +894,7 @@ export class SkinShopScene extends Phaser.Scene {
     elements.push(specialText);
   }
 
-  // Статус/цена (русский текст)
+  // Статус/цена
   let statusText = '';
   let statusColor = '#666666';
   if (selected) {
@@ -941,26 +939,20 @@ export class SkinShopScene extends Phaser.Scene {
     elements.push(effectText);
   }
 
-  // Добавляем все элементы в массив
+  // Добавляем все элементы
   elements.push(bg, preview, nameText, rarityText, statsText, status);
 
-  // ===== ИСПРАВЛЕННАЯ ИНТЕРАКТИВНАЯ ОБЛАСТЬ =====
-  // Создаем прозрачный прямоугольник для кликов
+  // ИНТЕРАКТИВНАЯ ОБЛАСТЬ (ЕДИНСТВЕННАЯ)
   const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
-  .setInteractive({ useHandCursor: true })
-  .setOrigin(0.5)
-  .setDepth(10); // добавьте depth выше остальных (у bg depth 1, у текста 2)
-  // Добавьте stopPropagation, чтобы событие не уходило дальше
-hitArea.on('pointerdown', (pointer) => {
-  pointer.event.stopPropagation();
-  });
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5)
+    .setDepth(10);
 
-  // Сохраняем ссылку на скин для использования в обработчике
+  // Сохраняем ссылку на скин
   hitArea.skinData = skin;
 
-  // Обработчики событий
+  // Обработчики
   hitArea.on('pointerover', () => {
-    // Анимация при наведении
     bg.clear();
     bg.fillStyle(0x1a1a3a, 0.9);
     bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
@@ -971,7 +963,6 @@ hitArea.on('pointerdown', (pointer) => {
   });
 
   hitArea.on('pointerout', () => {
-    // Возврат к нормальному состоянию
     bg.clear();
     bg.fillStyle(bgColor, 0.9);
     bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
@@ -981,10 +972,7 @@ hitArea.on('pointerdown', (pointer) => {
   });
 
   hitArea.on('pointerdown', (pointer) => {
-    // Останавливаем всплытие события
-    pointer.event.stopPropagation();
-    
-    // Визуальная обратная связь
+    pointer.event.stopPropagation(); // Останавливаем всплытие
     this.tweens.add({
       targets: hitArea,
       scaleX: 0.98,
@@ -992,16 +980,11 @@ hitArea.on('pointerdown', (pointer) => {
       duration: 100,
       yoyo: true
     });
-    
     this.playClickSound();
-    
-    // Открываем детальное окно
     this.openSkinDetail(hitArea.skinData);
   });
 
-  // Добавляем hitArea в массив элементов
   elements.push(hitArea);
-
   return { elements, skin, y };
 }
 
@@ -1009,6 +992,7 @@ hitArea.on('pointerdown', (pointer) => {
     const w = this.scale.width;
     
     this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0).setInteractive();
+    this.scrollZone.setDepth(5); // Ниже, чем hitArea (depth 10)
     
     this.minScrollY = -(totalHeight - listHeight + 50);
     this.maxScrollY = listTop;
