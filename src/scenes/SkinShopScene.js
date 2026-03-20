@@ -725,7 +725,7 @@ export class SkinShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СОЗДАНИЕ ПРОКРУЧИВАЕМОГО СПИСКА СКИНОВ (ОПТИМИЗИРОВАНО)
+  // СОЗДАНИЕ ПРОКРУЧИВАЕМОГО СПИСКА СКИНОВ
   // =========================================================================
 
   createScrollableSkinList() {
@@ -739,7 +739,7 @@ export class SkinShopScene extends Phaser.Scene {
     maskArea.fillStyle(0xffffff);
     maskArea.fillRect(10, listTop, w - 20, listHeight);
     const mask = maskArea.createGeometryMask();
-    maskArea.setVisible(false); // Скрываем маску, чтобы она не мешала кликам
+    maskArea.destroy(); // Уничтожаем маску, она не нужна после создания
 
     // Контейнер
     this.skinContainer = this.add.container(0, listTop);
@@ -754,11 +754,10 @@ export class SkinShopScene extends Phaser.Scene {
       return a.price - b.price;
     });
 
-    let currentY = 20;
-    const cardSpacing = 150;
+    let currentY = 10;
+    const cardSpacing = 145;
     let currentRarity = null;
 
-    // Русские названия редкостей
     const rarityNames = {
       'COMMON': 'ОБЫЧНЫЙ',
       'RARE': 'РЕДКИЙ',
@@ -773,7 +772,6 @@ export class SkinShopScene extends Phaser.Scene {
       'LEGENDARY': '#ffaa00'
     };
 
-    // Сохраняем ссылки на карточки для оптимизации
     this.skinCards = [];
 
     sortedSkins.forEach((skin) => {
@@ -797,11 +795,6 @@ export class SkinShopScene extends Phaser.Scene {
       const owned = gameManager.getOwnedSkins().includes(skin.id);
       const selected = gameManager.getCurrentSkin() === skin.id;
       const canAfford = gameManager.data.crystals >= skin.price;
-      console.log('Container Y:', this.skinContainer.y);
-      console.log('Total height:', currentY);
-      console.log('List height:', listHeight);
-      console.log('minScrollY:', this.minScrollY);
-      console.log('maxScrollY:', this.maxScrollY);
 
       // Создаем карточку
       const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
@@ -812,260 +805,312 @@ export class SkinShopScene extends Phaser.Scene {
     });
 
     // Отступ внизу
-    this.skinContainer.add(this.add.rectangle(0, currentY, 10, 30, 0x000000, 0));
+    const bottomPadding = this.add.rectangle(0, currentY + 10, 10, 30, 0x000000, 0);
+    this.skinContainer.add(bottomPadding);
 
-    // Система прокрутки с инерцией
-    this.setupScrolling(listTop, listHeight, currentY);
+    // Сохраняем общую высоту
+    this.totalScrollHeight = currentY + 40;
+
+    // Система прокрутки
+    this.setupScrolling(listTop, listHeight, this.totalScrollHeight);
   }
 
   createSkinCard(skin, w, y, owned, selected, canAfford) {
-  const elements = [];
+    const elements = [];
 
-  // Цвета в зависимости от статуса
-  let borderColor = 0x666666;
-  let bgColor = 0x0a0a1a;
-  
-  if (selected) {
-    borderColor = 0x00ff00;
-    bgColor = 0x1a3a1a;
-  } else if (owned) {
-    borderColor = 0x00ffff;
-    bgColor = 0x1a2a3a;
-  } else if (skin.price === 0) {
-    borderColor = 0xffaa00;
-  } else if (canAfford) {
-    borderColor = 0xffaa00;
-  }
-
-  // Фон карточки
-  const bg = this.add.graphics();
-  bg.fillStyle(bgColor, 0.9);
-  bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-  bg.lineStyle(3, borderColor, 1);
-  bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-  bg.setDepth(1);
-
-  // Превью
-  const preview = this.add.image(50, y + 60, skin.texture)
-    .setScale(1.0)
-    .setOrigin(0.5)
-    .setDepth(2);
-
-  // Название
-  const nameText = this.add.text(120, y + 25, skin.name, {
-    fontSize: '18px',
-    fontFamily: '"Orbitron", sans-serif',
-    color: '#ffffff',
-    stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
-    strokeThickness: 1
-  }).setOrigin(0, 0.5).setDepth(2);
-
-  // Редкость
-  const rarityNames = {
-    'COMMON': 'ОБЫЧНЫЙ',
-    'RARE': 'РЕДКИЙ',
-    'EPIC': 'ЭПИЧЕСКИЙ',
-    'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
-  };
-  const rarityColors = {
-    'COMMON': '#aaaaaa',
-    'RARE': '#44aaff',
-    'EPIC': '#ff44aa',
-    'LEGENDARY': '#ffaa00'
-  };
-  const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
-    fontSize: '11px',
-    fontFamily: '"Share Tech Mono", monospace',
-    color: rarityColors[skin.rarity]
-  }).setOrigin(0, 0.5).setDepth(2);
-
-  // Статы
-  const statsText = this.add.text(120, y + 80, 
-    `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
-    {
-      fontSize: '11px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#88ff88'
-    }
-  ).setOrigin(0, 0.5).setDepth(2);
-
-  // Специальная способность
-  if (skin.stats.special !== 'Нет') {
-    const specialText = this.add.text(120, y + 100, `✨ ${skin.stats.special}`, {
-      fontSize: '10px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#ffaa00'
-    }).setOrigin(0, 0.5).setDepth(2);
-    elements.push(specialText);
-  }
-
-  // Статус/цена
-  let statusText = '';
-  let statusColor = '#666666';
-  if (selected) {
-    statusText = 'ВЫБРАН';
-    statusColor = '#00ff00';
-  } else if (owned) {
-    statusText = 'КУПЛЕН';
-    statusColor = '#00ffff';
-  } else if (skin.price === 0) {
-    statusText = 'БЕСПЛАТНО';
-    statusColor = '#ffaa00';
-  } else {
-    statusText = `${skin.price} 💎`;
-    statusColor = canAfford ? '#ffaa00' : '#ff4444';
-  }
-
-  const status = this.add.text(w - 40, y + 60, statusText, {
-    fontSize: '14px',
-    fontFamily: '"Audiowide", sans-serif',
-    color: statusColor,
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setOrigin(1, 0.5).setDepth(2);
-
-  // Индикатор эффектов
-  if (skin.effects !== 'none') {
-    const effectIcons = {
-      'siren': '🚨',
-      'neon': '💡',
-      'flames': '🔥',
-      'monster': '👣',
-      'formula': '⚡',
-      'gold': '👑',
-      'cyber': '🤖',
-      'void': '🌌'
-    };
-    const effectIcon = effectIcons[skin.effects] || '✨';
+    // Цвета в зависимости от статуса
+    let borderColor = 0x666666;
+    let bgColor = 0x0a0a1a;
+    let glowColor = 0x00ffff;
     
-    const effectText = this.add.text(w - 40, y + 90, effectIcon, {
-      fontSize: '20px'
-    }).setOrigin(1, 0.5).setDepth(2);
-    elements.push(effectText);
-  }
+    if (selected) {
+      borderColor = 0x00ff00;
+      bgColor = 0x1a3a1a;
+      glowColor = 0x00ff00;
+    } else if (owned) {
+      borderColor = 0x00ffff;
+      bgColor = 0x1a2a3a;
+      glowColor = 0x00ffff;
+    } else if (skin.price === 0) {
+      borderColor = 0xffaa00;
+      glowColor = 0xffaa00;
+    } else if (canAfford) {
+      borderColor = 0xffaa00;
+      glowColor = 0xffaa00;
+    }
 
-  // Добавляем все элементы
-  elements.push(bg, preview, nameText, rarityText, statsText, status);
-
-  // ИНТЕРАКТИВНАЯ ОБЛАСТЬ - увеличиваем размер и проверяем
-const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
-  .setInteractive({ 
-    useHandCursor: true,
-    hitArea: new Phaser.Geom.Rectangle(-(w - 40)/2, -60, w - 40, 120),
-    hitAreaCallback: Phaser.Geom.Rectangle.Contains
-  })
-  .setOrigin(0.5)
-  .setDepth(15); // Увеличиваем depth
-
-  // Обработчики
-  hitArea.on('pointerover', () => {
-    bg.clear();
-    bg.fillStyle(0x1a1a3a, 0.9);
-    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-    bg.lineStyle(3, borderColor, 1);
-    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-    preview.setScale(1.1);
-    this.playHoverSound();
-  });
-
-  hitArea.on('pointerout', () => {
-    bg.clear();
+    // Фон карточки
+    const bg = this.add.graphics();
     bg.fillStyle(bgColor, 0.9);
     bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
     bg.lineStyle(3, borderColor, 1);
     bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-    preview.setScale(1.0);
-  });
+    bg.setDepth(1);
 
-  hitArea.on('pointerdown', (pointer) => {
-    pointer.event.stopPropagation(); // Останавливаем всплытие
-    this.tweens.add({
-      targets: hitArea,
-      scaleX: 0.98,
-      scaleY: 0.98,
-      duration: 100,
-      yoyo: true
+    // Внутреннее свечение
+    const innerGlow = this.add.graphics();
+    innerGlow.lineStyle(2, glowColor, 0.3);
+    innerGlow.strokeRoundedRect(w / 2 - (w - 44) / 2, y + 2, w - 44, 116, 10);
+    elements.push(innerGlow);
+
+    // Превью
+    const preview = this.add.image(50, y + 60, skin.texture)
+      .setScale(1.0)
+      .setOrigin(0.5)
+      .setDepth(2);
+
+    // Название
+    const nameText = this.add.text(120, y + 25, skin.name, {
+      fontSize: '18px',
+      fontFamily: '"Orbitron", sans-serif',
+      color: '#ffffff',
+      stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
+      strokeThickness: 1
+    }).setOrigin(0, 0.5).setDepth(2);
+
+    // Редкость
+    const rarityNames = {
+      'COMMON': 'ОБЫЧНЫЙ',
+      'RARE': 'РЕДКИЙ',
+      'EPIC': 'ЭПИЧЕСКИЙ',
+      'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+    };
+    const rarityColors = {
+      'COMMON': '#aaaaaa',
+      'RARE': '#44aaff',
+      'EPIC': '#ff44aa',
+      'LEGENDARY': '#ffaa00'
+    };
+    const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
+      fontSize: '11px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: rarityColors[skin.rarity]
+    }).setOrigin(0, 0.5).setDepth(2);
+
+    // Статы
+    const statsText = this.add.text(120, y + 80, 
+      `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
+      {
+        fontSize: '11px',
+        fontFamily: '"Share Tech Mono", monospace',
+        color: '#88ff88'
+      }
+    ).setOrigin(0, 0.5).setDepth(2);
+
+    // Специальная способность
+    if (skin.stats.special !== 'Нет') {
+      const specialText = this.add.text(120, y + 100, `✨ ${skin.stats.special}`, {
+        fontSize: '10px',
+        fontFamily: '"Share Tech Mono", monospace',
+        color: '#ffaa00'
+      }).setOrigin(0, 0.5).setDepth(2);
+      elements.push(specialText);
+    }
+
+    // Статус/цена
+    let statusText = '';
+    let statusColor = '#666666';
+    if (selected) {
+      statusText = 'ВЫБРАН';
+      statusColor = '#00ff00';
+    } else if (owned) {
+      statusText = 'КУПЛЕН';
+      statusColor = '#00ffff';
+    } else if (skin.price === 0) {
+      statusText = 'БЕСПЛАТНО';
+      statusColor = '#ffaa00';
+    } else {
+      statusText = `${skin.price} 💎`;
+      statusColor = canAfford ? '#ffaa00' : '#ff4444';
+    }
+
+    const status = this.add.text(w - 40, y + 60, statusText, {
+      fontSize: '14px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: statusColor,
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(1, 0.5).setDepth(2);
+
+    // Индикатор эффектов
+    if (skin.effects !== 'none') {
+      const effectIcons = {
+        'siren': '🚨',
+        'neon': '💡',
+        'flames': '🔥',
+        'monster': '👣',
+        'formula': '⚡',
+        'gold': '👑',
+        'cyber': '🤖',
+        'void': '🌌'
+      };
+      const effectIcon = effectIcons[skin.effects] || '✨';
+      
+      const effectText = this.add.text(w - 40, y + 90, effectIcon, {
+        fontSize: '20px'
+      }).setOrigin(1, 0.5).setDepth(2);
+      elements.push(effectText);
+    }
+
+    // Добавляем все элементы
+    elements.push(bg, preview, nameText, rarityText, statsText, status);
+
+    // ИНТЕРАКТИВНАЯ ОБЛАСТЬ - ВАЖНО! Сохраняем skinData
+    const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
+      .setInteractive({ 
+        useHandCursor: true,
+        hitArea: new Phaser.Geom.Rectangle(-(w - 40)/2, -60, w - 40, 120),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains
+      })
+      .setOrigin(0.5)
+      .setDepth(15);
+
+    // КЛЮЧЕВОЕ: сохраняем ссылку на скин
+    hitArea.skinData = skin;
+
+    // Обработчики
+    hitArea.on('pointerover', () => {
+      bg.clear();
+      bg.fillStyle(0x1a1a3a, 0.9);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      bg.lineStyle(3, borderColor, 1);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      preview.setScale(1.1);
+      this.playHoverSound();
     });
-    this.playClickSound();
-    this.openSkinDetail(hitArea.skinData);
-  });
 
-  elements.push(hitArea);
-  return { elements, skin, y };
-}
+    hitArea.on('pointerout', () => {
+      bg.clear();
+      bg.fillStyle(bgColor, 0.9);
+      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      bg.lineStyle(3, borderColor, 1);
+      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+      preview.setScale(1.0);
+    });
+
+    hitArea.on('pointerdown', (pointer) => {
+      pointer.event.stopPropagation();
+      this.tweens.add({
+        targets: hitArea,
+        scaleX: 0.98,
+        scaleY: 0.98,
+        duration: 100,
+        yoyo: true
+      });
+      this.playClickSound();
+      this.openSkinDetail(hitArea.skinData);
+    });
+
+    elements.push(hitArea);
+    return { elements, skin, y };
+  }
 
   setupScrolling(listTop, listHeight, totalHeight) {
-  const w = this.scale.width;
-  
-  // Создаем зону для перетаскивания, НО НЕ для кликов!
-  this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0);
-  this.scrollZone.setInteractive({ draggable: true }); // Только для перетаскивания
-  this.scrollZone.setDepth(0); // На самом низу
-  
-  // ВАЖНО: НЕ блокируем клики на карточках
-  this.scrollZone.input.alwaysEnabled = false;
-  
-  this.minScrollY = -(totalHeight - listHeight + 50);
-  this.maxScrollY = listTop;
-
-  // Переменные для инерции
-  this.scrollVelocity = 0;
-  this.isDragging = false;
-  this.lastScrollY = 0;
-  this.scrollDeceleration = 0.92;
-
-  // Обработчики событий
-  this.scrollZone.on('pointerdown', (pointer) => {
-    // Проверяем, не кликнули ли по карточке
-    const target = this.input.hitTest(pointer, [this.skinContainer]);
-    if (target.length > 0) return; // Если клик по карточке, не начинаем перетаскивание
+    const w = this.scale.width;
     
-    this.isDragging = true;
-    this.lastScrollY = pointer.y;
-    this.scrollVelocity = 0;
-    this.startDragY = this.skinContainer.y;
-    this.startPointerY = pointer.y;
-  });
-
-  this.scrollZone.on('pointermove', (pointer) => {
-    if (!this.isDragging) return;
+    // Создаем зону для перетаскивания
+    this.scrollZone = this.add.zone(0, listTop, w, listHeight).setOrigin(0);
+    this.scrollZone.setInteractive({ draggable: true });
+    this.scrollZone.setDepth(0);
     
-    const deltaY = pointer.y - this.lastScrollY;
-    this.scrollVelocity = deltaY * 0.5;
+    // Вычисляем границы прокрутки
+    this.minScrollY = -(totalHeight - listHeight + 20);
+    this.maxScrollY = listTop;
     
-    let newY = this.skinContainer.y + deltaY;
-    
-    // Резиновый эффект на границах
-    if (newY < this.minScrollY) {
-      newY = this.minScrollY + (newY - this.minScrollY) * 0.2;
-    } else if (newY > this.maxScrollY) {
-      newY = this.maxScrollY + (newY - this.maxScrollY) * 0.2;
+    // Сбрасываем позицию
+    if (this.skinContainer) {
+      this.skinContainer.y = listTop;
     }
-    
-    this.skinContainer.y = newY;
-    this.lastScrollY = pointer.y;
-  });
 
-  this.scrollZone.on('pointerup', () => {
-    this.isDragging = false;
-  });
-
-  this.scrollZone.on('pointerout', () => {
-    this.isDragging = false;
-  });
-
-  // Индикатор прокрутки (оставляем без изменений)
-  if (totalHeight > listHeight) {
-    this.scrollTrack = this.add.graphics();
-    this.scrollTrack.fillStyle(0x333333, 0.5);
-    this.scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
+    // Переменные для инерции
+    let scrollVelocity = 0;
+    let isDragging = false;
+    let lastY = 0;
     
-    this.indicatorHeight = (listHeight - 20) * listHeight / totalHeight;
-    this.scrollIndicator = this.add.graphics();
-    this.scrollIndicator.fillStyle(0x00ffff, 0.8);
-    this.scrollIndicator.fillRoundedRect(w - 20, listTop + 10, 6, this.indicatorHeight, 3);
+    // Таймер для инерции
+    let inertiaTimer = null;
     
-    if (!this.optimizeLowEnd) {
+    const stopInertia = () => {
+      if (inertiaTimer) {
+        clearTimeout(inertiaTimer);
+        inertiaTimer = null;
+      }
+    };
+
+    const applyInertia = () => {
+      if (!this.skinContainer) return;
+      if (Math.abs(scrollVelocity) < 0.5) return;
+      
+      scrollVelocity *= 0.95;
+      let newY = this.skinContainer.y + scrollVelocity;
+      
+      if (newY < this.minScrollY) {
+        newY = this.minScrollY;
+        scrollVelocity = 0;
+      } else if (newY > this.maxScrollY) {
+        newY = this.maxScrollY;
+        scrollVelocity = 0;
+      }
+      
+      this.skinContainer.y = newY;
+      
+      if (Math.abs(scrollVelocity) > 0.5) {
+        inertiaTimer = setTimeout(applyInertia, 16);
+      } else {
+        inertiaTimer = null;
+      }
+    };
+
+    // Обработчики
+    this.scrollZone.on('pointerdown', (pointer) => {
+      stopInertia();
+      isDragging = true;
+      lastY = pointer.y;
+      scrollVelocity = 0;
+    });
+
+    this.scrollZone.on('pointermove', (pointer) => {
+      if (!isDragging || !this.skinContainer) return;
+      
+      const deltaY = pointer.y - lastY;
+      scrollVelocity = deltaY;
+      
+      let newY = this.skinContainer.y + deltaY;
+      
+      // Резиновый эффект на границах
+      if (newY < this.minScrollY) {
+        newY = this.minScrollY + (newY - this.minScrollY) * 0.3;
+      } else if (newY > this.maxScrollY) {
+        newY = this.maxScrollY + (newY - this.maxScrollY) * 0.3;
+      }
+      
+      this.skinContainer.y = newY;
+      lastY = pointer.y;
+    });
+
+    this.scrollZone.on('pointerup', () => {
+      isDragging = false;
+      if (Math.abs(scrollVelocity) > 2) {
+        applyInertia();
+      }
+    });
+
+    this.scrollZone.on('pointerout', () => {
+      isDragging = false;
+    });
+
+    // Индикатор прокрутки
+    if (totalHeight > listHeight) {
+      const scrollTrack = this.add.graphics();
+      scrollTrack.fillStyle(0x333333, 0.5);
+      scrollTrack.fillRoundedRect(w - 20, listTop + 10, 6, listHeight - 20, 3);
+      
+      const indicatorHeight = Math.max(30, (listHeight - 20) * (listHeight / totalHeight));
+      this.scrollIndicator = this.add.graphics();
+      this.scrollIndicator.fillStyle(0x00ffff, 0.8);
+      this.scrollIndicator.fillRoundedRect(w - 20, listTop + 10, 6, indicatorHeight, 3);
+      
+      // Анимация индикатора
       this.tweens.add({
         targets: this.scrollIndicator,
         alpha: 0.5,
@@ -1073,9 +1118,18 @@ const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
         yoyo: true,
         repeat: -1
       });
+      
+      // Обновление позиции индикатора
+      this.scrollIndicatorUpdate = () => {
+        if (!this.scrollIndicator || !this.skinContainer) return;
+        const t = (this.skinContainer.y - this.maxScrollY) / (this.minScrollY - this.maxScrollY);
+        const y = listTop + 10 + (listHeight - 20 - indicatorHeight) * t;
+        this.scrollIndicator.y = Phaser.Math.Clamp(y, listTop + 10, listTop + listHeight - 10 - indicatorHeight);
+      };
+      
+      this.events.on('update', this.scrollIndicatorUpdate);
     }
   }
-}
 
   // =========================================================================
   // ДЕТАЛЬНОЕ ОКНО СКИНА (КРАСИВОЕ, СОВРЕМЕННОЕ)
@@ -1696,11 +1750,25 @@ const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
     backBtnText.setStyle({ stroke: '#00ffff' });
   });
 
-  backBtnHitArea.on('pointerdown', () => {
-    this.playClickSound();
-    this.cleanupBeforeExit();
-    this.scene.start('menu');
-  });
+  // В createFooter() найдите этот код и замените:
+
+backBtnHitArea.on('pointerdown', () => {
+  this.playClickSound();
+  this.cleanupBeforeExit();
+  // Вместо this.scene.start('menu') используем перезапуск
+  this.scene.start('menu');
+});
+
+// Добавьте также проверку, что кнопка не обрабатывается повторно:
+backBtnHitArea.on('pointerdown', (pointer) => {
+  pointer.event.stopPropagation();
+  if (this.isExiting) return;
+  this.isExiting = true;
+  
+  this.playClickSound();
+  this.cleanupBeforeExit();
+  this.scene.start('menu');
+});
 
   // Версия с эффектом
   const versionText = this.add.text(w - 30, h - 30, 'v3.5.0', {
