@@ -638,6 +638,26 @@ wagonHit(wagon, pipe) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
   }
 }
+
+/**
+ * Обновить зум камеры в зависимости от количества вагонов
+ */
+updateCameraZoom() {
+  if (!this.player || this.wagons.length === 0) return;
+  
+  const totalLength = (this.wagons.length + 1) * this.wagonGap;
+  const screenWidth = this.scale.width;
+  let targetZoom = Math.min(1, screenWidth / (totalLength + 100));
+  targetZoom = Math.max(0.7, targetZoom);
+  
+  // Плавное изменение зума
+  this.tweens.add({
+    targets: this.cameras.main,
+    zoom: targetZoom,
+    duration: 500,
+    ease: 'Sine.easeInOut'
+  });
+}
   /**
    * Обновление параметров сложности на основе gameLevel
    */
