@@ -729,281 +729,276 @@ export class SkinShopScene extends Phaser.Scene {
   // =========================================================================
 
   createScrollableSkinList() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const listTop = 150;
-    const listHeight = h - 220;
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const listTop = 150;
+  const listHeight = h - 220;
 
-    // Маска
-    const maskArea = this.add.graphics();
-    maskArea.fillStyle(0xffffff);
-    maskArea.fillRect(10, listTop, w - 20, listHeight);
-    const mask = maskArea.createGeometryMask();
-    maskArea.destroy(); // Уничтожаем маску, она не нужна после создания
+  // Маска
+  const maskArea = this.add.graphics();
+  maskArea.fillStyle(0xffffff);
+  maskArea.fillRect(10, listTop, w - 20, listHeight);
+  const mask = maskArea.createGeometryMask();
+  maskArea.setVisible(false);
 
-    // Контейнер
-    this.skinContainer = this.add.container(0, listTop);
-    this.skinContainer.setMask(mask);
+  // Контейнер
+  this.skinContainer = this.add.container(0, listTop);
+  this.skinContainer.setMask(mask);
 
-    // Сортировка по редкости
-    const rarityOrder = { 'COMMON': 0, 'RARE': 1, 'EPIC': 2, 'LEGENDARY': 3 };
-    const sortedSkins = [...SKINS].sort((a, b) => {
-      if (rarityOrder[a.rarity] !== rarityOrder[b.rarity]) {
-        return rarityOrder[a.rarity] - rarityOrder[b.rarity];
-      }
-      return a.price - b.price;
-    });
+  // Сортировка по редкости
+  const rarityOrder = { 'COMMON': 0, 'RARE': 1, 'EPIC': 2, 'LEGENDARY': 3 };
+  const sortedSkins = [...SKINS].sort((a, b) => {
+    if (rarityOrder[a.rarity] !== rarityOrder[b.rarity]) {
+      return rarityOrder[a.rarity] - rarityOrder[b.rarity];
+    }
+    return a.price - b.price;
+  });
 
-    let currentY = 10;
-    const cardSpacing = 145;
-    let currentRarity = null;
+  let currentY = 10;
+  const cardSpacing = 145;
+  let currentRarity = null;
 
-    const rarityNames = {
-      'COMMON': 'ОБЫЧНЫЙ',
-      'RARE': 'РЕДКИЙ',
-      'EPIC': 'ЭПИЧЕСКИЙ',
-      'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
-    };
+  const rarityNames = {
+    'COMMON': 'ОБЫЧНЫЙ',
+    'RARE': 'РЕДКИЙ',
+    'EPIC': 'ЭПИЧЕСКИЙ',
+    'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+  };
 
-    const rarityColors = {
-      'COMMON': '#aaaaaa',
-      'RARE': '#44aaff',
-      'EPIC': '#ff44aa',
-      'LEGENDARY': '#ffaa00'
-    };
+  const rarityColors = {
+    'COMMON': '#aaaaaa',
+    'RARE': '#44aaff',
+    'EPIC': '#ff44aa',
+    'LEGENDARY': '#ffaa00'
+  };
 
-    this.skinCards = [];
-
-    sortedSkins.forEach((skin) => {
-      // Разделитель при смене редкости
-      if (skin.rarity !== currentRarity) {
-        currentRarity = skin.rarity;
-        
-        const separator = this.add.text(w / 2, currentY, `⚡ ${rarityNames[skin.rarity]} ТИР ⚡`, {
-          fontSize: '18px',
-          fontFamily: '"Audiowide", sans-serif',
-          color: rarityColors[skin.rarity],
-          stroke: '#000000',
-          strokeThickness: 3,
-          shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
-        }).setOrigin(0.5);
-        
-        this.skinContainer.add(separator);
-        currentY += 40;
-      }
-
-      const owned = gameManager.getOwnedSkins().includes(skin.id);
-      const selected = gameManager.getCurrentSkin() === skin.id;
-      const canAfford = gameManager.data.crystals >= skin.price;
-
-      // Создаем карточку
-      const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
-      this.skinContainer.add(card.elements);
-      this.skinCards.push(card);
+  sortedSkins.forEach((skin) => {
+    // Разделитель при смене редкости
+    if (skin.rarity !== currentRarity) {
+      currentRarity = skin.rarity;
       
-      currentY += cardSpacing;
-    });
-
-    // Отступ внизу
-    const bottomPadding = this.add.rectangle(0, currentY + 10, 10, 30, 0x000000, 0);
-    this.skinContainer.add(bottomPadding);
-
-    // Сохраняем общую высоту
-    this.totalScrollHeight = currentY + 40;
-
-    // Система прокрутки
-    this.setupScrolling(listTop, listHeight, this.totalScrollHeight);
-  }
-
-  createSkinCard(skin, w, y, owned, selected, canAfford) {
-    const elements = [];
-
-    // Цвета в зависимости от статуса
-    let borderColor = 0x666666;
-    let bgColor = 0x0a0a1a;
-    let glowColor = 0x00ffff;
-    
-    if (selected) {
-      borderColor = 0x00ff00;
-      bgColor = 0x1a3a1a;
-      glowColor = 0x00ff00;
-    } else if (owned) {
-      borderColor = 0x00ffff;
-      bgColor = 0x1a2a3a;
-      glowColor = 0x00ffff;
-    } else if (skin.price === 0) {
-      borderColor = 0xffaa00;
-      glowColor = 0xffaa00;
-    } else if (canAfford) {
-      borderColor = 0xffaa00;
-      glowColor = 0xffaa00;
+      const separator = this.add.text(w / 2, currentY, `⚡ ${rarityNames[skin.rarity]} ТИР ⚡`, {
+        fontSize: '18px',
+        fontFamily: '"Audiowide", sans-serif',
+        color: rarityColors[skin.rarity],
+        stroke: '#000000',
+        strokeThickness: 3,
+        shadow: { blur: 10, color: rarityColors[skin.rarity], fill: true }
+      }).setOrigin(0.5);
+      
+      this.skinContainer.add(separator);
+      currentY += 40;
     }
 
-    // Фон карточки
-    const bg = this.add.graphics();
+    const owned = gameManager.getOwnedSkins().includes(skin.id);
+    const selected = gameManager.getCurrentSkin() === skin.id;
+    const canAfford = gameManager.data.crystals >= skin.price;
+
+    // Создаем карточку
+    const card = this.createSkinCard(skin, w, currentY, owned, selected, canAfford);
+    this.skinContainer.add(card.elements);
+    
+    currentY += cardSpacing;
+  });
+
+  // Отступ внизу
+  const bottomPadding = this.add.rectangle(0, currentY + 10, 10, 30, 0x000000, 0);
+  this.skinContainer.add(bottomPadding);
+
+  // Сохраняем общую высоту
+  this.totalScrollHeight = currentY + 40;
+
+  // Система прокрутки
+  this.setupScrolling(listTop, listHeight, this.totalScrollHeight);
+}
+
+  createSkinCard(skin, w, y, owned, selected, canAfford) {
+  const elements = [];
+
+  // Цвета в зависимости от статуса
+  let borderColor = 0x666666;
+  let bgColor = 0x0a0a1a;
+  let glowColor = 0x00ffff;
+  
+  if (selected) {
+    borderColor = 0x00ff00;
+    bgColor = 0x1a3a1a;
+    glowColor = 0x00ff00;
+  } else if (owned) {
+    borderColor = 0x00ffff;
+    bgColor = 0x1a2a3a;
+    glowColor = 0x00ffff;
+  } else if (skin.price === 0) {
+    borderColor = 0xffaa00;
+    glowColor = 0xffaa00;
+  } else if (canAfford) {
+    borderColor = 0xffaa00;
+    glowColor = 0xffaa00;
+  }
+
+  // Фон карточки
+  const bg = this.add.graphics();
+  bg.fillStyle(bgColor, 0.9);
+  bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+  bg.lineStyle(3, borderColor, 1);
+  bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+  bg.setDepth(1);
+
+  // Внутреннее свечение
+  const innerGlow = this.add.graphics();
+  innerGlow.lineStyle(2, glowColor, 0.3);
+  innerGlow.strokeRoundedRect(w / 2 - (w - 44) / 2, y + 2, w - 44, 116, 10);
+  elements.push(innerGlow);
+
+  // Превью
+  const preview = this.add.image(50, y + 60, skin.texture)
+    .setScale(1.0)
+    .setOrigin(0.5)
+    .setDepth(2);
+
+  // Название
+  const nameText = this.add.text(120, y + 25, skin.name, {
+    fontSize: '18px',
+    fontFamily: '"Orbitron", sans-serif',
+    color: '#ffffff',
+    stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
+    strokeThickness: 1
+  }).setOrigin(0, 0.5).setDepth(2);
+
+  // Редкость
+  const rarityNames = {
+    'COMMON': 'ОБЫЧНЫЙ',
+    'RARE': 'РЕДКИЙ',
+    'EPIC': 'ЭПИЧЕСКИЙ',
+    'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
+  };
+  const rarityColors = {
+    'COMMON': '#aaaaaa',
+    'RARE': '#44aaff',
+    'EPIC': '#ff44aa',
+    'LEGENDARY': '#ffaa00'
+  };
+  const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
+    fontSize: '11px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: rarityColors[skin.rarity]
+  }).setOrigin(0, 0.5).setDepth(2);
+
+  // Статы
+  const statsText = this.add.text(120, y + 80, 
+    `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
+    {
+      fontSize: '11px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#88ff88'
+    }
+  ).setOrigin(0, 0.5).setDepth(2);
+
+  // Специальная способность
+  if (skin.stats.special !== 'Нет') {
+    const specialText = this.add.text(120, y + 100, `✨ ${skin.stats.special}`, {
+      fontSize: '10px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#ffaa00'
+    }).setOrigin(0, 0.5).setDepth(2);
+    elements.push(specialText);
+  }
+
+  // Статус/цена
+  let statusText = '';
+  let statusColor = '#666666';
+  if (selected) {
+    statusText = 'ВЫБРАН';
+    statusColor = '#00ff00';
+  } else if (owned) {
+    statusText = 'КУПЛЕН';
+    statusColor = '#00ffff';
+  } else if (skin.price === 0) {
+    statusText = 'БЕСПЛАТНО';
+    statusColor = '#ffaa00';
+  } else {
+    statusText = `${skin.price} 💎`;
+    statusColor = canAfford ? '#ffaa00' : '#ff4444';
+  }
+
+  const status = this.add.text(w - 40, y + 60, statusText, {
+    fontSize: '14px',
+    fontFamily: '"Audiowide", sans-serif',
+    color: statusColor,
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(1, 0.5).setDepth(2);
+
+  // Индикатор эффектов
+  if (skin.effects !== 'none') {
+    const effectIcons = {
+      'siren': '🚨',
+      'neon': '💡',
+      'flames': '🔥',
+      'monster': '👣',
+      'formula': '⚡',
+      'gold': '👑',
+      'cyber': '🤖',
+      'void': '🌌'
+    };
+    const effectIcon = effectIcons[skin.effects] || '✨';
+    
+    const effectText = this.add.text(w - 40, y + 90, effectIcon, {
+      fontSize: '20px'
+    }).setOrigin(1, 0.5).setDepth(2);
+    elements.push(effectText);
+  }
+
+  // Добавляем все элементы
+  elements.push(bg, preview, nameText, rarityText, statsText, status);
+
+  // ===== ИНТЕРАКТИВНАЯ ОБЛАСТЬ =====
+  // ВАЖНО: создаём прямоугольник большего размера, чтобы точно попадать
+  const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
+    .setInteractive({ useHandCursor: true })
+    .setOrigin(0.5)
+    .setDepth(15);
+
+  // КЛЮЧЕВОЕ: сохраняем ссылку на скин
+  hitArea.skinData = skin;
+
+  // Обработчики
+  hitArea.on('pointerover', () => {
+    bg.clear();
+    bg.fillStyle(0x1a1a3a, 0.9);
+    bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+    bg.lineStyle(3, borderColor, 1);
+    bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
+    preview.setScale(1.1);
+    this.playHoverSound();
+  });
+
+  hitArea.on('pointerout', () => {
+    bg.clear();
     bg.fillStyle(bgColor, 0.9);
     bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
     bg.lineStyle(3, borderColor, 1);
     bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-    bg.setDepth(1);
+    preview.setScale(1.0);
+  });
 
-    // Внутреннее свечение
-    const innerGlow = this.add.graphics();
-    innerGlow.lineStyle(2, glowColor, 0.3);
-    innerGlow.strokeRoundedRect(w / 2 - (w - 44) / 2, y + 2, w - 44, 116, 10);
-    elements.push(innerGlow);
-
-    // Превью
-    const preview = this.add.image(50, y + 60, skin.texture)
-      .setScale(1.0)
-      .setOrigin(0.5)
-      .setDepth(2);
-
-    // Название
-    const nameText = this.add.text(120, y + 25, skin.name, {
-      fontSize: '18px',
-      fontFamily: '"Orbitron", sans-serif',
-      color: '#ffffff',
-      stroke: borderColor === 0x00ffff ? '#00ffff' : '#888888',
-      strokeThickness: 1
-    }).setOrigin(0, 0.5).setDepth(2);
-
-    // Редкость
-    const rarityNames = {
-      'COMMON': 'ОБЫЧНЫЙ',
-      'RARE': 'РЕДКИЙ',
-      'EPIC': 'ЭПИЧЕСКИЙ',
-      'LEGENDARY': 'ЛЕГЕНДАРНЫЙ'
-    };
-    const rarityColors = {
-      'COMMON': '#aaaaaa',
-      'RARE': '#44aaff',
-      'EPIC': '#ff44aa',
-      'LEGENDARY': '#ffaa00'
-    };
-    const rarityText = this.add.text(120, y + 50, `[${rarityNames[skin.rarity]}]`, {
-      fontSize: '11px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: rarityColors[skin.rarity]
-    }).setOrigin(0, 0.5).setDepth(2);
-
-    // Статы
-    const statsText = this.add.text(120, y + 80, 
-      `⚡+${skin.stats.speedBonus}  🛡️+${skin.stats.armorBonus}  🌀+${skin.stats.handlingBonus}  🚀+${skin.stats.jumpBonus}`,
-      {
-        fontSize: '11px',
-        fontFamily: '"Share Tech Mono", monospace',
-        color: '#88ff88'
-      }
-    ).setOrigin(0, 0.5).setDepth(2);
-
-    // Специальная способность
-    if (skin.stats.special !== 'Нет') {
-      const specialText = this.add.text(120, y + 100, `✨ ${skin.stats.special}`, {
-        fontSize: '10px',
-        fontFamily: '"Share Tech Mono", monospace',
-        color: '#ffaa00'
-      }).setOrigin(0, 0.5).setDepth(2);
-      elements.push(specialText);
-    }
-
-    // Статус/цена
-    let statusText = '';
-    let statusColor = '#666666';
-    if (selected) {
-      statusText = 'ВЫБРАН';
-      statusColor = '#00ff00';
-    } else if (owned) {
-      statusText = 'КУПЛЕН';
-      statusColor = '#00ffff';
-    } else if (skin.price === 0) {
-      statusText = 'БЕСПЛАТНО';
-      statusColor = '#ffaa00';
-    } else {
-      statusText = `${skin.price} 💎`;
-      statusColor = canAfford ? '#ffaa00' : '#ff4444';
-    }
-
-    const status = this.add.text(w - 40, y + 60, statusText, {
-      fontSize: '14px',
-      fontFamily: '"Audiowide", sans-serif',
-      color: statusColor,
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(1, 0.5).setDepth(2);
-
-    // Индикатор эффектов
-    if (skin.effects !== 'none') {
-      const effectIcons = {
-        'siren': '🚨',
-        'neon': '💡',
-        'flames': '🔥',
-        'monster': '👣',
-        'formula': '⚡',
-        'gold': '👑',
-        'cyber': '🤖',
-        'void': '🌌'
-      };
-      const effectIcon = effectIcons[skin.effects] || '✨';
-      
-      const effectText = this.add.text(w - 40, y + 90, effectIcon, {
-        fontSize: '20px'
-      }).setOrigin(1, 0.5).setDepth(2);
-      elements.push(effectText);
-    }
-
-    // Добавляем все элементы
-    elements.push(bg, preview, nameText, rarityText, statsText, status);
-
-    // ИНТЕРАКТИВНАЯ ОБЛАСТЬ - ВАЖНО! Сохраняем skinData
-    const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
-      .setInteractive({ 
-        useHandCursor: true,
-        hitArea: new Phaser.Geom.Rectangle(-(w - 40)/2, -60, w - 40, 120),
-        hitAreaCallback: Phaser.Geom.Rectangle.Contains
-      })
-      .setOrigin(0.5)
-      .setDepth(15);
-
-    // КЛЮЧЕВОЕ: сохраняем ссылку на скин
-    hitArea.skinData = skin;
-
-    // Обработчики
-    hitArea.on('pointerover', () => {
-      bg.clear();
-      bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      preview.setScale(1.1);
-      this.playHoverSound();
+  hitArea.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.tweens.add({
+      targets: hitArea,
+      scaleX: 0.98,
+      scaleY: 0.98,
+      duration: 100,
+      yoyo: true
     });
+    this.playClickSound();
+    console.log('Skin clicked:', hitArea.skinData.name); // Для отладки
+    this.openSkinDetail(hitArea.skinData);
+  });
 
-    hitArea.on('pointerout', () => {
-      bg.clear();
-      bg.fillStyle(bgColor, 0.9);
-      bg.fillRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      bg.lineStyle(3, borderColor, 1);
-      bg.strokeRoundedRect(w / 2 - (w - 40) / 2, y, w - 40, 120, 12);
-      preview.setScale(1.0);
-    });
-
-    hitArea.on('pointerdown', (pointer) => {
-      pointer.event.stopPropagation();
-      this.tweens.add({
-        targets: hitArea,
-        scaleX: 0.98,
-        scaleY: 0.98,
-        duration: 100,
-        yoyo: true
-      });
-      this.playClickSound();
-      this.openSkinDetail(hitArea.skinData);
-    });
-
-    elements.push(hitArea);
-    return { elements, skin, y };
-  }
+  elements.push(hitArea);
+  return { elements, skin, y };
+}
 
   setupScrolling(listTop, listHeight, totalHeight) {
     const w = this.scale.width;
