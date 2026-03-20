@@ -11,6 +11,7 @@ export class TutorialScene extends Phaser.Scene {
     this.particles = [];
     this.animations = [];
     this.demoObjects = [];
+    this.demoTimers = [];
   }
 
   create() {
@@ -324,7 +325,7 @@ export class TutorialScene extends Phaser.Scene {
     
     // Заголовок
     this.titleObj = this.add.text(0, -150, '', {
-      fontSize: '24px',
+      fontSize: '26px',
       fontFamily: "'Audiowide', 'Orbitron', sans-serif",
       color: '#00ffff',
       stroke: '#ff00ff',
@@ -334,25 +335,25 @@ export class TutorialScene extends Phaser.Scene {
     
     // Иконка
     this.iconObj = this.add.text(0, -70, '', {
-      fontSize: '64px'
+      fontSize: '70px'
     }).setOrigin(0.5);
     this.slideContainer.add(this.iconObj);
     
     // Текст
     this.textObj = this.add.text(0, 10, '', {
-      fontSize: '16px',
+      fontSize: '18px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#ffffff',
       align: 'center',
       wordWrap: { width: 260 },
-      lineSpacing: 8
+      lineSpacing: 10
     }).setOrigin(0.5);
     this.slideContainer.add(this.textObj);
     
     // Детали
-    this.detailObj = this.add.text(0, 70, '', {
-      fontSize: '11px',
-      fontFamily: "'Space Mono', monospace",
+    this.detailObj = this.add.text(0, 75, '', {
+      fontSize: '12px',
+      fontFamily: "'Share Tech Mono', monospace",
       color: COLORS.text_secondary,
       align: 'center',
       wordWrap: { width: 260 }
@@ -360,7 +361,7 @@ export class TutorialScene extends Phaser.Scene {
     this.slideContainer.add(this.detailObj);
     
     // Индикатор цвета
-    this.colorIndicator = this.add.rectangle(0, -170, 80, 4, 0x00ffff).setOrigin(0.5);
+    this.colorIndicator = this.add.rectangle(0, -170, 90, 4, 0x00ffff).setOrigin(0.5);
     this.slideContainer.add(this.colorIndicator);
   }
 
@@ -373,15 +374,16 @@ export class TutorialScene extends Phaser.Scene {
     this.demoContainer.setVisible(false);
     
     // Фон для демо
-    const demoBg = this.add.rectangle(0, 0, 180, 260, 0x1a1a3a, 0.8);
-    demoBg.setStrokeStyle(2, 0x00ffff, 0.5);
+    const demoBg = this.add.rectangle(0, 0, 180, 260, 0x1a1a3a, 0.85);
+    demoBg.setStrokeStyle(2, 0x00ffff, 0.6);
     this.demoContainer.add(demoBg);
     
     // Текст "ДЕМОНСТРАЦИЯ"
-    const demoLabel = this.add.text(0, -110, 'ДЕМОНСТРАЦИЯ', {
-      fontSize: '10px',
+    const demoLabel = this.add.text(0, -115, 'ДЕМОНСТРАЦИЯ', {
+      fontSize: '11px',
       fontFamily: "'Orbitron', sans-serif",
-      color: '#88aaff'
+      color: '#88aaff',
+      letterSpacing: 1
     }).setOrigin(0.5);
     this.demoContainer.add(demoLabel);
   }
@@ -392,17 +394,17 @@ export class TutorialScene extends Phaser.Scene {
     
     // Прогресс
     this.progressText = this.add.text(w / 2, h - 100, `1/${this.slides.length}`, {
-      fontSize: '14px',
+      fontSize: '16px',
       fontFamily: "'Orbitron', sans-serif",
       color: COLORS.accent
     }).setOrigin(0.5).setDepth(20);
     
     // Кнопки навигации
-    this.createNeonButton(w / 2 - 130, h - 55, '◀  НАЗАД', () => this.prevSlide());
-    this.createNeonButton(w / 2 + 130, h - 55, 'ВПЕРЁД  ▶', () => this.nextSlide());
+    this.createNeonButton(w / 2 - 140, h - 55, '◀  НАЗАД', () => this.prevSlide());
+    this.createNeonButton(w / 2 + 140, h - 55, 'ВПЕРЁД  ▶', () => this.nextSlide());
     
     // Кнопка пропуска
-    this.skipBtn = this.add.text(w / 2, h - 25, 'ПРОПУСТИТЬ ТУТОРИАЛ', {
+    this.skipBtn = this.add.text(w / 2, h - 22, 'ПРОПУСТИТЬ ТУТОРИАЛ', {
       fontSize: '12px',
       fontFamily: "'Share Tech Mono', monospace",
       color: COLORS.text_muted,
@@ -430,8 +432,8 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   createNeonButton(x, y, text, callback) {
-    const width = 110;
-    const height = 40;
+    const width = 120;
+    const height = 42;
     
     const button = this.add.graphics();
     button.setDepth(20);
@@ -449,7 +451,7 @@ export class TutorialScene extends Phaser.Scene {
     updateButton();
     
     const buttonText = this.add.text(x, y, text, {
-      fontSize: '14px',
+      fontSize: '15px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff',
       stroke: '#00ffff',
@@ -489,17 +491,23 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕМОНСТРАЦИОННЫЕ ЭФФЕКТЫ (БЕЗ ОШИБОК)
+  // ДЕМОНСТРАЦИОННЫЕ ЭФФЕКТЫ (БЕЗ ТЕКСТУР)
   // =========================================================================
 
   clearDemo() {
-    // Удаляем все объекты из демо-контейнера, кроме фона и метки
     if (this.demoContainer) {
+      // Очищаем все таймеры
+      this.demoTimers.forEach(timer => {
+        if (timer && timer.remove) timer.remove();
+      });
+      this.demoTimers = [];
+      
+      // Удаляем все объекты из контейнера, кроме фона и метки
       const children = this.demoContainer.getAll();
       children.forEach(child => {
-        // Не удаляем фон и метку
-        if (child !== this.demoContainer.list[0] && child !== this.demoContainer.list[1]) {
-          child.destroy();
+        // Сохраняем только фон (первый) и метку (второй)
+        if (child !== children[0] && child !== children[1]) {
+          if (child.destroy) child.destroy();
         }
       });
     }
@@ -542,29 +550,32 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showTapDemo() {
-    const player = this.add.circle(0, 40, 12, 0xffaa00);
+    // Игрок
+    const player = this.add.circle(0, 45, 14, 0xffaa00);
     player.setStrokeStyle(2, 0x00ffff);
     this.demoContainer.add(player);
     
-    let y = 40;
+    // Анимация прыжка
+    let y = 45;
     let direction = -1;
-    
-    this.time.addEvent({
-      delay: 800,
+    let jumpTimer = this.time.addEvent({
+      delay: 700,
       callback: () => {
-        y += direction * 8;
-        if (y < 20 || y > 60) direction *= -1;
+        y += direction * 10;
+        if (y < 25 || y > 55) direction *= -1;
         player.y = y;
       },
       loop: true
     });
+    this.demoTimers.push(jumpTimer);
     
-    const finger = this.add.text(0, -20, '👆', { fontSize: '24px' }).setOrigin(0.5);
+    // Палец
+    const finger = this.add.text(0, -30, '👆', { fontSize: '32px' }).setOrigin(0.5);
     this.demoContainer.add(finger);
     
     this.tweens.add({
       targets: finger,
-      y: { from: -20, to: 20 },
+      y: { from: -30, to: 15 },
       duration: 600,
       yoyo: true,
       repeat: -1,
@@ -573,114 +584,151 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showCoinsDemo() {
-    const coin = this.add.image(0, 20, 'coin_gold');
-    coin.setScale(0.6);
+    // Монета
+    const coin = this.add.circle(0, 25, 12, 0xffaa00);
+    coin.setStrokeStyle(2, 0xffdd44);
     this.demoContainer.add(coin);
     
-    const value = this.add.text(0, -20, '+1 💎', {
+    // Символ монеты
+    const dollar = this.add.text(0, 25, '$', {
+      fontSize: '14px',
+      fontFamily: 'monospace',
+      color: '#000000'
+    }).setOrigin(0.5);
+    this.demoContainer.add(dollar);
+    
+    // Значение
+    const value = this.add.text(0, -15, '+1 💎', {
       fontSize: '14px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffaa00'
     }).setOrigin(0.5);
     this.demoContainer.add(value);
+    value.setAlpha(0);
     
-    this.tweens.add({
-      targets: coin,
-      y: { from: 20, to: -20 },
-      alpha: { from: 1, to: 0 },
-      duration: 1000,
-      yoyo: true,
-      repeat: -1,
-      onYoyo: () => {
+    // Анимация
+    let timer = this.time.addEvent({
+      delay: 1200,
+      callback: () => {
         value.setAlpha(1);
-        value.setY(-20);
+        value.setY(-15);
         this.tweens.add({
           targets: value,
           y: -40,
           alpha: 0,
           duration: 500
         });
-      }
+      },
+      loop: true
     });
+    this.demoTimers.push(timer);
   }
 
   showBonusCoinsDemo() {
-    const colors = ['coin_red', 'coin_blue', 'coin_green', 'coin_purple'];
+    const colors = [0xff4444, 0x4444ff, 0x44ff44, 0xff44ff];
+    const effects = ['🚀', '🛡️', '🧲', '⏳'];
     let index = 0;
     
-    const coin = this.add.image(0, 20, colors[0]);
-    coin.setScale(0.6);
+    const coin = this.add.circle(0, 25, 12, colors[0]);
+    coin.setStrokeStyle(2, 0xffffff);
     this.demoContainer.add(coin);
     
-    this.time.addEvent({
-      delay: 800,
+    const effectText = this.add.text(40, 15, effects[0], { fontSize: '24px' });
+    this.demoContainer.add(effectText);
+    
+    let timer = this.time.addEvent({
+      delay: 1000,
       callback: () => {
         index = (index + 1) % colors.length;
-        coin.setTexture(colors[index]);
+        coin.setFillStyle(colors[index]);
+        effectText.setText(effects[index]);
         
-        const effects = ['🚀', '🛡️', '🧲', '⏳'];
-        const effect = this.add.text(30, -10, effects[index], { fontSize: '20px' });
-        this.demoContainer.add(effect);
-        
+        effectText.setAlpha(1);
+        effectText.setX(40);
         this.tweens.add({
-          targets: effect,
+          targets: effectText,
           x: 80,
           alpha: 0,
-          duration: 500,
-          onComplete: () => effect.destroy()
+          duration: 500
         });
       },
       loop: true
     });
+    this.demoTimers.push(timer);
   }
 
   showWagonsDemo() {
-    const player = this.add.circle(-40, 0, 10, 0xffaa00);
-    this.demoContainer.add(player);
+    // Головной вагон
+    const head = this.add.rectangle(-45, 0, 22, 18, 0xffaa00);
+    head.setStrokeStyle(1, 0x00ffff);
+    this.demoContainer.add(head);
     
+    // Вагоны
     const wagons = [];
     for (let i = 0; i < 3; i++) {
-      const wagon = this.add.rectangle(-40 - (i + 1) * 25, 0, 20, 12, 0x88aaff);
+      const wagon = this.add.rectangle(-45 - (i + 1) * 28, 0, 22, 16, 0x88aaff);
       wagon.setStrokeStyle(1, 0x00ffff);
       this.demoContainer.add(wagon);
       wagons.push(wagon);
     }
     
-    this.tweens.add({
-      targets: [player, ...wagons],
-      x: '+=80',
-      duration: 2000,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+    // Анимация движения
+    let x = 0;
+    let direction = 1;
+    let moveTimer = this.time.addEvent({
+      delay: 50,
+      callback: () => {
+        x += direction * 3;
+        if (x > 60 || x < -60) direction *= -1;
+        head.x = -45 + x * 0.5;
+        wagons.forEach((w, i) => {
+          w.x = -45 - (i + 1) * 28 + x * 0.5;
+        });
+      },
+      loop: true
     });
+    this.demoTimers.push(moveTimer);
   }
 
   showAsteroidDemo() {
-    const asteroid = this.add.image(0, 0, 'bg_asteroid_1');
-    asteroid.setScale(0.5);
+    // Астероид
+    const asteroid = this.add.circle(0, 0, 14, 0x886644);
+    asteroid.setStrokeStyle(2, 0xaa8866);
     this.demoContainer.add(asteroid);
     
-    const warning = this.add.text(0, -40, '💥 ОПАСНО!', {
+    // Неровности
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2;
+      const bump = this.add.circle(
+        Math.cos(angle) * 16,
+        Math.sin(angle) * 16,
+        3,
+        0xaa8866
+      );
+      this.demoContainer.add(bump);
+    }
+    
+    // Предупреждение
+    const warning = this.add.text(0, -45, '💥 ОПАСНО!', {
       fontSize: '12px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#ff4444'
     }).setOrigin(0.5);
     this.demoContainer.add(warning);
     
+    // Анимация
     this.tweens.add({
       targets: asteroid,
-      x: { from: -60, to: 60 },
+      x: { from: -50, to: 50 },
       duration: 1500,
       yoyo: true,
       repeat: -1,
-      onStart: () => warning.setAlpha(1),
       onYoyo: () => {
         warning.setAlpha(1);
         this.tweens.add({
           targets: warning,
           alpha: 0,
-          delay: 200,
+          delay: 100,
           duration: 300
         });
       }
@@ -688,23 +736,28 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showPowerupDemo() {
-    const powerup = this.add.image(0, 0, 'powerup');
-    powerup.setScale(0.7);
-    powerup.setTint(0x00ffff);
+    // Усилитель
+    const powerup = this.add.rectangle(0, 0, 20, 20, 0x3366ff);
+    powerup.setStrokeStyle(2, 0x00ffff);
     this.demoContainer.add(powerup);
     
-    const effect = this.add.text(0, -30, '✨ УСКОРЕНИЕ ✨', {
-      fontSize: '10px',
+    // Внутренний квадрат
+    const inner = this.add.rectangle(0, 0, 12, 12, 0x88aaff);
+    this.demoContainer.add(inner);
+    
+    // Эффект
+    const effect = this.add.text(0, -35, '✨ УСКОРЕНИЕ ✨', {
+      fontSize: '11px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#00ffff'
     }).setOrigin(0.5);
     this.demoContainer.add(effect);
     
+    // Пульсация
     this.tweens.add({
-      targets: powerup,
-      scale: { from: 0.7, to: 1 },
-      alpha: { from: 1, to: 0.5 },
-      duration: 500,
+      targets: [powerup, inner],
+      scale: { from: 1, to: 1.2 },
+      duration: 400,
       yoyo: true,
       repeat: -1
     });
@@ -719,34 +772,42 @@ export class TutorialScene extends Phaser.Scene {
   }
 
   showGateDemo() {
-    const gate = this.add.rectangle(0, 0, 20, 80, 0x44aaff, 0.6);
-    gate.setStrokeStyle(2, 0x00ffff);
-    this.demoContainer.add(gate);
+    // Ворота
+    const leftGate = this.add.rectangle(-10, 0, 8, 70, 0x44aaff, 0.7);
+    leftGate.setStrokeStyle(1, 0x00ffff);
+    this.demoContainer.add(leftGate);
     
-    const player = this.add.circle(-50, 0, 8, 0xffaa00);
+    const rightGate = this.add.rectangle(10, 0, 8, 70, 0x44aaff, 0.7);
+    rightGate.setStrokeStyle(1, 0x00ffff);
+    this.demoContainer.add(rightGate);
+    
+    // Игрок
+    const player = this.add.circle(-55, 0, 10, 0xffaa00);
     this.demoContainer.add(player);
     
-    const score = this.add.text(30, -20, '+10', {
-      fontSize: '14px',
+    // Очки
+    const score = this.add.text(35, -20, '+10', {
+      fontSize: '16px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffff00'
     }).setOrigin(0.5);
     this.demoContainer.add(score);
     score.setAlpha(0);
     
+    // Анимация
     this.tweens.add({
       targets: player,
-      x: 50,
-      duration: 1000,
+      x: 55,
+      duration: 1200,
       yoyo: true,
       repeat: -1,
       onUpdate: () => {
-        if (player.x > -10 && player.x < 10) {
+        if (player.x > -15 && player.x < 15) {
           score.setAlpha(1);
           score.setY(-20);
           this.tweens.add({
             targets: score,
-            y: -40,
+            y: -45,
             alpha: 0,
             duration: 400
           });
@@ -757,57 +818,58 @@ export class TutorialScene extends Phaser.Scene {
 
   showWorldsDemo() {
     const worlds = ['🌌', '🌃', '🏰', '☄️', '⚫'];
+    const names = ['КОСМОС', 'КИБЕРПАНК', 'ПОДЗЕМЕЛЬЕ', 'АСТЕРОИДЫ', 'ЧЁРНАЯ ДЫРА'];
+    const colors = ['#00ffff', '#ff00ff', '#ff6600', '#ffaa00', '#aa88ff'];
     let index = 0;
     
-    const worldIcon = this.add.text(0, 0, worlds[0], { fontSize: '40px' }).setOrigin(0.5);
+    const worldIcon = this.add.text(0, -10, worlds[0], { fontSize: '48px' }).setOrigin(0.5);
     this.demoContainer.add(worldIcon);
     
-    const worldName = this.add.text(0, 50, 'КОСМОС', {
+    const worldName = this.add.text(0, 45, names[0], {
       fontSize: '12px',
       fontFamily: "'Orbitron', sans-serif",
-      color: '#00ffff'
+      color: colors[0]
     }).setOrigin(0.5);
     this.demoContainer.add(worldName);
     
-    this.time.addEvent({
-      delay: 1500,
+    let timer = this.time.addEvent({
+      delay: 1400,
       callback: () => {
         index = (index + 1) % worlds.length;
         worldIcon.setText(worlds[index]);
-        const names = ['КОСМОС', 'КИБЕРПАНК', 'ПОДЗЕМЕЛЬЕ', 'АСТЕРОИДЫ', 'ЧЁРНАЯ ДЫРА'];
         worldName.setText(names[index]);
-        
-        const colors = ['#00ffff', '#ff00ff', '#ff6600', '#ffaa00', '#aa88ff'];
         worldName.setStyle({ color: colors[index] });
       },
       loop: true
     });
+    this.demoTimers.push(timer);
   }
 
   showReadyDemo() {
-    const rocket = this.add.text(0, 0, '🚀', { fontSize: '48px' }).setOrigin(0.5);
+    // Ракета
+    const rocket = this.add.text(0, 10, '🚀', { fontSize: '56px' }).setOrigin(0.5);
     this.demoContainer.add(rocket);
     
-    const particles = [];
-    for (let i = 0; i < 5; i++) {
-      const particle = this.add.circle(-30, 10 + i * 10, 2, 0xff6600, 0.7);
+    // Частицы
+    for (let i = 0; i < 6; i++) {
+      const particle = this.add.circle(-35, 5 + i * 8, 3, 0xff6600, 0.8);
       this.demoContainer.add(particle);
-      particles.push(particle);
       
       this.tweens.add({
         targets: particle,
-        x: -50,
+        x: -60,
         alpha: 0,
-        duration: 300,
+        duration: 400,
         repeat: -1,
-        delay: i * 100
+        delay: i * 120
       });
     }
     
+    // Пульсация
     this.tweens.add({
       targets: rocket,
-      y: -20,
-      duration: 500,
+      y: -15,
+      duration: 400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut'
@@ -922,6 +984,10 @@ export class TutorialScene extends Phaser.Scene {
 
   shutdown() {
     this.tweens.killAll();
+    this.demoTimers.forEach(timer => {
+      if (timer && timer.remove) timer.remove();
+    });
+    this.demoTimers = [];
     this.stars = [];
     this.particles = [];
     this.demoObjects = [];
