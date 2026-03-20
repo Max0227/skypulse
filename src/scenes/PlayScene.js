@@ -3062,30 +3062,23 @@ updateWorldProgress() {
     }
   }
 
-  createPlayer() {
+  /**
+ * Создание игрока
+ */
+createPlayer() {
   const h = this.scale.height;
   
   // Получаем текущий скин с проверкой
   let skin = 'player';
   try {
-    const currentSkin = gameManager.getCurrentSkin && gameManager.getCurrentSkin();
+    const currentSkin = gameManager.getCurrentSkin?.();
     if (currentSkin && this.textures.exists(currentSkin)) {
       skin = currentSkin;
     } else if (this.textures.exists('player')) {
       skin = 'player';
     } else {
       console.warn('⚠️ Player texture not found, creating fallback');
-      // Создаём временную текстуру
-      const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-      graphics.fillStyle(0xffaa00);
-      graphics.fillRoundedRect(0, 0, 80, 60, 8);
-      graphics.fillStyle(0xff8800);
-      graphics.fillRoundedRect(8, 0, 64, 12, 4);
-      graphics.fillStyle(0x44aaff);
-      graphics.fillRect(12, 20, 20, 12);
-      graphics.fillRect(44, 20, 20, 12);
-      graphics.generateTexture('player_fallback', 80, 60);
-      graphics.destroy();
+      this.createFallbackTexture();
       skin = 'player_fallback';
     }
   } catch (e) {
@@ -3094,9 +3087,9 @@ updateWorldProgress() {
   
   console.log(`✅ Creating player with skin: ${skin}`);
   
-  // Создаём игрока
+  // Создаём игрока с анимацией появления
   this.player = this.physics.add.image(this.targetPlayerX, h / 2, skin);
-  this.player.setScale(0.85);
+  this.player.setScale(0);
   this.player.setCollideWorldBounds(false);
   this.player.setMaxVelocity(600, 1000);
   this.player.body.setCircle(22, 16, 8);
@@ -3104,38 +3097,57 @@ updateWorldProgress() {
   this.player.body.setMass(10000);
   this.player.body.setDrag(500, 0);
   this.player.setDepth(15);
-  this.player.setVisible(true);
+  
+  // Анимация появления
+  this.tweens.add({
+    targets: this.player,
+    scale: 0.85,
+    duration: 400,
+    ease: 'Back.out',
+    onComplete: () => {
+      this.player.setVisible(true);
+    }
+  });
   
   // Эффект свечения
-  this.playerGlow = this.add.circle(this.targetPlayerX, h / 2, 28, 0x00ffff, 0.2);
+  this.playerGlow = this.add.circle(this.targetPlayerX, h / 2, 32, 0x00ffff, 0);
   this.playerGlow.setBlendMode(Phaser.BlendModes.ADD);
   this.playerGlow.setDepth(14);
   
   this.tweens.add({
     targets: this.playerGlow,
-    alpha: { from: 0.1, to: 0.3 },
-    scale: { from: 1, to: 1.2 },
-    duration: 800,
-    yoyo: true,
-    repeat: -1,
-    onUpdate: () => {
-      if (this.player && this.player.active) {
-        this.playerGlow.setPosition(this.player.x, this.player.y);
-      }
+    alpha: { from: 0, to: 0.25 },
+    scale: { from: 0.8, to: 1.2 },
+    duration: 600,
+    onComplete: () => {
+      this.tweens.add({
+        targets: this.playerGlow,
+        alpha: { from: 0.15, to: 0.35 },
+        scale: { from: 1, to: 1.3 },
+        duration: 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        onUpdate: () => {
+          if (this.player?.active) {
+            this.playerGlow.setPosition(this.player.x, this.player.y);
+          }
+        }
+      });
     }
   });
   
-  // След
+  // Неоновый след
   this.trailEmitter = this.add.particles(0, 0, 'flare', {
-    speed: 40,
-    scale: { start: 0.4, end: 0 },
-    alpha: { start: 0.7, end: 0 },
-    lifespan: 200,
+    speed: { min: 30, max: 60 },
+    scale: { start: 0.35, end: 0 },
+    alpha: { start: 0.6, end: 0 },
+    lifespan: 250,
     blendMode: Phaser.BlendModes.ADD,
     follow: this.player,
-    followOffset: { x: -20, y: 0 },
-    quantity: 3,
-    frequency: 20,
+    followOffset: { x: -18, y: 0 },
+    quantity: 2,
+    frequency: 18,
     tint: [0x00ffff, 0xff00ff, 0xffff00]
   });
   
@@ -3146,117 +3158,89 @@ updateWorldProgress() {
   this.player.speedBoost = 1;
   this.player.invincible = false;
   
-  // Загрузка звуков с проверкой
-  try {
-    this.coinSound = this.sound.add('coin_sound', { volume: 0.4 });
-    this.itemSound = this.sound.add('item_sound', { volume: 0.5 });
-    this.tapSound = this.sound.add('tap_sound', { volume: 0.3 });
-    this.wagonSound = this.sound.add('wagon_sound', { volume: 0.6 });
-    this.levelUpSound = this.sound.add('level_up_sound', { volume: 0.5 });
-    this.purchaseSound = this.sound.add('purchase_sound', { volume: 0.5 });
-    this.reviveSound = this.sound.add('revive_sound', { volume: 0.5 });
-    this.hitSound = this.tapSound;
-  } catch (e) {
-    console.warn('⚠️ Some sounds not loaded, continuing without sound');
-    this.coinSound = null;
-    this.itemSound = null;
-    this.tapSound = null;
-    this.wagonSound = null;
-    this.levelUpSound = null;
-    this.purchaseSound = null;
-    this.reviveSound = null;
-    this.hitSound = null;
-  }
+  // Загрузка звуков
+  this.initSounds();
 }
 
+/**
+ * Создание fallback текстуры
+ */
+createFallbackTexture() {
+  const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+  graphics.fillStyle(0xffaa00);
+  graphics.fillRoundedRect(0, 0, 80, 60, 8);
+  graphics.fillStyle(0xff8800);
+  graphics.fillRoundedRect(8, 0, 64, 12, 4);
+  graphics.fillStyle(0x44aaff);
+  graphics.fillRect(12, 20, 20, 12);
+  graphics.fillRect(44, 20, 20, 12);
+  graphics.fillStyle(0x00ffff);
+  graphics.fillCircle(18, 42, 5);
+  graphics.fillStyle(0xffffff);
+  graphics.fillCircle(18, 42, 3);
+  graphics.generateTexture('player_fallback', 80, 60);
+  graphics.destroy();
+}
+
+/**
+ * Инициализация звуков
+ */
+initSounds() {
+  const sounds = [
+    { key: 'coin_sound', volume: 0.4, prop: 'coinSound' },
+    { key: 'item_sound', volume: 0.5, prop: 'itemSound' },
+    { key: 'tap_sound', volume: 0.3, prop: 'tapSound' },
+    { key: 'wagon_sound', volume: 0.6, prop: 'wagonSound' },
+    { key: 'level_up_sound', volume: 0.5, prop: 'levelUpSound' },
+    { key: 'purchase_sound', volume: 0.5, prop: 'purchaseSound' },
+    { key: 'revive_sound', volume: 0.5, prop: 'reviveSound' }
+  ];
+  
+  sounds.forEach(sound => {
+    try {
+      if (this.cache.audio.has(sound.key)) {
+        this[sound.prop] = this.sound.add(sound.key, { volume: sound.volume });
+      } else {
+        this[sound.prop] = null;
+      }
+    } catch (e) {
+      this[sound.prop] = null;
+    }
+  });
+  
+  this.hitSound = this.tapSound;
+}
+
+/**
+ * Создание пользовательского интерфейса
+ */
 createUI() {
   const w = this.scale.width;
   const h = this.scale.height;
-  const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
   
-  // ===== ОСНОВНЫЕ ЭЛЕМЕНТЫ UI =====
+  // ===== ВЕРХНЯЯ ПАНЕЛЬ =====
+  this.createTopPanel();
   
-  // Счёт
-  this.scoreText = this.add.text(w / 2, 25, '0', {
-    fontSize: '42px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#ffffff',
-    stroke: '#00ffff',
-    strokeThickness: 6,
-    shadow: { blur: 12, color: '#00ffff', fill: true }
-  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+  // ===== НИЖНЯЯ ПАНЕЛЬ =====
+  this.createBottomPanel();
   
-  // Рекорд
-  this.bestText = this.add.text(12, 12, `🏆 ${this.best}`, {
-    fontSize: '13px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#ffaa44',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setDepth(10).setScrollFactor(0);
-  
-  // Кристаллы
-  this.crystalText = this.add.text(w - 12, 12, `💎 ${this.crystals}`, {
-    fontSize: '13px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#ffaa44',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
-  
-  // Метраж
-  this.meterText = this.add.text(12, h - 75, `📏 ${Math.floor(this.meters)} м`, {
-    fontSize: '11px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#88ccff',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setDepth(10).setScrollFactor(0);
-  
-  // Счётчик вагонов
-  this.wagonCountText = this.add.text(w - 12, h - 75, `🚃 ${this.wagons.length}/${this.maxWagons}`, {
-    fontSize: '11px',
-    fontFamily: "'Share Tech Mono', monospace",
-    color: '#88ccff',
-    stroke: '#000000',
-    strokeThickness: 2
-  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
-  
-  // Текст бонуса
-  this.bonusText = this.add.text(w - 12, 45, '', {
-    fontSize: '12px',
-    fontFamily: "'Orbitron', sans-serif",
-    stroke: '#000000',
-    strokeThickness: 2,
-    align: 'right'
-  }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
-  
-  // Текст уровня (для анимации)
-  this.levelText = this.add.text(w / 2, h / 2 - 80, '', {
-    fontSize: '32px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#ffffff',
-    stroke: '#ff00ff',
-    strokeThickness: 6,
-    shadow: { blur: 15, color: '#ff00ff', fill: true }
-  }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
-  
-  // Сердечки здоровья
-  this.heartContainer = this.add.container(12, 35).setDepth(10).setScrollFactor(0);
+  // ===== ЗДОРОВЬЕ =====
+  this.heartContainer = this.add.container(12, 38).setDepth(10).setScrollFactor(0);
   this.updateHearts();
   
-  // Интро текст
+  // ===== ИНТРО ТЕКСТ =====
   this.introText = this.add.text(w / 2, h * 0.42, 'СОБИРАЙ МОНЕТЫ\nЧТОБЫ УДЛИНИТЬ ТАКСИ', {
-    fontSize: '13px',
+    fontSize: '14px',
     fontFamily: "'Orbitron', sans-serif",
     color: '#ffffff',
     align: 'center',
     stroke: '#7c3aed',
     strokeThickness: 2,
-    lineSpacing: 8
+    lineSpacing: 10,
+    shadow: { blur: 8, color: '#7c3aed', fill: true }
   }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
   
-  // Подсказка о монетах
+  // ===== ПОДСКАЗКА О МОНЕТАХ =====
   this.coinTipsText = this.add.text(w / 2, h * 0.52, '🟡 Золото  |  🔴 Скорость  |  🔵 Щит  |  🟢 Магнит  |  🟣 Замедление', {
     fontSize: '8px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3265,42 +3249,152 @@ createUI() {
   }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
   
   // ===== КНОПКИ =====
+  this.createButtons();
+  
+  // ===== ОКНО GAME OVER =====
+  this.createGameOverBox();
+  
+  // ===== ПРИМЕНЕНИЕ БОНУСОВ СКИНА =====
+  this.applySkinBonuses();
+  
+  // ===== КОЛЛИЗИИ =====
+  this.setupCollisions();
+}
+
+/**
+ * Создание верхней панели
+ */
+createTopPanel() {
+  const w = this.scale.width;
+  
+  // Счёт
+  this.scoreText = this.add.text(w / 2, 22, '0', {
+    fontSize: '48px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#ffffff',
+    stroke: '#00ffff',
+    strokeThickness: 6,
+    shadow: { blur: 15, color: '#00ffff', fill: true }
+  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+  
+  // Рекорд
+  this.bestText = this.add.text(12, 10, `🏆 ${this.best}`, {
+    fontSize: '12px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#ffaa44',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setDepth(10).setScrollFactor(0);
+  
+  // Кристаллы
+  this.crystalText = this.add.text(w - 12, 10, `💎 ${this.crystals}`, {
+    fontSize: '12px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#ffaa44',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
+  
+  // Текст бонуса
+  this.bonusText = this.add.text(w - 12, 42, '', {
+    fontSize: '12px',
+    fontFamily: "'Orbitron', sans-serif",
+    stroke: '#000000',
+    strokeThickness: 2,
+    align: 'right'
+  }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
+  
+  // Текст уровня (анимация)
+  this.levelText = this.add.text(w / 2, 100, '', {
+    fontSize: '28px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#ffffff',
+    stroke: '#ff00ff',
+    strokeThickness: 5,
+    shadow: { blur: 15, color: '#ff00ff', fill: true }
+  }).setOrigin(0.5).setDepth(15).setVisible(false).setScrollFactor(0);
+}
+
+/**
+ * Создание нижней панели
+ */
+createBottomPanel() {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  // Метраж
+  this.meterText = this.add.text(12, h - 70, `📏 ${Math.floor(this.meters)} м`, {
+    fontSize: '11px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#88ccff',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setDepth(10).setScrollFactor(0);
+  
+  // Счётчик вагонов
+  this.wagonCountText = this.add.text(w - 12, h - 70, `🚃 ${this.wagons.length}/${this.maxWagons}`, {
+    fontSize: '11px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#88ccff',
+    stroke: '#000000',
+    strokeThickness: 2
+  }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
+}
+
+/**
+ * Создание кнопок управления
+ */
+createButtons() {
+  const w = this.scale.width;
+  const h = this.scale.height;
   
   // Кнопка паузы
   this.pauseButton = this.add.image(w - 35, h - 35, 'pause_button')
     .setInteractive({ useHandCursor: true })
     .setDepth(20)
-    .setScrollFactor(0)
-    .on('pointerover', () => this.pauseButton.setScale(1.1))
-    .on('pointerout', () => this.pauseButton.setScale(1))
-    .on('pointerdown', () => this.togglePause());
+    .setScrollFactor(0);
+  
+  this.pauseButton.on('pointerover', () => this.pauseButton.setScale(1.1));
+  this.pauseButton.on('pointerout', () => this.pauseButton.setScale(1));
+  this.pauseButton.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.togglePause();
+  });
   
   // Кнопка магазина
   this.shopButton = this.add.image(w - 90, h - 35, 'shop_button')
     .setInteractive({ useHandCursor: true })
     .setDepth(20)
-    .setScrollFactor(0)
-    .setVisible(true)
-    .on('pointerover', () => this.shopButton.setScale(1.1))
-    .on('pointerout', () => this.shopButton.setScale(1))
-    .on('pointerdown', () => this.openShop());
+    .setScrollFactor(0);
+  
+  this.shopButton.on('pointerover', () => this.shopButton.setScale(1.1));
+  this.shopButton.on('pointerout', () => this.shopButton.setScale(1));
+  this.shopButton.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.openShop();
+  });
   
   // Кнопка меню
   this.menuButton = this.add.image(w - 145, h - 35, 'menu_button')
     .setInteractive({ useHandCursor: true })
     .setDepth(20)
-    .setScrollFactor(0)
-    .on('pointerover', () => this.menuButton.setScale(1.1))
-    .on('pointerout', () => this.menuButton.setScale(1))
-    .on('pointerdown', () => this.confirmExit());
+    .setScrollFactor(0);
   
-  // Создаём окно Game Over
-  this.createGameOverBox();
-  
-  // Применяем бонусы от выбранного скина
+  this.menuButton.on('pointerover', () => this.menuButton.setScale(1.1));
+  this.menuButton.on('pointerout', () => this.menuButton.setScale(1));
+  this.menuButton.on('pointerdown', (pointer) => {
+    pointer.event?.stopPropagation();
+    this.confirmExit();
+  });
+}
+
+/**
+ * Применение бонусов от скина
+ */
+applySkinBonuses() {
   try {
-    const currentSkin = gameManager.getCurrentSkin();
-    const skinStats = gameManager.getSkinStats(currentSkin);
+    const currentSkin = gameManager.getCurrentSkin?.();
+    const skinStats = gameManager.getSkinStats?.(currentSkin);
     if (skinStats) {
       this.jumpPower += skinStats.jumpBonus || 0;
       this.baseSpeed += skinStats.speedBonus || 0;
@@ -3313,17 +3407,20 @@ createUI() {
   } catch (e) {
     console.warn('Error applying skin stats:', e);
   }
-  
-  // ===== КОЛЛИЗИИ =====
-  
+}
+
+/**
+ * Настройка коллизий
+ */
+setupCollisions() {
   // Монеты
   this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
   
   // Пули игрока с врагами
   this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
-    if (!bullet || !bullet.active || !enemySprite || !enemySprite.active) return;
+    if (!bullet?.active || !enemySprite?.active) return;
     const enemy = enemySprite.enemyRef;
-    if (enemy && enemy.health > 0 && this.damageSystem) {
+    if (enemy?.health > 0 && this.damageSystem) {
       this.damageSystem.enemyHitByBullet(enemy, bullet);
     }
   }, null, this);
@@ -3337,35 +3434,18 @@ createUI() {
   
   // Враждебные пули с вагонами
   this.physics.add.overlap(this.enemyBullets, this.wagons, (bullet, wagon) => {
-    if (!bullet || !wagon || !wagon.active) return;
+    if (!bullet?.active || !wagon?.active) return;
     if (wagon.takeDamage) {
       const destroyed = wagon.takeDamage(1);
       if (destroyed) {
         this.wagons = this.wagons.filter(w => w !== wagon);
-      }
-    } else {
-      // Fallback для старых вагонов
-      let hp = wagon.getData('hp') - 1;
-      if (hp <= 0) {
-        this.wagons = this.wagons.filter(w => w !== wagon);
-        this.particleManager.createWagonDestroyEffect(wagon);
-        wagon.destroy();
-      } else {
-        wagon.setData('hp', hp);
-        this.tweens.add({
-          targets: wagon,
-          alpha: 0.5,
-          duration: 100,
-          yoyo: true,
-          repeat: 1
-        });
       }
     }
     bullet.destroy();
   }, null, this);
 }
 
-  /**
+/**
  * Обновление отображения сердечек здоровья
  */
 updateHearts() {
@@ -3373,28 +3453,24 @@ updateHearts() {
   this.heartContainer.removeAll(true);
   
   const heartSpacing = 18;
-  const startX = 0;
   
   for (let i = 0; i < this.maxHeadHP; i++) {
-    // Создаём сердце с анимацией
-    const heart = this.add.image(startX + i * heartSpacing, 0, 'heart').setScale(0.55);
+    const heart = this.add.image(i * heartSpacing, 0, 'heart').setScale(0.55);
     
     if (i >= this.headHP) {
-      // Потерянное здоровье
       heart.setTint(0x444444);
       heart.setAlpha(0.4);
     } else {
-      // Активное здоровье
       heart.setTint(0xff44ff);
       heart.setAlpha(1);
       
-      // Эффект пульсации для последнего сердца (для красоты)
+      // Пульсация для последнего сердца
       if (i === this.headHP - 1 && this.headHP > 0) {
         this.tweens.add({
           targets: heart,
           scaleX: { from: 0.55, to: 0.7 },
           scaleY: { from: 0.55, to: 0.7 },
-          duration: 300,
+          duration: 400,
           yoyo: true,
           repeat: -1,
           ease: 'Sine.easeInOut'
@@ -3412,9 +3488,14 @@ updateHearts() {
 createGameOverBox() {
   const w = this.scale.width;
   const h = this.scale.height;
-  const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
   
-  // Фон панели с градиентом
+  // Контейнер
+  this.gameOverBox = this.add.container(w / 2, h / 2);
+  this.gameOverBox.setVisible(false);
+  this.gameOverBox.setDepth(100);
+  this.gameOverBox.setScrollFactor(0);
+  
+  // Фон
   const panelBg = this.add.graphics();
   panelBg.fillStyle(0x0a0a1a, 0.98);
   panelBg.fillRoundedRect(-150, -125, 300, 280, 20);
@@ -3426,9 +3507,9 @@ createGameOverBox() {
   innerGlow.lineStyle(2, 0xff00ff, 0.4);
   innerGlow.strokeRoundedRect(-146, -121, 292, 272, 18);
   
-  // Заголовок с эффектом
+  // Заголовок
   const title = this.add.text(0, -95, 'ИГРА ОКОНЧЕНА', {
-    fontSize: '24px',
+    fontSize: '26px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
     color: '#ff4444',
     stroke: '#ff00ff',
@@ -3450,7 +3531,7 @@ createGameOverBox() {
   
   // Подсказка
   const tip = this.add.text(0, 75, '👆 НАЖМИТЕ, ЧТОБЫ ПРОДОЛЖИТЬ', {
-    fontSize: '10px',
+    fontSize: '11px',
     fontFamily: "'Orbitron', sans-serif",
     color: '#88aaff',
     stroke: '#000000',
@@ -3472,10 +3553,7 @@ createGameOverBox() {
     repeat: -1
   });
   
-  this.gameOverBox = this.add.container(w / 2, h / 2, [panelBg, innerGlow, title, subtitle, tip, glowLine]);
-  this.gameOverBox.setVisible(false);
-  this.gameOverBox.setDepth(100);
-  this.gameOverBox.setScrollFactor(0);
+  this.gameOverBox.add([panelBg, innerGlow, title, subtitle, tip, glowLine]);
 }
 
 /**
