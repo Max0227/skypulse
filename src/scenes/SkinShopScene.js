@@ -352,7 +352,7 @@ export class SkinShopScene extends Phaser.Scene {
     this.scrollVelocity = 0;
     this.isDragging = false;
     this.lastScrollY = 0;
-    this.scrollDeceleration = 0.95;
+    this.scrollDeceleration = 0.90;
     this.minScrollY = 0;
     this.maxScrollY = 0;
     this.optimizeLowEnd = false;
@@ -433,43 +433,41 @@ export class SkinShopScene extends Phaser.Scene {
   // =========================================================================
 
   createCyberpunkBackground() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+  const w = this.scale.width;
+  const h = this.scale.height;
 
-    // Базовый черный фон
-    this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
+  // Базовый черный фон (не белый!)
+  this.add.rectangle(0, 0, w, h, 0x030712).setOrigin(0);
 
-    // Многослойный градиент для глубины (уменьшаем слои на слабых устройствах)
-    const gradientLayers = this.optimizeLowEnd ? [0.15, 0.25] : [0.1, 0.15, 0.2, 0.25];
+  // Многослойный градиент (как в MenuScene)
+  const gradientLayers = [0.1, 0.15, 0.2, 0.25];
+  gradientLayers.forEach((alpha, index) => {
+    const gradient = this.make.graphics({ x: 0, y: 0, add: false });
+    gradient.fillGradientStyle(
+      0x030712 + index * 0x010101,
+      0x030712 + index * 0x010101,
+      0x0a0a1a + index * 0x020202,
+      0x0a0a1a + index * 0x020202,
+      alpha
+    );
+    gradient.fillRect(0, 0, w, h);
+    gradient.generateTexture(`shop_gradient_${index}`, w, h);
+    gradient.destroy();
     
-    gradientLayers.forEach((alpha, index) => {
-      const gradient = this.make.graphics({ x: 0, y: 0, add: false });
-      gradient.fillGradientStyle(
-        0x030712 + index * 0x010101,
-        0x030712 + index * 0x010101,
-        0x0a0a1a + index * 0x020202,
-        0x0a0a1a + index * 0x020202,
-        alpha
-      );
-      gradient.fillRect(0, 0, w, h);
-      gradient.generateTexture(`shop_gradient_${index}`, w, h);
-      gradient.destroy();
-      
-      const gradientImage = this.add.image(0, 0, `shop_gradient_${index}`).setOrigin(0);
-      gradientImage.setAlpha(0.8);
-      
-      if (!this.optimizeLowEnd) {
-        // Легкое движение градиента
-        this.tweens.add({
-          targets: gradientImage,
-          y: index * 5,
-          duration: 8000 + index * 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
-    });
+    const gradientImage = this.add.image(0, 0, `shop_gradient_${index}`).setOrigin(0);
+    gradientImage.setAlpha(0.8);
+    
+    if (!this.optimizeLowEnd) {
+      this.tweens.add({
+        targets: gradientImage,
+        y: index * 5,
+        duration: 8000 + index * 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
+  });
 
     // Добавляем размытые неоновые круги по углам
     const corners = [
@@ -593,10 +591,10 @@ export class SkinShopScene extends Phaser.Scene {
     }
   }
 
-  createStars() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const starCount = this.optimizeLowEnd ? 80 : 150;
+  createStars(count = 150) {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const starCount = this.optimizeLowEnd ? Math.min(50, count) : count;
 
     for (let i = 0; i < starCount; i++) {
       const star = this.add.image(
@@ -630,7 +628,7 @@ export class SkinShopScene extends Phaser.Scene {
 
     // Основной заголовок
     this.title = this.add.text(w / 2, 50, 'МАГАЗИН СКИНОВ', {
-      fontSize: '48px',
+      fontSize: '36px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#00ffff',
@@ -639,7 +637,7 @@ export class SkinShopScene extends Phaser.Scene {
         offsetX: 0, 
         offsetY: 0, 
         color: '#00ffff', 
-        blur: 25, 
+        blur: 20, 
         fill: true,
         stroke: true
       }
@@ -647,11 +645,11 @@ export class SkinShopScene extends Phaser.Scene {
 
     // Копия для свечения
     this.titleGlow = this.add.text(w / 2, 50, 'МАГАЗИН СКИНОВ', {
-      fontSize: '48px',
+      fontSize: '36px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#ff00ff',
-      strokeThickness: 3,
+      strokeThickness: 2,
       alpha: 0.5
     }).setOrigin(0.5);
 
@@ -949,9 +947,13 @@ export class SkinShopScene extends Phaser.Scene {
   // ===== ИСПРАВЛЕННАЯ ИНТЕРАКТИВНАЯ ОБЛАСТЬ =====
   // Создаем прозрачный прямоугольник для кликов
   const hitArea = this.add.rectangle(w / 2, y + 60, w - 40, 120, 0x000000, 0)
-    .setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-(w - 40)/2, -60, w - 40, 120) })
-    .setOrigin(0.5)
-    .setDepth(10); // Устанавливаем высокий depth, чтобы перекрывать другие элементы
+  .setInteractive({ useHandCursor: true })
+  .setOrigin(0.5)
+  .setDepth(10); // добавьте depth выше остальных (у bg depth 1, у текста 2)
+  // Добавьте stopPropagation, чтобы событие не уходило дальше
+hitArea.on('pointerdown', (pointer) => {
+  pointer.event.stopPropagation();
+  });
 
   // Сохраняем ссылку на скин для использования в обработчике
   hitArea.skinData = skin;
@@ -1015,7 +1017,7 @@ export class SkinShopScene extends Phaser.Scene {
     this.scrollVelocity = 0;
     this.isDragging = false;
     this.lastScrollY = 0;
-    this.scrollDeceleration = 0.95;
+    this.scrollDeceleration = 0.90;
 
     // Обработчики событий
     this.scrollZone.on('pointerdown', (pointer) => {
@@ -1522,78 +1524,223 @@ export class SkinShopScene extends Phaser.Scene {
   // =========================================================================
 
   createFooter() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+  const w = this.scale.width;
+  const h = this.scale.height;
 
-    const footerLine = this.add.graphics();
-    footerLine.lineStyle(2, 0x00ffff, 0.3);
-    footerLine.lineBetween(50, h - 45, w - 50, h - 45);
+  // Нижняя неоновая линия с пульсацией
+  const footerLine = this.add.graphics();
+  footerLine.lineStyle(3, 0x00ffff, 0.3);
+  footerLine.lineBetween(40, h - 50, w - 40, h - 50);
+  
+  this.tweens.add({
+    targets: {},
+    duration: 2000,
+    repeat: -1,
+    onUpdate: (tween) => {
+      const progress = Math.sin(tween.progress * Math.PI * 2) * 0.2 + 0.3;
+      footerLine.clear();
+      footerLine.lineStyle(3, 0x00ffff, progress);
+      footerLine.lineBetween(40, h - 50, w - 40, h - 50);
+    }
+  });
 
-    // Статистика коллекции
-    const ownedCount = gameManager.getOwnedSkins().length;
-    const totalCount = SKINS.length;
-    const collectionText = this.add.text(30, h - 30, `📊 СОБРАНО: ${ownedCount}/${totalCount}`, {
-      fontSize: '14px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#88aaff'
-    }).setOrigin(0, 0.5);
-
-    // Кнопка назад с неоновым эффектом
-    const backBtn = this.add.text(w / 2, h - 30, '⏎ НАЗАД В МЕНЮ', {
-      fontSize: '22px',
-      fontFamily: '"Audiowide", sans-serif',
-      color: '#00ffff',
-      stroke: '#000000',
-      strokeThickness: 3,
-      padding: { x: 30, y: 8 },
-      backgroundColor: '#1a1a3a'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    backBtn.on('pointerover', () => {
-      backBtn.setStyle({ color: '#ffffff', backgroundColor: '#2a2a5a' });
-      backBtn.setScale(1.05);
-      this.playHoverSound();
+  // Декоративные огни по углам
+  const createCornerLight = (x, y, color) => {
+    const light = this.add.circle(x, y, 8, color, 0.6);
+    light.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: light,
+      alpha: 0.2,
+      scale: 1.8,
+      duration: 1200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
+    
+    return light;
+  };
 
-    backBtn.on('pointerout', () => {
-      backBtn.setStyle({ color: '#00ffff', backgroundColor: '#1a1a3a' });
-      backBtn.setScale(1);
+  createCornerLight(30, h - 50, 0x00ffff);
+  createCornerLight(w - 30, h - 50, 0xff00ff);
+
+  // Статистика коллекции (стилизованная)
+  const ownedCount = gameManager.getOwnedSkins().length;
+  const totalCount = SKINS.length;
+  const collectionPercent = Math.floor((ownedCount / totalCount) * 100);
+
+  const statsContainer = this.add.container(30, h - 30);
+
+  const statsBg = this.add.graphics();
+  statsBg.fillStyle(0x0a0a1a, 0.7);
+  statsBg.fillRoundedRect(0, -15, 160, 30, 10);
+  statsBg.lineStyle(2, 0x00ffff, 0.3);
+  statsBg.strokeRoundedRect(0, -15, 160, 30, 10);
+
+  const statsIcon = this.add.text(12, 0, '📊', {
+    fontSize: '16px'
+  }).setOrigin(0, 0.5);
+
+  const statsText = this.add.text(35, 0, `${ownedCount}/${totalCount}`, {
+    fontSize: '14px',
+    fontFamily: '"Audiowide", sans-serif',
+    color: '#88aaff',
+    stroke: '#000000',
+    strokeThickness: 1
+  }).setOrigin(0, 0.5);
+
+  const percentText = this.add.text(100, 0, `${collectionPercent}%`, {
+    fontSize: '12px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: '#00ffff'
+  }).setOrigin(0, 0.5);
+
+  statsContainer.add([statsBg, statsIcon, statsText, percentText]);
+
+  // Кнопка назад - КРАСИВАЯ НЕОНОВАЯ КНОПКА
+  const backBtnX = w / 2;
+  const backBtnY = h - 30;
+
+  // Графика кнопки
+  const backBtnGraphics = this.add.graphics();
+  
+  const backBtnState = {
+    glowAlpha: 0.4,
+    scale: 1
+  };
+
+  const updateBackButton = () => {
+    backBtnGraphics.clear();
+    
+    // Внешнее свечение
+    backBtnGraphics.fillStyle(0x00ffff, backBtnState.glowAlpha * 0.2);
+    backBtnGraphics.fillRoundedRect(backBtnX - 140, backBtnY - 20, 280, 40, 25);
+    
+    // Основной фон
+    backBtnGraphics.fillStyle(0x1a1a3a, 0.9);
+    backBtnGraphics.fillRoundedRect(backBtnX - 140, backBtnY - 20, 280, 40, 25);
+    
+    // Неоновая рамка
+    backBtnGraphics.lineStyle(3, 0x00ffff, backBtnState.glowAlpha);
+    backBtnGraphics.strokeRoundedRect(backBtnX - 140, backBtnY - 20, 280, 40, 25);
+    
+    // Внутренняя подсветка
+    backBtnGraphics.lineStyle(2, 0xffffff, 0.2);
+    backBtnGraphics.strokeRoundedRect(backBtnX - 138, backBtnY - 18, 276, 36, 23);
+  };
+
+  updateBackButton();
+
+  // Текст кнопки
+  const backBtnText = this.add.text(backBtnX, backBtnY, '⏎ НАЗАД В МЕНЮ', {
+    fontSize: '20px',
+    fontFamily: '"Audiowide", sans-serif',
+    color: '#ffffff',
+    stroke: '#00ffff',
+    strokeThickness: 2,
+    shadow: { blur: 10, color: '#00ffff', fill: true }
+  }).setOrigin(0.5);
+
+  // Интерактивная область
+  const backBtnHitArea = this.add.rectangle(backBtnX, backBtnY, 280, 40, 0x000000, 0)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(10);
+
+  backBtnHitArea.on('pointerover', () => {
+    this.tweens.add({
+      targets: backBtnState,
+      glowAlpha: 0.9,
+      duration: 200,
+      onUpdate: updateBackButton
     });
-
-    backBtn.on('pointerdown', () => {
-      this.playClickSound();
-      this.cleanupBeforeExit();
-      this.scene.start('menu');
+    
+    this.tweens.add({
+      targets: [backBtnText],
+      scale: 1.1,
+      duration: 200
     });
+    
+    backBtnText.setStyle({ stroke: '#ffffff' });
+    this.playHoverSound();
+  });
 
-    // Версия
-    this.add.text(w - 30, h - 30, 'v3.5.0', {
-      fontSize: '12px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#666666'
-    }).setOrigin(1, 0.5);
-
-    // Декоративные огни
-    [-1, 1].forEach(side => {
-      const x = side === -1 ? 30 : w - 30;
-      
-      const light = this.add.circle(x, h - 30, 5, 0x00ffff, 0.5);
-      light.setBlendMode(Phaser.BlendModes.ADD);
-      
-      if (!this.optimizeLowEnd) {
-        this.tweens.add({
-          targets: light,
-          alpha: 0.2,
-          scale: 1.5,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1,
-          delay: side === -1 ? 0 : 500
-        });
-      }
+  backBtnHitArea.on('pointerout', () => {
+    this.tweens.add({
+      targets: backBtnState,
+      glowAlpha: 0.4,
+      duration: 200,
+      onUpdate: updateBackButton
     });
-  }
+    
+    this.tweens.add({
+      targets: [backBtnText],
+      scale: 1,
+      duration: 200
+    });
+    
+    backBtnText.setStyle({ stroke: '#00ffff' });
+  });
 
+  backBtnHitArea.on('pointerdown', () => {
+    this.playClickSound();
+    this.cleanupBeforeExit();
+    this.scene.start('menu');
+  });
+
+  // Версия с эффектом
+  const versionText = this.add.text(w - 30, h - 30, 'v3.5.0', {
+    fontSize: '12px',
+    fontFamily: '"Share Tech Mono", monospace',
+    color: '#666666',
+    stroke: '#000000',
+    strokeThickness: 1
+  }).setOrigin(1, 0.5);
+
+  this.tweens.add({
+    targets: versionText,
+    alpha: 0.5,
+    duration: 1500,
+    yoyo: true,
+    repeat: -1
+  });
+
+  // Маленькие неоновые точки по бокам от версии
+  const versionDots = [-15, -5, 5, 15];
+  versionDots.forEach((offset, index) => {
+    const dot = this.add.circle(w - 30 + offset, h - 35, 1, 0x00ffff, 0.3);
+    dot.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: dot,
+      alpha: 0.1,
+      scale: 1.5,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      delay: index * 200
+    });
+  });
+
+  // Анимированная линия прогресса коллекции под статистикой
+  const progressBarBg = this.add.graphics();
+  progressBarBg.fillStyle(0x333333, 0.3);
+  progressBarBg.fillRoundedRect(30, h - 45, 160, 3, 2);
+
+  const progressBarFill = this.add.graphics();
+  const fillWidth = (ownedCount / totalCount) * 160;
+  progressBarFill.fillStyle(0x00ffff, 0.8);
+  progressBarFill.fillRoundedRect(30, h - 45, fillWidth, 3, 2);
+
+  // Анимация пульсации прогресс-бара
+  this.tweens.add({
+    targets: progressBarFill,
+    alpha: 0.6,
+    duration: 1000,
+    yoyo: true,
+    repeat: -1
+  });
+}
   // =========================================================================
   // ТЕКСТУРЫ СКИНОВ
   // =========================================================================
