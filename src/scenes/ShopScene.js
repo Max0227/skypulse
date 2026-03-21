@@ -36,9 +36,6 @@ export class ShopScene extends Phaser.Scene {
     // Заголовок
     this.createHeader();
 
-    // Баланс кристаллов
-    this.createBalanceDisplay();
-
     // Карусель улучшений
     this.createUpgradeCarousel();
 
@@ -47,6 +44,9 @@ export class ShopScene extends Phaser.Scene {
 
     // Кнопки действий
     this.createActionButtons();
+
+    // Баланс кристаллов (перенесён вниз, над кнопкой назад)
+    this.createBalanceDisplay();
 
     // Кнопка назад
     this.createBackButton();
@@ -238,54 +238,7 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // БАЛАНС (без setShadow)
-  // =========================================================================
-  createBalanceDisplay() {
-    const w = this.scale.width;
-    const container = this.add.container(w / 2, 75);
-    container.setDepth(20);
-
-    const bg = this.add.rectangle(0, 0, 280, 48, 0x0a0a1a, 0.95);
-    bg.setStrokeStyle(3, 0x00ffff, 0.9);
-    
-    const icon = this.add.text(-75, 0, '💎', { fontSize: '36px' }).setOrigin(0.5);
-    this.tweens.add({
-      targets: icon,
-      angle: 360,
-      duration: 4000,
-      repeat: -1,
-      ease: 'Linear'
-    });
-    
-    this.balanceText = this.add.text(15, 0, `${gameManager.data.crystals}`, {
-      fontSize: '32px',
-      fontFamily: '"Audiowide", sans-serif',
-      color: '#ffaa00',
-      stroke: '#000000',
-      strokeThickness: 4
-    }).setOrigin(0, 0.5);
-    
-    const label = this.add.text(0, -20, 'КРИСТАЛЛЫ', {
-      fontSize: '10px',
-      fontFamily: '"Share Tech Mono", monospace',
-      color: '#88aaff'
-    }).setOrigin(0.5);
-    
-    container.add([bg, icon, this.balanceText, label]);
-    
-    this.tweens.add({
-      targets: bg,
-      strokeWidth: 4,
-      alpha: 1,
-      duration: 1500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-
-  // =========================================================================
-  // КАРУСЕЛЬ
+  // КАРУСЕЛЬ (горизонтальная, с полной поддержкой drag и инерции)
   // =========================================================================
   createUpgradeCarousel() {
     const w = this.scale.width;
@@ -359,11 +312,8 @@ export class ShopScene extends Phaser.Scene {
 
     container.add([bg, icon, name, levelText, progressBg, progressFill, valueText, priceText]);
 
-    const hitArea = this.add.rectangle(0, 0, this.cardWidth, 200, 0x000000, 0)
-      .setInteractive({ useHandCursor: true })
-      .setData('upgrade', upgrade);
-    hitArea.on('pointerdown', () => this.selectCard(index));
-    container.add(hitArea);
+    // Убираем hitArea с карточек, чтобы не мешала drag. Выбор карточки происходит только по позиции.
+    // container.add(hitArea); – удаляем
 
     return container;
   }
@@ -381,6 +331,7 @@ export class ShopScene extends Phaser.Scene {
     let lastX = 0;
     let lastTime = 0;
 
+    // Создаём зону на весь экран для перетаскивания
     const zone = this.add.zone(0, 0, w, this.scale.height).setOrigin(0).setInteractive();
     
     zone.on('pointerdown', (pointer) => {
@@ -404,11 +355,13 @@ export class ShopScene extends Phaser.Scene {
       this.carouselContainer.x = newX;
       lastX = pointer.x;
       lastTime = now;
+      // Обновляем выбор центральной карточки
       this.updateSelectedCardByPosition();
     });
     
     zone.on('pointerup', () => {
       isDragging = false;
+      // Инерция
       if (Math.abs(velocity) > 30) {
         const targetX = this.carouselContainer.x + velocity * 0.15;
         this.scrollTween = this.tweens.add({
@@ -427,6 +380,7 @@ export class ShopScene extends Phaser.Scene {
       }
     });
 
+    // Поддержка колесика мыши
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         const newX = this.carouselContainer.x + deltaX * 2;
@@ -491,6 +445,7 @@ export class ShopScene extends Phaser.Scene {
     const upgrade = SHOP_UPGRADES[index];
     this.selectedUpgrade = upgrade;
 
+    // Обновляем рамки карточек
     this.upgradeCards.forEach((cardData, i) => {
       const bg = cardData.card.getData('bg');
       if (!bg) return;
@@ -890,7 +845,57 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КНОПКА НАЗАД
+  // БАЛАНС (перенесён вниз, над кнопкой назад)
+  // =========================================================================
+  createBalanceDisplay() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const balanceY = h - 72; // над кнопкой назад
+
+    const container = this.add.container(w / 2, balanceY);
+    container.setDepth(25);
+
+    const bg = this.add.rectangle(0, 0, 200, 38, 0x0a0a1a, 0.95);
+    bg.setStrokeStyle(2, 0x00ffff, 0.8);
+    
+    const icon = this.add.text(-55, 0, '💎', { fontSize: '26px' }).setOrigin(0.5);
+    this.tweens.add({
+      targets: icon,
+      angle: 360,
+      duration: 4000,
+      repeat: -1,
+      ease: 'Linear'
+    });
+    
+    this.balanceText = this.add.text(10, 0, `${gameManager.data.crystals}`, {
+      fontSize: '22px',
+      fontFamily: '"Audiowide", sans-serif',
+      color: '#ffaa00',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0, 0.5);
+    
+    const label = this.add.text(0, -14, 'КРИСТАЛЛЫ', {
+      fontSize: '8px',
+      fontFamily: '"Share Tech Mono", monospace',
+      color: '#88aaff'
+    }).setOrigin(0.5);
+    
+    container.add([bg, icon, this.balanceText, label]);
+    
+    this.tweens.add({
+      targets: bg,
+      strokeWidth: 3,
+      alpha: 1,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+  }
+
+  // =========================================================================
+  // КНОПКА НАЗАД (внизу)
   // =========================================================================
   createBackButton() {
     const w = this.scale.width;
