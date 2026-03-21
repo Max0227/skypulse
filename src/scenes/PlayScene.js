@@ -1183,7 +1183,6 @@ updateCameraZoom() {
   if (this.specialEventManager) {
     this.specialEventManager.update(delta);
   }
-  this.checkLevelProgression();
 
   // ===== РАСЧЕТ ПРИРОСТА МЕТРАЖА =====
   const distanceDelta = (this.currentSpeed * delta) / 1000 / 10;
@@ -4095,13 +4094,11 @@ togglePause() {
 }
 
 /**
- * Открыть магазин
+ * Открыть магазин (убрано - магазин только в меню)
  */
 openShop() {
-  if (this.dead) return;
-  if (this.countdownActive) this.cancelResumeCountdown();
-  if (!this.isPaused) this.togglePause();
-  this.showShop();
+  // Магазин только в меню, в игре недоступен
+  this.showNotification('Магазин доступен только в главном меню', 1500, '#ffaa00');
 }
 
 /**
@@ -4118,10 +4115,8 @@ confirmExit() {
   const w = this.scale.width;
   const h = this.scale.height;
   
-  // ВАЖНО: НЕ добавляем setInteractive() на оверлей!
   this.exitOverlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.85)
     .setDepth(150).setScrollFactor(0);
-  // НЕТ .setInteractive() - это важно!
   
   // Панель
   this.exitPanel = this.add.graphics();
@@ -4198,177 +4193,23 @@ confirmExit() {
 }
 
 /**
- * Показать магазин
+ * Показать магазин (удалено - магазин только в меню)
  */
 showShop() {
-  if (this.shopVisible) return;
-  this.shopVisible = true;
-  
-  const w = this.scale.width;
-  const h = this.scale.height;
-  const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-  
-  // Оверлей
-  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x0a0a1a, 0.95)
-    .setDepth(80).setScrollFactor(0).setInteractive();
-  
-  // Панель с неоновой рамкой
-  const panel = this.add.graphics();
-  panel.fillStyle(0x0d0d1a, 0.98);
-  panel.fillRoundedRect(w / 2 - (w - 40) / 2, 20, w - 40, h - 40, 20);
-  panel.lineStyle(3, 0x00ffff, 0.8);
-  panel.strokeRoundedRect(w / 2 - (w - 40) / 2, 20, w - 40, h - 40, 20);
-  panel.setDepth(81);
-  
-  // Заголовок
-  const title = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
-    fontSize: '26px',
-    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-    color: '#00ffff',
-    stroke: '#ff00ff',
-    strokeThickness: 3,
-    shadow: { blur: 15, color: '#00ffff', fill: true }
-  }).setOrigin(0.5).setDepth(82);
-  
-  // Баланс
-  const balanceBg = this.add.graphics();
-  balanceBg.fillStyle(0x1a1a3a, 0.9);
-  balanceBg.fillRoundedRect(w / 2 - 70, 80, 140, 32, 16);
-  balanceBg.lineStyle(1, 0xffaa00, 0.5);
-  balanceBg.strokeRoundedRect(w / 2 - 70, 80, 140, 32, 16);
-  balanceBg.setDepth(82);
-  
-  const balance = this.add.text(w / 2, 96, `💎 ${this.crystals}`, {
-    fontSize: '18px',
-    fontFamily: "'Audiowide', sans-serif",
-    color: '#ffaa00',
-    stroke: '#ff5500',
-    strokeThickness: 2
-  }).setOrigin(0.5).setDepth(83);
-  
-  this.shopElements = [overlay, panel, title, balanceBg, balance];
-  this.shopUpgradeTexts = [];
-  this.shopBuyButtons = [];
-  
-  const upgrades = SHOP_UPGRADES || [];
-  let y = 125;
-  const col1X = 50;
-  const col2X = w - 160;
-  
-  for (let up of upgrades) {
-    if (!up || !up.key) continue;
-    
-    const level = this.upgradeSystem?.upgrades?.[up.key] || 0;
-    const maxLevel = up.maxLevel || 10;
-    const currentValue = this.upgradeSystem?.getUpgradeValue(up.key) || 0;
-    const cost = this.upgradeSystem?.getUpgradeCost(up.key) || 999999;
-    const canAfford = this.crystals >= cost && level < maxLevel;
-    const isMax = level >= maxLevel;
-    
-    // Название улучшения
-    const nameText = this.add.text(col1X, y, `${up.icon} ${up.name}`, {
-      fontSize: '12px',
-      fontFamily: "'Orbitron', sans-serif",
-      color: '#ffffff',
-      stroke: '#00aaff',
-      strokeThickness: 0.5
-    }).setDepth(82);
-    
-    // Значение
-    const valueText = this.add.text(col1X + 140, y, `${currentValue}`, {
-      fontSize: '11px',
-      fontFamily: "'Share Tech Mono', monospace",
-      color: '#88ff88'
-    }).setDepth(82);
-    
-    // Уровень
-    const levelText = this.add.text(col1X + 180, y, `${level}/${maxLevel}`, {
-      fontSize: '10px',
-      fontFamily: "'Share Tech Mono', monospace",
-      color: isMax ? '#00ff00' : '#88aaff'
-    }).setDepth(82);
-    
-    // Цена
-    const priceText = this.add.text(col2X, y, isMax ? 'MAX' : `${cost} 💎`, {
-      fontSize: '12px',
-      fontFamily: "'Audiowide', sans-serif",
-      color: isMax ? '#00ff00' : (canAfford ? '#ffaa00' : '#ff4444')
-    }).setOrigin(1, 0.5).setDepth(82);
-    
-    this.shopElements.push(nameText, valueText, levelText, priceText);
-    
-    // Кнопка покупки
-    if (canAfford && !isMax) {
-      const btn = this.add.text(col2X + 30, y, '[КУПИТЬ]', {
-        fontSize: '10px',
-        fontFamily: "'Audiowide', sans-serif",
-        color: '#00ff00',
-        backgroundColor: '#1a3a1a',
-        padding: { x: 4, y: 2 },
-        shadow: { blur: 5, color: '#00ff00', fill: true }
-      }).setInteractive({ useHandCursor: true }).setDepth(83);
-      
-      btn.on('pointerover', () => btn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' }));
-      btn.on('pointerout', () => btn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' }));
-      btn.on('pointerdown', () => this.buyUpgrade(up.key));
-      
-      this.shopElements.push(btn);
-      this.shopBuyButtons.push({ key: up.key, btnObj: btn });
-    }
-    
-    y += 32;
-  }
-  
-  // Кнопка закрытия
-  const closeBtn = this.add.text(w / 2, h - 45, 'ЗАКРЫТЬ', {
-    fontSize: '18px',
-    fontFamily: "'Audiowide', sans-serif",
-    color: '#ff00ff',
-    backgroundColor: '#1a1a2e',
-    padding: { x: 30, y: 8 },
-    shadow: { blur: 10, color: '#ff00ff', fill: true }
-  }).setInteractive({ useHandCursor: true }).setDepth(83);
-  
-  closeBtn.on('pointerover', () => closeBtn.setStyle({ color: '#ffffff', backgroundColor: '#ff00ff' }));
-  closeBtn.on('pointerout', () => closeBtn.setStyle({ color: '#ff00ff', backgroundColor: '#1a1a2e' }));
-  closeBtn.on('pointerdown', () => this.startResumeCountdown());
-  
-  this.shopElements.push(closeBtn);
+  // Магазин только в меню
+  this.showNotification('Магазин доступен только в главном меню', 1500, '#ffaa00');
+  if (this.isPaused) this.togglePause();
 }
 
 /**
- * Покупка улучшения
+ * Покупка улучшения (удалено)
  */
 buyUpgrade(key) {
-  if (!this.upgradeSystem) return;
-  
-  const cost = this.upgradeSystem.getUpgradeCost(key);
-  if (this.crystals < cost) {
-    this.showNotification('Недостаточно кристаллов!', 1500, '#ff4444');
-    return;
-  }
-  
-  this.crystals -= cost;
-  if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
-  
-  this.upgradeSystem.applyUpgrade(key);
-  
-  try { if (this.purchaseSound) this.purchaseSound.play(); } catch (e) {}
-  this.showNotification('✨ Улучшение куплено! ✨', 1500, '#00ff00');
-  
-  if (this.shopVisible) {
-    this.hideShop();
-    this.showShop();
-  }
-  
-  if (gameManager.data) {
-    gameManager.data.crystals = this.crystals;
-    gameManager.save();
-  }
+  this.showNotification('Улучшения доступны только в главном меню', 1500, '#ffaa00');
 }
 
 /**
- * Старт обратного отсчёта после закрытия магазина
+ * Старт обратного отсчёта после закрытия (упрощён)
  */
 startResumeCountdown() {
   if (this.countdownActive) return;
@@ -4472,135 +4313,90 @@ cancelResumeCountdown() {
 }
 
 /**
- * Проверка прогресса уровня
+ * Проверка прогресса уровня (ОТКЛЮЧЕНА - переход только через completeWorldLevel)
  */
 checkLevelProgression() {
-  const nextLevel = Math.floor(this.score / 1000);
-  if (this.levelManager && nextLevel > (this.levelManager.currentLevel || 0) && nextLevel < 6) {
-    this.transitionToLevel(nextLevel);
-  }
+  // Убираем автоматический переход на новые миры по очкам
+  // Переход происходит только через completeWorldLevel() при прохождении 10 км
+  return;
 }
 
 /**
- * Переход на новый уровень
+ * Переход на новый уровень (ОТКЛЮЧЕН)
  */
 transitionToLevel(levelIndex) {
-  if (this.levelManager) {
-    if (typeof this.levelManager.setLevel === 'function') {
-      this.levelManager.setLevel(levelIndex);
-    } else if (typeof this.levelManager.changeLevel === 'function') {
-      this.levelManager.changeLevel(levelIndex);
-    } else {
-      this.levelManager.currentLevel = levelIndex;
-    }
-    this.waveManager = new WaveManager(this, this.levelManager);
-  }
-  this.showLevelTransition(levelIndex);
+  // Этот метод отключён - переход только через completeWorldLevel()
+  return;
 }
 
 /**
- * Показать анимацию перехода уровня
+ * Показать анимацию перехода уровня (ОТКЛЮЧЕНА)
  */
 showLevelTransition(levelIndex) {
-  const w = this.scale.width;
-  const h = this.scale.height;
-  const levelName = (this.levelManager && this.levelManager.levelConfig) 
-    ? this.levelManager.levelConfig[levelIndex]?.name 
-    : `УРОВЕНЬ ${levelIndex + 1}`;
-  
-  // Оверлей
-  const overlay = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0)
-    .setDepth(200).setScrollFactor(0);
-  
-  this.tweens.add({
-    targets: overlay,
-    alpha: 0.95,
-    duration: 400,
-    ease: 'Power2.easeIn',
-    onComplete: () => {
-      // Эффект вспышки
-      this.cameras.main.flash(200, 100, 255, 100, false);
-      
-      // Текст уровня
-      const text = this.add.text(w / 2, h / 2, levelName, {
-        fontSize: '44px',
-        fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-        color: '#00ffff',
-        stroke: '#ff00ff',
-        strokeThickness: 6,
-        shadow: { blur: 25, color: '#00ffff', fill: true }
-      }).setOrigin(0.5).setDepth(201).setScrollFactor(0);
-      
-      text.setScale(0.5);
-      this.tweens.add({
-        targets: text,
-        scale: 1,
-        duration: 500,
-        ease: 'Back.out'
-      });
-      
-      // Частицы
-      for (let i = 0; i < 30; i++) {
-        const particle = this.add.circle(
-          w / 2 + Phaser.Math.Between(-100, 100),
-          h / 2 + Phaser.Math.Between(-50, 50),
-          Phaser.Math.Between(2, 5),
-          0x00ffff,
-          0.7
-        );
-        particle.setBlendMode(Phaser.BlendModes.ADD);
-        
-        this.tweens.add({
-          targets: particle,
-          alpha: 0,
-          scale: 2,
-          x: particle.x + Phaser.Math.Between(-100, 100),
-          y: particle.y + Phaser.Math.Between(-100, 100),
-          duration: 800,
-          onComplete: () => particle.destroy()
-        });
-      }
-      
-      this.time.delayedCall(1800, () => {
-        this.tweens.add({
-          targets: [overlay, text],
-          alpha: 0,
-          duration: 400,
-          onComplete: () => {
-            overlay.destroy();
-            text.destroy();
-          }
-        });
-      });
-    }
-  });
+  // Отключено
+  return;
 }
 
-  /**
- * Обновление уровня каждые 1000 метров
+ /**
+ * Обновление уровня сложности (внутренняя прогрессия)
  */
 updateLevel() {
-  const newLevel = Math.floor(this.meters / 1000);
+  // Уровень сложности увеличивается каждые 1000 метров
+  const newLevel = Math.floor(this.levelProgress / 1000);
   if (newLevel > this.gameLevel) {
     this.gameLevel = newLevel;
     this.updateDifficulty();
 
     const w = this.scale.width;
-    const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ ${this.gameLevel + 1}`, {
-      fontSize: '24px',
-      fontFamily: "'Orbitron', sans-serif",
+    
+    // Стильное уведомление о повышении сложности
+    const levelContainer = this.add.container(w / 2, 200);
+    
+    // Неоновая рамка
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0a1a, 0.95);
+    bg.fillRoundedRect(-120, -30, 240, 60, 20);
+    bg.lineStyle(2, 0x00ffff, 0.8);
+    bg.strokeRoundedRect(-120, -30, 240, 60, 20);
+    
+    // Текст
+    const levelText = this.add.text(0, 0, `⚡ УРОВЕНЬ ${this.gameLevel + 1}`, {
+      fontSize: '22px',
+      fontFamily: "'Audiowide', 'Orbitron', sans-serif",
       color: '#00ffff',
       stroke: '#ff00ff',
-      strokeThickness: 3
-    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
-
+      strokeThickness: 3,
+      shadow: { blur: 12, color: '#00ffff', fill: true }
+    }).setOrigin(0.5);
+    
+    levelContainer.add([bg, levelText]);
+    levelContainer.setAlpha(0);
+    levelContainer.setScale(0.8);
+    
+    // Анимация появления
     this.tweens.add({
-      targets: levelText,
-      alpha: 0,
-      duration: 2000,
-      onComplete: () => levelText.destroy()
+      targets: levelContainer,
+      alpha: 1,
+      scale: 1,
+      y: 180,
+      duration: 300,
+      ease: 'Back.out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: levelContainer,
+          alpha: 0,
+          y: 160,
+          scale: 0.9,
+          duration: 500,
+          delay: 1800,
+          onComplete: () => levelContainer.destroy()
+        });
+      }
     });
-
+    
+    // Эффект свечения
+    this.cameras.main.flash(100, 0, 255, 255, false);
+    
     this.checkStationSpawn();
     if (this.questSystem) {
       this.questSystem.updateProgress('level', 1);
@@ -4609,7 +4405,7 @@ updateLevel() {
 }
 
 /**
- * Обновление параметров сложности на основе текущего уровня
+ * Обновление параметров сложности
  */
 updateDifficulty() {
   const diff = this.getDifficulty();
@@ -4617,25 +4413,46 @@ updateDifficulty() {
   this.gapSize = diff.gap;
   this.spawnDelay = diff.spawnDelay;
   
-  // Если нет активного бонуса, обновляем текущую скорость
   if (!this.bonusActive) {
     this.currentSpeed = this.baseSpeed;
   }
   
-  // Обновляем скорость всех существующих объектов
   this.updateExistingObjectsSpeed();
   
-  console.log(`Уровень ${this.gameLevel}: скорость ${this.baseSpeed}px/с, зазор ${this.gapSize}px`);
+  // Визуальный эффект изменения скорости
+  this.createSpeedRings();
 }
 
 /**
- * Обновление скорости уже существующих объектов
+ * Создать визуальный эффект изменения скорости
+ */
+createSpeedRings() {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  for (let i = 0; i < 3; i++) {
+    const ring = this.add.circle(w / 2, h / 2, 50 + i * 30, 0x00ffff, 0.3);
+    ring.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: ring,
+      scale: 2,
+      alpha: 0,
+      duration: 500,
+      delay: i * 100,
+      onComplete: () => ring.destroy()
+    });
+  }
+}
+
+/**
+ * Обновление скорости существующих объектов
  */
 updateExistingObjectsSpeed() {
   // Обновляем скорость ворот
   if (this.gateGroup) {
     this.gateGroup.getChildren().forEach(gate => {
-      if (gate && gate.body) {
+      if (gate?.body) {
         gate.body.velocity.x = -this.baseSpeed;
         gate.body.velocity.y = 0;
         gate.body.setGravityY(0);
@@ -4647,7 +4464,7 @@ updateExistingObjectsSpeed() {
   // Обновляем скорость зон
   if (this.scoreZones) {
     this.scoreZones.forEach(zone => {
-      if (zone && zone.body) {
+      if (zone?.body) {
         zone.body.velocity.x = -this.baseSpeed;
         zone.body.velocity.y = 0;
         zone.body.setGravityY(0);
@@ -4656,109 +4473,110 @@ updateExistingObjectsSpeed() {
     });
   }
   
-  // Обновляем скорость монет - ПРИНУДИТЕЛЬНО
-  if (this.coins) {
-    for (let i = 0; i < this.coins.length; i++) {
-      const coin = this.coins[i];
-      if (coin && coin.body && coin.active) {
-        coin.body.setAllowGravity(false);
-        coin.body.setGravityY(0);
-        coin.body.setVelocityY(0);
-        coin.body.setVelocityX(-this.currentSpeed);
-        coin.body.acceleration.y = 0;
-        coin.body.moves = true;
-        coin.speed = this.currentSpeed;
-      }
+  // Обновляем скорость монет
+  const updateCoinSpeed = (coin) => {
+    if (coin?.body?.active) {
+      coin.body.setAllowGravity(false);
+      coin.body.setGravityY(0);
+      coin.body.setVelocityY(0);
+      coin.body.setVelocityX(-this.currentSpeed);
     }
+  };
+  
+  if (this.coins) {
+    this.coins.forEach(updateCoinSpeed);
   }
   
-  // Обновляем скорость монет в группе
   if (this.coinGroup) {
-    const coins = this.coinGroup.getChildren();
-    for (let i = 0; i < coins.length; i++) {
-      const coin = coins[i];
-      if (coin && coin.body && coin.active) {
-        coin.body.setAllowGravity(false);
-        coin.body.setGravityY(0);
-        coin.body.setVelocityY(0);
-        coin.body.setVelocityX(-this.currentSpeed);
-        coin.body.acceleration.y = 0;
-        coin.body.moves = true;
-      }
-    }
+    this.coinGroup.getChildren().forEach(updateCoinSpeed);
   }
 }
 
 /**
- * Получение параметров сложности для текущего уровня
+ * Получение параметров сложности
  */
 getDifficulty() {
   const level = Math.min(this.gameLevel, 20);
+  const worldBonus = 1 + this.world * 0.08;
   
-  // Базовая скорость для 0 уровня
+  // Базовая скорость с множителем мира
   const baseSpeed = 240;
-  // Увеличение на 10% каждый уровень
-  const speed = Math.floor(baseSpeed * Math.pow(1.1, level));
+  const speed = Math.floor(baseSpeed * Math.pow(1.08, level) * worldBonus);
   
-  // Плавное уменьшение зазора
+  // Зазор между воротами
   const baseGap = 240;
-  const gap = Math.max(140, Math.floor(baseGap - level * 5));
+  const gap = Math.max(130, Math.floor(baseGap - level * 4 - this.world * 3));
   
-  // Уменьшение задержки спавна
+  // Задержка спавна
   const baseDelay = 1500;
-  const spawnDelay = Math.max(500, baseDelay - level * 50);
-  
-  // Увеличение шансов
-  const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
-  const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
+  const spawnDelay = Math.max(450, Math.floor(baseDelay - level * 40 - this.world * 20));
   
   return {
-    speed: speed + Phaser.Math.Between(-10, 10),
-    gap: gap + Phaser.Math.Between(-10, 10),
-    spawnDelay: spawnDelay + Phaser.Math.Between(-50, 50),
-    coinChance: 0.8,
-    asteroidChance: asteroidChance,
-    powerUpChance: powerUpChance
+    speed: Math.max(200, speed + Phaser.Math.Between(-12, 12)),
+    gap: Math.max(120, gap + Phaser.Math.Between(-8, 8)),
+    spawnDelay: Math.max(400, spawnDelay + Phaser.Math.Between(-50, 50)),
+    coinChance: Math.min(0.85, 0.75 + level * 0.005),
+    asteroidChance: Math.min(0.7, 0.25 + level * 0.018 + this.world * 0.03),
+    powerUpChance: Math.min(0.32, 0.08 + level * 0.01 + this.world * 0.015)
   };
 }
 
 /**
- * Проверка спавна станции
+ * Проверка спавна станции (каждые 10 уровней мира)
  */
 checkStationSpawn() {
   if (this.stationActive || this.dead) return;
-  if (this.level > 0 && this.level % 10 === 0 && !this.stationPlanet) {
+  // Станция спавнится после прохождения уровня мира, а не каждые 10 км
+  if (this.levelProgress >= this.levelGoal && !this.stationPlanet) {
     this.spawnStation();
   }
 }
 
 /**
- * Спавн станции
+ * Спавн станции отдыха
  */
 spawnStation() {
   const w = this.scale.width;
   const h = this.scale.height;
   const x = w + 200;
   const y = Phaser.Math.Between(100, h - 100);
+  
   this.stationPlanet = this.physics.add.image(x, y, 'station_planet')
     .setImmovable(true)
     .setScale(1.5)
     .setDepth(-5)
     .setVelocityX(-this.currentSpeed * 0.3);
+  
   if (this.stationPlanet.body) {
     this.stationPlanet.body.setAllowGravity(false);
     this.stationPlanet.body.setGravityY(0);
-    this.stationPlanet.body.velocity.y = 0;
   }
+  
   this.stationActive = true;
-  const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ', {
+  
+  // Анимированная метка станции
+  const label = this.add.text(x, y - 80, '🚉 СТАНЦИЯ ОТДЫХА', {
     fontSize: '16px',
     fontFamily: "'Orbitron', monospace",
     color: '#00ffff',
     stroke: '#ff00ff',
-    strokeThickness: 2
+    strokeThickness: 2,
+    shadow: { blur: 8, color: '#00ffff', fill: true }
   }).setOrigin(0.5).setDepth(-4);
+  
   this.stationPlanet.label = label;
+  
+  // Пульсация метки
+  this.tweens.add({
+    targets: label,
+    scale: { from: 1, to: 1.1 },
+    alpha: { from: 0.8, to: 1 },
+    duration: 800,
+    yoyo: true,
+    repeat: -1
+  });
+  
+  // Вращение станции
   this.tweens.add({
     targets: this.stationPlanet,
     angle: 360,
@@ -4774,30 +4592,52 @@ spawnStation() {
 touchStation() {
   if (!this.stationActive || !this.stationPlanet) return;
   this.stationActive = false;
-  const bonus = this.wagons.length * 10;
+  
+  // Бонус: кристаллы и сброс вагонов
+  const bonus = this.wagons.length * 15;
   this.crystals += bonus;
+  
   if (this.crystalText) {
     this.crystalText.setText(`💎 ${this.crystals}`);
+    this.tweens.add({
+      targets: this.crystalText,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 200,
+      yoyo: true
+    });
   }
+  
+  // Сохраняем кристаллы
   if (gameManager.data) {
     gameManager.data.crystals = this.crystals;
     gameManager.save();
   }
+  
+  // Визуальный эффект
   this.particleManager.createBonusEffect('speed', this.stationPlanet.x, this.stationPlanet.y);
-  this.wagons.forEach(w => { if (w && w.destroy) w.destroy(); });
+  
+  // Уничтожаем вагоны и сбрасываем позицию
+  this.wagons.forEach(w => { if (w?.destroy) w.destroy(); });
   this.wagons = [];
   this.targetPlayerX = 110;
+  
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 0/${this.maxWagons}`);
   }
+  
   this.updateCameraZoom();
+  
+  // Анимация получения бонуса
   const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, {
     fontSize: '28px',
-    fontFamily: "'Orbitron', monospace",
+    fontFamily: "'Audiowide', monospace",
     color: '#ffaa00',
     stroke: '#ff00ff',
-    strokeThickness: 4
+    strokeThickness: 4,
+    shadow: { blur: 12, color: '#ffaa00', fill: true }
   }).setOrigin(0.5);
+  
   this.tweens.add({
     targets: msg,
     y: msg.y - 100,
@@ -4805,9 +4645,54 @@ touchStation() {
     duration: 1500,
     onComplete: () => msg.destroy()
   });
+  
+  // Эффект исцеления
+  this.createHealEffect();
+  
+  // Звук станции
+  try {
+    if (this.levelUpSound) this.levelUpSound.play();
+  } catch (e) {}
+  
+  // Удаляем станцию
   if (this.stationPlanet.label) this.stationPlanet.label.destroy();
   this.stationPlanet.destroy();
   this.stationPlanet = null;
+}
+
+/**
+ * Эффект исцеления при посещении станции
+ */
+createHealEffect() {
+  if (!this.player) return;
+  
+  // Восстанавливаем здоровье
+  this.headHP = this.maxHeadHP;
+  this.updateHearts();
+  
+  // Визуальный эффект исцеления
+  for (let i = 0; i < 20; i++) {
+    const particle = this.add.circle(
+      this.player.x + Phaser.Math.Between(-30, 30),
+      this.player.y + Phaser.Math.Between(-30, 30),
+      Phaser.Math.Between(2, 5),
+      0x00ff00,
+      0.7
+    );
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: particle,
+      alpha: 0,
+      scale: 0,
+      y: particle.y - Phaser.Math.Between(30, 80),
+      duration: 600,
+      onComplete: () => particle.destroy()
+    });
+  }
+  
+  // Уведомление
+  this.showNotification('❤️ ЗДОРОВЬЕ ВОССТАНОВЛЕНО', 1500, '#00ff00');
 }
 
 /**
@@ -4885,29 +4770,42 @@ spawnCoin(x, y) {
 }
 
 /**
- * Завершение уровня
+ * Завершение уровня с эффектами
  */
 completeLevel() {
+  // Расчёт звёзд с учётом производительности
   let stars = 1;
-  if (this.score >= (this.worldConfig?.goalScore || 500) * 1.5) stars = 2;
-  if (this.score >= (this.worldConfig?.goalScore || 500) * 2) stars = 3;
-  if (this.headHP === this.maxHeadHP) stars = Math.min(3, stars + 1);
-
+  const goalScore = this.worldConfig?.goalScore || 500;
+  const levelMultiplier = 1 + this.level * 0.1;
+  const adjustedGoal = Math.floor(goalScore * levelMultiplier);
+  
+  if (this.score >= adjustedGoal * 1.5) stars = 2;
+  if (this.score >= adjustedGoal * 2) stars = 3;
+  if (this.headHP === this.maxHeadHP && stars < 3) stars = Math.min(3, stars + 1);
+  
+  // Сохраняем звёзды
   if (gameManager.setLevelStars) {
     gameManager.setLevelStars(this.world, this.level, stars);
   }
-
+  
+  // Разблокируем следующий уровень
   if (this.level < 9 && gameManager.unlockLevel) {
     gameManager.unlockLevel(this.world, this.level + 1);
   }
+  
+  // Разблокируем следующий мир (только после полного прохождения)
   if (this.level === 9 && this.world < 4 && gameManager.data) {
     const worlds = gameManager.data.unlockedWorlds || [];
     if (!worlds.includes(this.world + 1)) {
       worlds.push(this.world + 1);
       if (gameManager.save) gameManager.save();
+      
+      // Эффект открытия нового мира
+      this.createWorldUnlockEffect(this.world + 1);
     }
   }
-
+  
+  // Обновляем статистику
   if (gameManager.updateStats) {
     gameManager.updateStats(
       this.score,
@@ -4919,7 +4817,11 @@ completeLevel() {
       Math.floor(this.meters)
     );
   }
-
+  
+  // Показываем эффект завершения
+  this.createLevelCompleteEffect(stars);
+  
+  // Переходим на сцену завершения уровня
   this.scene.start('levelComplete', {
     world: this.world,
     level: this.level,
@@ -4927,236 +4829,619 @@ completeLevel() {
     stars: stars,
     coins: this.collectedCoins,
     wagons: this.wagons.length,
-    newUnlock: this.level < 9
+    newUnlock: this.level < 9,
+    perfectRun: this.headHP === this.maxHeadHP && this.score > 100
   });
 }
 
-  handleDeath() {
-    if (this.upgradeSystem && this.upgradeSystem.upgrades && this.upgradeSystem.upgrades.revival > 0 && !this.dead) {
-      this.upgradeSystem.upgrades.revival--;
-      this.headHP = this.maxHeadHP;
-      this.updateHearts();
-      this.cameras.main.flash(300, 100, 255, 100, false);
-      try { if (this.reviveSound) this.reviveSound.play(); } catch (e) {}
-      this.showNotification('ВОСКРЕШЕНИЕ!', 2000, '#00ffff');
-      if (gameManager.data) {
-        gameManager.data.upgrades = this.upgradeSystem.upgrades;
-        gameManager.save();
-      }
-      return;
-    }
-    if (this.dead) return;
-    this.dead = true;
-    if (this.trailEmitter) this.trailEmitter.stop();
-    if (this.spawnTimer) this.spawnTimer.remove();
-    if (this.bonusTimer) this.bonusTimer.remove();
-    if (this.stationTimer) this.stationTimer.remove();
-
-    this.physics.pause();
-    this.cameras.main.shake(300, 0.005);
-    this.cameras.main.flash(300, 255, 100, 100, false);
-    if (this.player) {
-      this.player.setTint(0xff0000).setAngle(90);
-    }
-
-    const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
-      speed: 250,
-      scale: { start: 1.2, end: 0 },
-      lifespan: 600,
-      quantity: 50,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: [0xff0000, 0xff8800, 0xff00ff]
-    });
-    emitter.explode(50);
-
-    this.updateLeaderboard();
-    this.updateStats();
-    this.showGameOver();
-
-    if (window.Telegram?.WebApp) {
-      const data = JSON.stringify({ score: this.score, level: this.level + 1, meters: Math.floor(this.meters) });
-      window.Telegram.WebApp.sendData(data);
-    }
-    try { if (window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred) window.Telegram.WebApp.HapticFeedback.notificationOccurred('error'); } catch (e) {}
-  }
-
-  showGameOver() {
-    if (!this.gameOverBox) this.createGameOverBox();
-    if (this.gameOverSubtitle) {
-      this.gameOverSubtitle.setText(
-        `Счёт: ${this.score}\nРекорд: ${this.best}\n💎 ${this.crystals}\n📏 ${Math.floor(this.meters)} м\n🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}`
-      );
-    }
-    this.gameOverBox.setVisible(true);
-    this.gameOverBox.setScale(0.9).setAlpha(0);
+/**
+ * Эффект открытия нового мира
+ */
+createWorldUnlockEffect(nextWorld) {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  const worldNames = ['КИБЕРПАНК', 'ПОДЗЕМЕЛЬЕ', 'АСТЕРОИДЫ', 'ЧЁРНАЯ ДЫРА'];
+  const worldColors = ['#ff00ff', '#ff6600', '#ffaa00', '#aa88ff'];
+  
+  if (nextWorld <= 4) {
+    const container = this.add.container(w / 2, h / 2);
+    
+    const bg = this.add.rectangle(0, 0, 400, 200, 0x0a0a1a, 0.95);
+    bg.setStrokeStyle(4, worldColors[nextWorld - 1], 1);
+    
+    const title = this.add.text(0, -40, 'НОВЫЙ МИР ОТКРЫТ!', {
+      fontSize: '24px',
+      fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+      color: worldColors[nextWorld - 1],
+      stroke: '#ffffff',
+      strokeThickness: 3,
+      shadow: { blur: 15, color: worldColors[nextWorld - 1], fill: true }
+    }).setOrigin(0.5);
+    
+    const worldName = this.add.text(0, 20, worldNames[nextWorld - 1], {
+      fontSize: '32px',
+      fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+      color: '#ffffff',
+      stroke: worldColors[nextWorld - 1],
+      strokeThickness: 4,
+      shadow: { blur: 20, color: worldColors[nextWorld - 1], fill: true }
+    }).setOrigin(0.5);
+    
+    container.add([bg, title, worldName]);
+    container.setAlpha(0);
+    container.setScale(0.5);
+    
     this.tweens.add({
-      targets: this.gameOverBox,
-      scaleX: 1,
-      scaleY: 1,
+      targets: container,
       alpha: 1,
+      scale: 1,
+      duration: 500,
+      ease: 'Back.out',
+      onComplete: () => {
+        this.time.delayedCall(2000, () => {
+          this.tweens.add({
+            targets: container,
+            alpha: 0,
+            scale: 1.2,
+            duration: 500,
+            onComplete: () => container.destroy()
+          });
+        });
+      }
+    });
+    
+    // Эффект конфетти
+    for (let i = 0; i < 50; i++) {
+      const particle = this.add.circle(
+        w / 2 + Phaser.Math.Between(-150, 150),
+        h / 2 + Phaser.Math.Between(-100, 100),
+        Phaser.Math.Between(2, 6),
+        worldColors[nextWorld - 1],
+        0.8
+      );
+      particle.setBlendMode(Phaser.BlendModes.ADD);
+      
+      this.tweens.add({
+        targets: particle,
+        y: particle.y - Phaser.Math.Between(100, 200),
+        x: particle.x + Phaser.Math.Between(-100, 100),
+        alpha: 0,
+        scale: 0,
+        duration: 1000,
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+}
+
+/**
+ * Эффект завершения уровня
+ */
+createLevelCompleteEffect(stars) {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const starColors = [0x88aaff, 0xffaa44, 0xff44ff];
+  
+  // Кольца
+  for (let i = 0; i < 3; i++) {
+    const ring = this.add.circle(w / 2, h / 2, 30 + i * 30, starColors[i % starColors.length], 0.5);
+    ring.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: ring,
+      scale: 3,
+      alpha: 0,
+      duration: 600,
+      delay: i * 100,
+      onComplete: () => ring.destroy()
+    });
+  }
+  
+  // Звёзды
+  for (let i = 0; i < stars; i++) {
+    const star = this.add.text(w / 2 + (i - 1) * 45, h / 2 - 50, '★', {
+      fontSize: '48px',
+      color: '#ffaa00',
+      stroke: '#ff5500',
+      strokeThickness: 3,
+      shadow: { blur: 15, color: '#ffaa00', fill: true }
+    }).setOrigin(0.5);
+    
+    star.setScale(0);
+    this.tweens.add({
+      targets: star,
+      scale: 1,
       duration: 400,
+      delay: 300 + i * 150,
       ease: 'Back.out'
     });
+    
+    this.time.delayedCall(1000, () => {
+      this.tweens.add({
+        targets: star,
+        alpha: 0,
+        y: star.y - 50,
+        duration: 500,
+        onComplete: () => star.destroy()
+      });
+    });
   }
+  
+  // Звук завершения
+  try {
+    if (this.levelUpSound) this.levelUpSound.play();
+  } catch (e) {}
+}
 
-  initAchievements() {
-    this.achievements = { ...ACHIEVEMENTS };
-    for (let key in this.achievements) {
-      if (this.achievements[key]) {
-        this.achievements[key].unlocked = false;
-      }
+/**
+ * Обработка смерти с киберпанк-эффектами
+ */
+handleDeath() {
+  // Проверка на воскрешение
+  if (this.upgradeSystem?.upgrades?.revival > 0 && !this.dead) {
+    this.upgradeSystem.upgrades.revival--;
+    this.headHP = this.maxHeadHP;
+    this.updateHearts();
+    
+    // Эффект воскрешения
+    this.cameras.main.flash(500, 100, 255, 100, false);
+    this.createReviveEffect();
+    
+    try { if (this.reviveSound) this.reviveSound.play(); } catch (e) {}
+    this.showNotification('⚡ ВОСКРЕШЕНИЕ!', 2000, '#00ffff');
+    
+    if (gameManager.data) {
+      gameManager.data.upgrades = this.upgradeSystem.upgrades;
+      gameManager.save();
     }
-    this.loadAchievements();
+    return;
   }
+  
+  if (this.dead) return;
+  this.dead = true;
+  
+  // Останавливаем все процессы
+  if (this.trailEmitter) this.trailEmitter.stop();
+  if (this.spawnTimer) this.spawnTimer.remove();
+  if (this.bonusTimer) this.bonusTimer.remove();
+  if (this.stationTimer) this.stationTimer.remove();
+  
+  this.physics.pause();
+  
+  // Эффект взрыва
+  this.createDeathExplosion();
+  
+  // Сохраняем статистику
+  this.updateLeaderboard();
+  this.updateStats();
+  this.showGameOver();
+  
+  // Отправляем данные в Telegram
+  if (window.Telegram?.WebApp) {
+    const data = JSON.stringify({ 
+      score: this.score, 
+      level: this.level + 1, 
+      meters: Math.floor(this.meters),
+      world: this.world
+    });
+    window.Telegram.WebApp.sendData(data);
+  }
+  
+  try { 
+    if (window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred) {
+      window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
+    }
+  } catch (e) {}
+}
 
-  loadAchievements() {
-    try {
-      const saved = localStorage.getItem('skypulse_achievements');
-      if (saved) {
-        const data = JSON.parse(saved);
-        for (let key in data) {
-          if (this.achievements && this.achievements[key]) {
-            this.achievements[key].unlocked = data[key];
-          }
+/**
+ * Эффект воскрешения
+ */
+createReviveEffect() {
+  if (!this.player) return;
+  
+  // Эффект восстановления
+  for (let i = 0; i < 30; i++) {
+    const particle = this.add.circle(
+      this.player.x + Phaser.Math.Between(-40, 40),
+      this.player.y + Phaser.Math.Between(-40, 40),
+      Phaser.Math.Between(2, 5),
+      0x00ffff,
+      0.7
+    );
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: particle,
+      y: particle.y - Phaser.Math.Between(50, 120),
+      alpha: 0,
+      scale: 0,
+      duration: 800,
+      onComplete: () => particle.destroy()
+    });
+  }
+  
+  // Кольцо восстановления
+  const ring = this.add.circle(this.player.x, this.player.y, 20, 0x00ffff, 0.6);
+  ring.setBlendMode(Phaser.BlendModes.ADD);
+  
+  this.tweens.add({
+    targets: ring,
+    radius: 80,
+    alpha: 0,
+    duration: 500,
+    onComplete: () => ring.destroy()
+  });
+}
+
+/**
+ * Эффект взрыва при смерти
+ */
+createDeathExplosion() {
+  if (!this.player) return;
+  
+  // Тряска камеры
+  this.cameras.main.shake(400, 0.008);
+  this.cameras.main.flash(400, 255, 100, 100, false);
+  
+  // Поворачиваем игрока
+  this.player.setTint(0xff0000).setAngle(90);
+  
+  // Взрывные частицы
+  const emitter = this.add.particles(this.player.x, this.player.y, 'flare', {
+    speed: { min: 150, max: 350 },
+    scale: { start: 1.2, end: 0 },
+    alpha: { start: 1, end: 0 },
+    lifespan: 600,
+    quantity: 60,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: [0xff0000, 0xff6600, 0xff00ff, 0xffff00]
+  });
+  emitter.explode(60);
+  
+  // Ударная волна
+  const shockwave = this.add.circle(this.player.x, this.player.y, 20, 0xff4400, 0.8);
+  shockwave.setBlendMode(Phaser.BlendModes.ADD);
+  
+  this.tweens.add({
+    targets: shockwave,
+    radius: 150,
+    alpha: 0,
+    duration: 400,
+    onComplete: () => shockwave.destroy()
+  });
+}
+
+/**
+ * Показать окно Game Over
+ */
+showGameOver() {
+  if (!this.gameOverBox) this.createGameOverBox();
+  
+  if (this.gameOverSubtitle) {
+    const worldName = this.worldConfig?.name || 'КОСМОС';
+    this.gameOverSubtitle.setText(
+      `${worldName} • УРОВЕНЬ ${this.level + 1}\n\n` +
+      `🎯 Счёт: ${this.score}\n` +
+      `🏆 Рекорд: ${this.best}\n` +
+      `💎 Кристаллы: ${this.crystals}\n` +
+      `📏 Пройдено: ${Math.floor(this.meters)} м\n` +
+      `🚃 Вагонов: ${this.wagons.length}/${this.maxWagons}\n` +
+      `⚡ Комбо: ${this.comboSystem?.maxCombo || 0}`
+    );
+  }
+  
+  this.gameOverBox.setVisible(true);
+  this.gameOverBox.setScale(0.8);
+  this.gameOverBox.setAlpha(0);
+  
+  this.tweens.add({
+    targets: this.gameOverBox,
+    scaleX: 1,
+    scaleY: 1,
+    alpha: 1,
+    duration: 500,
+    ease: 'Back.out'
+  });
+  
+  // Звук поражения
+  try {
+    if (this.sound?.add) {
+      const gameOverSound = this.sound.add('gameover_sound', { volume: 0.5 });
+      gameOverSound.play();
+    }
+  } catch (e) {}
+}
+
+/**
+ * Инициализация достижений
+ */
+initAchievements() {
+  this.achievements = { ...ACHIEVEMENTS };
+  for (let key in this.achievements) {
+    if (this.achievements[key]) {
+      this.achievements[key].unlocked = false;
+    }
+  }
+  this.loadAchievements();
+}
+
+/**
+ * Загрузка достижений
+ */
+loadAchievements() {
+  try {
+    const saved = localStorage.getItem('skypulse_achievements');
+    if (saved) {
+      const data = JSON.parse(saved);
+      for (let key in data) {
+        if (this.achievements?.[key]) {
+          this.achievements[key].unlocked = data[key];
         }
       }
-    } catch (e) {}
-  }
-
-  saveAchievements() {
-    if (!this.achievements) return;
-    const data = {};
-    for (let key in this.achievements) {
-      if (this.achievements[key]) {
-        data[key] = this.achievements[key].unlocked;
-      }
     }
-    localStorage.setItem('skypulse_achievements', JSON.stringify(data));
-  }
+  } catch (e) {}
+}
 
-  checkAchievements() {
-    if (!this.achievements) return;
-    
-    if (this.wagons.length >= 1 && this.achievements.first_wagon && !this.achievements.first_wagon.unlocked) 
-      this.unlockAchievement('first_wagon');
-    if (this.wagons.length >= 5 && this.achievements.five_wagons && !this.achievements.five_wagons.unlocked) 
-      this.unlockAchievement('five_wagons');
-    if (this.wagons.length >= 10 && this.achievements.ten_wagons && !this.achievements.ten_wagons.unlocked) 
-      this.unlockAchievement('ten_wagons');
-    if (this.level >= 4 && this.achievements.level_5 && !this.achievements.level_5.unlocked) 
-      this.unlockAchievement('level_5');
-    if (this.level >= 9 && this.achievements.level_10 && !this.achievements.level_10.unlocked) 
-      this.unlockAchievement('level_10');
-    if (this.score >= 100 && this.achievements.score_100 && !this.achievements.score_100.unlocked) 
-      this.unlockAchievement('score_100');
-    if (this.score >= 500 && this.achievements.score_500 && !this.achievements.score_500.unlocked) 
-      this.unlockAchievement('score_500');
-    if (this.headHP === this.maxHeadHP && this.score > 10 && this.achievements.no_damage && !this.achievements.no_damage.unlocked) 
-      this.unlockAchievement('no_damage');
-    this.checkCoinAchievements();
-  }
-
-  checkCoinAchievements() {
-    if (!this.achievements || !this.achievements.all_bonuses) return;
-    if (this.collectedCoins >= 50 && !this.achievements.all_bonuses.unlocked) {
-      this.unlockAchievement('all_bonuses');
+/**
+ * Сохранение достижений
+ */
+saveAchievements() {
+  if (!this.achievements) return;
+  const data = {};
+  for (let key in this.achievements) {
+    if (this.achievements[key]) {
+      data[key] = this.achievements[key].unlocked;
     }
   }
+  localStorage.setItem('skypulse_achievements', JSON.stringify(data));
+}
 
-  unlockAchievement(key) {
-    if (!this.achievements || !this.achievements[key] || this.achievements[key].unlocked) return;
-    this.achievements[key].unlocked = true;
-    const reward = this.achievements[key].reward || 0;
-    this.crystals += reward;
-    if (this.crystalText) {
-      this.crystalText.setText(`💎 ${this.crystals}`);
+/**
+ * Проверка достижений
+ */
+checkAchievements() {
+  if (!this.achievements) return;
+  
+  const checks = [
+    { cond: this.wagons.length >= 1, key: 'first_wagon' },
+    { cond: this.wagons.length >= 5, key: 'five_wagons' },
+    { cond: this.wagons.length >= 10, key: 'ten_wagons' },
+    { cond: this.level >= 4, key: 'level_5' },
+    { cond: this.level >= 9, key: 'level_10' },
+    { cond: this.score >= 100, key: 'score_100' },
+    { cond: this.score >= 500, key: 'score_500' },
+    { cond: this.headHP === this.maxHeadHP && this.score > 10, key: 'no_damage' }
+  ];
+  
+  for (const check of checks) {
+    if (check.cond && this.achievements[check.key] && !this.achievements[check.key].unlocked) {
+      this.unlockAchievement(check.key);
     }
-    if (gameManager.data) {
-      gameManager.data.crystals = this.crystals;
-    }
-    if (gameManager.unlockAchievement) {
-      gameManager.unlockAchievement(key);
-    }
-    if (gameManager.save) {
-      gameManager.save();
-    }
-    this.showAchievementNotification(key, reward);
-    this.saveAchievements();
   }
+  
+  this.checkCoinAchievements();
+}
 
-  showAchievementNotification(key, reward) {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-    const achievement = this.achievements?.[key];
-    if (!achievement) return;
-    
-    const notification = this.add.container(w / 2, -80).setDepth(100).setScrollFactor(0);
-    const bg = this.add.rectangle(0, 0, 280, 60, 0x0a0a1a, 0.95).setStrokeStyle(2, 0x00ffff, 0.8);
-    const title = this.add.text(0, -15, `🏆 ${achievement.name}`, { fontSize: '14px', fontFamily, color: '#ffaa00', stroke: '#ff5500', strokeThickness: 1 }).setOrigin(0.5);
-    const rewardText = this.add.text(0, 10, `+${reward} 💎`, { fontSize: '12px', fontFamily, color: '#00ff00', stroke: '#00aa00', strokeThickness: 1 }).setOrigin(0.5);
-    notification.add([bg, title, rewardText]);
+/**
+ * Проверка монетных достижений
+ */
+checkCoinAchievements() {
+  if (!this.achievements?.all_bonuses) return;
+  if (this.collectedCoins >= 50 && !this.achievements.all_bonuses.unlocked) {
+    this.unlockAchievement('all_bonuses');
+  }
+}
+
+/**
+ * Разблокировка достижения
+ */
+unlockAchievement(key) {
+  if (!this.achievements?.[key] || this.achievements[key].unlocked) return;
+  
+  this.achievements[key].unlocked = true;
+  const reward = this.achievements[key].reward || 0;
+  
+  this.crystals += reward;
+  if (this.crystalText) {
+    this.crystalText.setText(`💎 ${this.crystals}`);
     this.tweens.add({
-      targets: notification,
-      y: 80,
-      duration: 3000,
-      ease: 'Sine.easeInOut',
-      onComplete: () => notification.destroy()
-    });
-    try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
-  }
-
-  initDailyRewards() {
-    this.dailyReward = {
-      lastClaimDate: localStorage.getItem('skypulse_daily_date') || '',
-      streak: parseInt(localStorage.getItem('skypulse_daily_streak') || '0'),
-      rewards: [10, 20, 30, 50, 75, 100, 150]
-    };
-    this.checkDailyReward();
-  }
-
-  checkDailyReward() {
-    const today = new Date().toISOString().split('T')[0];
-    const lastDate = this.dailyReward.lastClaimDate;
-    if (lastDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      if (lastDate === yesterdayStr) this.dailyReward.streak++;
-      else this.dailyReward.streak = 1;
-      this.dailyReward.streak = Math.min(this.dailyReward.streak, 7);
-      this.dailyReward.lastClaimDate = today;
-      this.saveDailyReward();
-      this.showDailyRewardNotification();
-    }
-  }
-
-  showDailyRewardNotification() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const fontFamily = "'Orbitron', 'Audiowide', 'Rajdhani', 'Share Tech Mono', monospace";
-    const rewardAmount = this.dailyReward.rewards[this.dailyReward.streak - 1] || 0;
-    this.crystals += rewardAmount;
-    if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
-    if (gameManager.data) {
-      gameManager.data.crystals = this.crystals;
-      gameManager.save();
-    }
-    const notification = this.add.container(w / 2, h / 2).setDepth(100).setScrollFactor(0);
-    const bg = this.add.rectangle(0, 0, 300, 150, 0x0a0a1a, 0.95).setStrokeStyle(3, 0x00ffff, 0.8);
-    const title = this.add.text(0, -40, '🎁 ДНЕВНАЯ НАГРАДА', { fontSize: '18px', fontFamily, color: '#00ffff', stroke: '#ff00ff', strokeThickness: 2 }).setOrigin(0.5);
-    const streak = this.add.text(0, -10, `День ${this.dailyReward.streak}/7`, { fontSize: '14px', fontFamily, color: '#ffaa00' }).setOrigin(0.5);
-    const reward = this.add.text(0, 20, `+${rewardAmount} 💎`, { fontSize: '24px', fontFamily, color: '#00ff00', stroke: '#00aa00', strokeThickness: 2 }).setOrigin(0.5);
-    const claimBtn = this.add.text(0, 60, '[ПОЛУЧИТЬ]', { fontSize: '12px', fontFamily, color: '#00ff00', backgroundColor: '#1a1a3a', padding: { x: 10, y: 4 } }).setInteractive().setOrigin(0.5).on('pointerdown', () => notification.destroy());
-    notification.add([bg, title, streak, reward, claimBtn]);
-    this.tweens.add({
-      targets: notification,
-      scale: 1.05,
+      targets: this.crystalText,
+      scaleX: 1.2,
+      scaleY: 1.2,
       duration: 200,
-      yoyo: true,
-      ease: 'Back.out'
+      yoyo: true
     });
   }
+  
+  if (gameManager.data) {
+    gameManager.data.crystals = this.crystals;
+  }
+  if (gameManager.unlockAchievement) {
+    gameManager.unlockAchievement(key);
+  }
+  if (gameManager.save) {
+    gameManager.save();
+  }
+  
+  this.showAchievementNotification(key, reward);
+  this.saveAchievements();
+}
+
+/**
+ * Уведомление о достижении
+ */
+showAchievementNotification(key, reward) {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const achievement = this.achievements?.[key];
+  if (!achievement) return;
+  
+  const container = this.add.container(w / 2, -80);
+  container.setDepth(100).setScrollFactor(0);
+  
+  const bg = this.add.rectangle(0, 0, 320, 70, 0x0a0a1a, 0.95);
+  bg.setStrokeStyle(3, 0xffff00, 0.8);
+  
+  const icon = this.add.text(-140, 0, '🏆', {
+    fontSize: '36px'
+  }).setOrigin(0.5);
+  
+  const title = this.add.text(0, -15, achievement.name, {
+    fontSize: '14px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#ffaa00',
+    stroke: '#ff5500',
+    strokeThickness: 1
+  }).setOrigin(0.5);
+  
+  const rewardText = this.add.text(0, 12, `+${reward} 💎`, {
+    fontSize: '12px',
+    fontFamily: "'Share Tech Mono', monospace",
+    color: '#00ff00'
+  }).setOrigin(0.5);
+  
+  container.add([bg, icon, title, rewardText]);
+  
+  this.tweens.add({
+    targets: container,
+    y: 90,
+    duration: 500,
+    ease: 'Back.out',
+    onComplete: () => {
+      this.tweens.add({
+        targets: container,
+        y: 70,
+        alpha: 0,
+        duration: 500,
+        delay: 2500,
+        onComplete: () => container.destroy()
+      });
+    }
+  });
+  
+  try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
+}
+
+/**
+ * Инициализация ежедневных наград
+ */
+initDailyRewards() {
+  this.dailyReward = {
+    lastClaimDate: localStorage.getItem('skypulse_daily_date') || '',
+    streak: parseInt(localStorage.getItem('skypulse_daily_streak') || '0'),
+    rewards: [15, 25, 40, 60, 85, 115, 150, 200, 250, 300]
+  };
+  this.checkDailyReward();
+}
+
+/**
+ * Проверка ежедневной награды
+ */
+checkDailyReward() {
+  const today = new Date().toISOString().split('T')[0];
+  const lastDate = this.dailyReward.lastClaimDate;
+  
+  if (lastDate !== today) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    if (lastDate === yesterdayStr) {
+      this.dailyReward.streak = Math.min(this.dailyReward.streak + 1, 10);
+    } else {
+      this.dailyReward.streak = 1;
+    }
+    
+    this.dailyReward.lastClaimDate = today;
+    this.saveDailyReward();
+    this.showDailyRewardNotification();
+  }
+}
+
+/**
+ * Показать уведомление о награде
+ */
+showDailyRewardNotification() {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  const rewardAmount = this.dailyReward.rewards[this.dailyReward.streak - 1] || 15;
+  
+  this.crystals += rewardAmount;
+  if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
+  
+  if (gameManager.data) {
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
+  }
+  
+  const container = this.add.container(w / 2, h / 2);
+  container.setDepth(100).setScrollFactor(0);
+  
+  const bg = this.add.rectangle(0, 0, 320, 160, 0x0a0a1a, 0.98);
+  bg.setStrokeStyle(3, 0x00ffff, 0.9);
+  
+  const title = this.add.text(0, -45, '🎁 ДНЕВНАЯ НАГРАДА', {
+    fontSize: '20px',
+    fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+    color: '#00ffff',
+    stroke: '#ff00ff',
+    strokeThickness: 2
+  }).setOrigin(0.5);
+  
+  const streak = this.add.text(0, -10, `ДЕНЬ ${this.dailyReward.streak}/10`, {
+    fontSize: '14px',
+    fontFamily: "'Orbitron', sans-serif",
+    color: '#ffaa00'
+  }).setOrigin(0.5);
+  
+  const reward = this.add.text(0, 25, `+${rewardAmount} 💎`, {
+    fontSize: '28px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ffaa00',
+    stroke: '#ff5500',
+    strokeThickness: 2
+  }).setOrigin(0.5);
+  
+  const claimBtn = this.add.text(0, 65, '[ЗАБРАТЬ]', {
+    fontSize: '14px',
+    fontFamily: "'Orbitron', sans-serif",
+    color: '#00ff00',
+    backgroundColor: '#1a3a1a',
+    padding: { x: 15, y: 5 }
+  }).setInteractive({ useHandCursor: true }).setOrigin(0.5);
+  
+  claimBtn.on('pointerover', () => claimBtn.setStyle({ color: '#ffffff', backgroundColor: '#00aa00' }));
+  claimBtn.on('pointerout', () => claimBtn.setStyle({ color: '#00ff00', backgroundColor: '#1a3a1a' }));
+  claimBtn.on('pointerdown', () => {
+    this.tweens.add({
+      targets: container,
+      alpha: 0,
+      scale: 1.2,
+      duration: 300,
+      onComplete: () => container.destroy()
+    });
+  });
+  
+  container.add([bg, title, streak, reward, claimBtn]);
+  container.setScale(0.5);
+  
+  this.tweens.add({
+    targets: container,
+    scale: 1,
+    duration: 400,
+    ease: 'Back.out'
+  });
+}
+
+/**
+ * Сохранение ежедневной награды
+ */
+saveDailyReward() {
+  localStorage.setItem('skypulse_daily_date', this.dailyReward.lastClaimDate);
+  localStorage.setItem('skypulse_daily_streak', String(this.dailyReward.streak));
+}
 
   saveDailyReward() {
     localStorage.setItem('skypulse_daily_date', this.dailyReward.lastClaimDate);
