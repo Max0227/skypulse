@@ -30,20 +30,23 @@ export class ShopScene extends Phaser.Scene {
     this.createFloatingParticles();
     this.createStars();
 
-    // Заголовок и баланс
+    // Заголовок и баланс (вверху, над каруселью)
     this.createHeader();
     this.createBalanceDisplay();
 
-    // Карусель улучшений
+    // Карусель улучшений (центральная часть)
     this.createUpgradeCarousel();
 
-    // Детальная панель (внизу)
+    // Детальная панель (под каруселью, выше кнопок)
     this.createDetailPanel();
 
-    // Кнопки действий
+    // Кнопки действий (под детальной панелью)
     this.createActionButtons();
 
-    // Нижняя панель с версией
+    // Кнопка назад (внизу экрана)
+    this.createBackButton();
+
+    // Нижняя панель с версией (оставляем, но сместим)
     this.createFooter();
 
     // Анимации
@@ -198,20 +201,21 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ЗАГОЛОВОК И БАЛАНС
+  // ЗАГОЛОВОК И БАЛАНС (теперь видны и не перекрываются)
   // =========================================================================
   createHeader() {
     const w = this.scale.width;
-    this.title = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '36px',
+    // Заголовок уменьшен
+    this.title = this.add.text(w / 2, 30, 'МАГАЗИН УЛУЧШЕНИЙ', {
+      fontSize: '28px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#00ffff',
-      strokeThickness: 5,
-      shadow: { blur: 20, color: '#00ffff', fill: true }
+      strokeThickness: 4,
+      shadow: { blur: 15, color: '#00ffff', fill: true }
     }).setOrigin(0.5);
-    this.titleGlow = this.add.text(w / 2, 40, 'МАГАЗИН УЛУЧШЕНИЙ', {
-      fontSize: '36px',
+    this.titleGlow = this.add.text(w / 2, 30, 'МАГАЗИН УЛУЧШЕНИЙ', {
+      fontSize: '28px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
       stroke: '#ff00ff',
@@ -231,10 +235,11 @@ export class ShopScene extends Phaser.Scene {
 
   createBalanceDisplay() {
     const w = this.scale.width;
-    const container = this.add.container(w / 2, 100);
-    const bg = this.add.rectangle(0, 0, 280, 45, 0x0a0a1a, 0.9);
-    bg.setStrokeStyle(3, 0x00ffff, 0.8);
-    const icon = this.add.text(-80, 0, '💎', { fontSize: '32px' }).setOrigin(0.5);
+    // Баланс под заголовком, но выше карусели
+    const container = this.add.container(w / 2, 75);
+    const bg = this.add.rectangle(0, 0, 260, 40, 0x0a0a1a, 0.9);
+    bg.setStrokeStyle(2, 0x00ffff, 0.8);
+    const icon = this.add.text(-70, 0, '💎', { fontSize: '28px' }).setOrigin(0.5);
     this.tweens.add({
       targets: icon,
       angle: 360,
@@ -242,22 +247,22 @@ export class ShopScene extends Phaser.Scene {
       repeat: -1,
       ease: 'Linear'
     });
-    this.balanceText = this.add.text(20, 0, `${gameManager.data.crystals}`, {
-      fontSize: '28px',
+    this.balanceText = this.add.text(15, 0, `${gameManager.data.crystals}`, {
+      fontSize: '24px',
       fontFamily: '"Share Tech Mono", monospace',
       color: '#ffaa00',
       stroke: '#000000',
-      strokeThickness: 4
+      strokeThickness: 3
     }).setOrigin(0, 0.5);
-    const label = this.add.text(0, -20, 'КРИСТАЛЛЫ', {
-      fontSize: '10px',
+    const label = this.add.text(0, -15, 'КРИСТАЛЛЫ', {
+      fontSize: '9px',
       fontFamily: '"Share Tech Mono", monospace',
       color: '#88aaff'
     }).setOrigin(0.5);
     container.add([bg, icon, this.balanceText, label]);
     this.tweens.add({
       targets: bg,
-      strokeWidth: 4,
+      strokeWidth: 3,
       alpha: 1,
       duration: 1500,
       yoyo: true,
@@ -267,11 +272,11 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КАРУСЕЛЬ УЛУЧШЕНИЙ (горизонтальная, с drag и свайпом)
+  // КАРУСЕЛЬ УЛУЧШЕНИЙ (сдвинута немного вверх, чтобы освободить место)
   // =========================================================================
   createUpgradeCarousel() {
     const w = this.scale.width;
-    const carouselY = 170;
+    const carouselY = 135; // подняли выше
     const cardWidth = 280;
     const cardSpacing = 24;
 
@@ -406,7 +411,6 @@ export class ShopScene extends Phaser.Scene {
       }
     });
 
-    // Поддержка колесика мыши
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
         const newX = this.carouselContainer.x + deltaX;
@@ -493,12 +497,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕТАЛЬНАЯ ПАНЕЛЬ (внизу)
+  // ДЕТАЛЬНАЯ ПАНЕЛЬ (поднята выше, над кнопками)
   // =========================================================================
   createDetailPanel() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const panelY = h - 150;
+    const panelY = h - 170; // выше, чтобы освободить место для кнопок
     this.detailContainer = this.add.container(w / 2, panelY);
     this.detailContainer.setDepth(15);
 
@@ -516,7 +520,7 @@ export class ShopScene extends Phaser.Scene {
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff'
     }).setOrigin(0.5);
-    // Описание
+    // Описание (более подробное)
     this.detailDesc = this.add.text(0, -12, '', {
       fontSize: '12px',
       fontFamily: "'Share Tech Mono', monospace",
@@ -564,20 +568,20 @@ export class ShopScene extends Phaser.Scene {
 
   getUpgradeDesc(key) {
     const desc = {
-      jumpPower: 'Увеличивает силу прыжка такси',
-      gravity: 'Уменьшает гравитацию, делая полёт легче',
-      shieldDuration: 'Увеличивает время действия щита',
-      magnetRange: 'Увеличивает радиус притяжения монет',
-      wagonHP: 'Повышает прочность вагонов',
-      maxWagons: 'Увеличивает максимальное количество вагонов',
-      wagonGap: 'Уменьшает расстояние между вагонами',
-      headHP: 'Увеличивает максимальное здоровье такси',
-      revival: 'Позволяет воскреснуть после смерти',
-      weaponDamage: 'Увеличивает урон оружия',
-      weaponSpeed: 'Увеличивает скорость полёта пуль',
-      weaponFireRate: 'Увеличивает скорострельность'
+      jumpPower: 'Увеличивает силу прыжка такси, позволяя подниматься выше.',
+      gravity: 'Уменьшает гравитацию, делая полёт более плавным и легким.',
+      shieldDuration: 'Увеличивает время действия щита, защищающего от урона.',
+      magnetRange: 'Увеличивает радиус притяжения монет, упрощая сбор.',
+      wagonHP: 'Повышает прочность вагонов, они выдерживают больше ударов.',
+      maxWagons: 'Увеличивает максимальное количество вагонов в составе.',
+      wagonGap: 'Уменьшает расстояние между вагонами, делая состав компактнее.',
+      headHP: 'Увеличивает максимальное здоровье такси, позволяя выдерживать больше попаданий.',
+      revival: 'Позволяет воскреснуть после смерти (один раз за забег).',
+      weaponDamage: 'Увеличивает урон оружия, позволяя быстрее уничтожать врагов.',
+      weaponSpeed: 'Увеличивает скорость полёта пуль, повышая точность.',
+      weaponFireRate: 'Увеличивает скорострельность, позволяя стрелять чаще.'
     };
-    return desc[key] || 'Улучшает характеристики такси';
+    return desc[key] || 'Улучшает характеристики такси.';
   }
 
   getUpgradeValue(key, level) {
@@ -599,16 +603,16 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КНОПКИ ДЕЙСТВИЙ (КУПИТЬ / ПРОДАТЬ / СБРОС ВСЕ)
+  // КНОПКИ ДЕЙСТВИЙ (под детальной панелью, уменьшенные)
   // =========================================================================
   createActionButtons() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const btnY = h - 45;
+    const btnY = h - 95; // выше, чем раньше, чтобы не сливаться с кнопкой назад
 
-    this.buyBtn = this.createActionButton(w / 2 - 120, btnY, 'КУПИТЬ', '#00ff00', () => this.buyUpgrade());
-    this.sellBtn = this.createActionButton(w / 2, btnY, 'ПРОДАТЬ', '#ffaa00', () => this.sellUpgrade());
-    this.resetBtn = this.createActionButton(w / 2 + 120, btnY, 'СБРОС ВСЕ', '#ff4444', () => this.confirmReset());
+    this.buyBtn = this.createActionButton(w / 2 - 120, btnY, 'КУПИТЬ', '#00ff00', () => this.buyUpgrade(), 130);
+    this.sellBtn = this.createActionButton(w / 2, btnY, 'ПРОДАТЬ', '#ffaa00', () => this.sellUpgrade(), 130);
+    this.resetBtn = this.createActionButton(w / 2 + 120, btnY, 'СБРОС ВСЕ', '#ff4444', () => this.confirmReset(), 130);
 
     // Пульсация для кнопки покупки
     this.tweens.add({
@@ -621,26 +625,26 @@ export class ShopScene extends Phaser.Scene {
     });
   }
 
-  createActionButton(x, y, text, color, callback) {
+  createActionButton(x, y, text, color, callback, width = 160) {
     const btnColor = Phaser.Display.Color.HexStringToColor(color).color;
     const button = this.add.graphics();
     const state = { glowAlpha: 0.3 };
     const update = () => {
       button.clear();
       button.fillStyle(0x1a1a3a, 0.9);
-      button.fillRoundedRect(x - 80, y - 20, 160, 40, 12);
-      button.lineStyle(3, btnColor, state.glowAlpha);
-      button.strokeRoundedRect(x - 80, y - 20, 160, 40, 12);
+      button.fillRoundedRect(x - width / 2, y - 18, width, 36, 10);
+      button.lineStyle(2, btnColor, state.glowAlpha);
+      button.strokeRoundedRect(x - width / 2, y - 18, width, 36, 10);
     };
     update();
     const textObj = this.add.text(x, y, text, {
-      fontSize: '16px',
+      fontSize: '14px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff',
       stroke: color,
-      strokeThickness: 2
+      strokeThickness: 1
     }).setOrigin(0.5);
-    const hit = this.add.rectangle(x, y, 160, 40, 0x000000, 0).setInteractive({ useHandCursor: true });
+    const hit = this.add.rectangle(x, y, width, 36, 0x000000, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => {
       this.tweens.add({ targets: state, glowAlpha: 0.8, duration: 200, onUpdate: update });
       textObj.setScale(1.05);
@@ -689,13 +693,8 @@ export class ShopScene extends Phaser.Scene {
       this.showMessage('Нечего продавать — уровень 0', '#ffaa00');
       return;
     }
-    // Стоимость последнего уровня (который сейчас снимаем)
-    const costOfLastLevel = gameManager.getUpgradeCost(upgrade.key); // это стоимость для текущего уровня (level+1)?
-    // Нам нужна стоимость уровня, который мы снимаем: текущий уровень level, значит стоимость была при покупке level-го уровня.
-    // Для корректного расчёта используем отдельную функцию.
     const levelCost = this.getUpgradeCostAtLevel(upgrade.key, level - 1);
     const refund = Math.floor(levelCost * 0.8);
-    // Уменьшаем уровень
     gameManager.data.upgrades[upgrade.key] = level - 1;
     gameManager.data.crystals += refund;
     gameManager.save();
@@ -708,7 +707,6 @@ export class ShopScene extends Phaser.Scene {
   }
 
   getUpgradeCostAtLevel(key, level) {
-    // Вычисляем стоимость уровня (уровень от 0 до max-1)
     const upgrade = SHOP_UPGRADES.find(u => u.key === key);
     if (!upgrade) return 0;
     const base = upgrade.cost || 10;
@@ -879,31 +877,75 @@ export class ShopScene extends Phaser.Scene {
     return btn;
   }
 
+  // =========================================================================
+  // КНОПКА НАЗАД (внизу экрана)
+  // =========================================================================
+  createBackButton() {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const btnY = h - 28;
+
+    const btnContainer = this.add.container(w / 2, btnY);
+    btnContainer.setDepth(20);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x1a1a3a, 0.9);
+    bg.fillRoundedRect(-70, -14, 140, 28, 14);
+    bg.lineStyle(2, 0x00ffff, 0.8);
+    bg.strokeRoundedRect(-70, -14, 140, 28, 14);
+    
+    const text = this.add.text(0, 0, '⏎ НАЗАД', {
+      fontSize: '14px',
+      fontFamily: "'Audiowide', sans-serif",
+      color: '#ffffff',
+      stroke: '#00ffff',
+      strokeThickness: 1
+    }).setOrigin(0.5);
+
+    btnContainer.add([bg, text]);
+
+    const hitArea = this.add.rectangle(0, 0, 140, 28, 0x000000, 0)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(25);
+
+    hitArea.on('pointerover', () => {
+      bg.clear();
+      bg.fillStyle(0x2a2a5a, 0.9);
+      bg.fillRoundedRect(-70, -14, 140, 28, 14);
+      bg.lineStyle(2, '#ffffff', 1);
+      bg.strokeRoundedRect(-70, -14, 140, 28, 14);
+      text.setScale(1.05);
+      this.playHoverSound();
+    });
+
+    hitArea.on('pointerout', () => {
+      bg.clear();
+      bg.fillStyle(0x1a1a3a, 0.9);
+      bg.fillRoundedRect(-70, -14, 140, 28, 14);
+      bg.lineStyle(2, 0x00ffff, 0.8);
+      bg.strokeRoundedRect(-70, -14, 140, 28, 14);
+      text.setScale(1);
+    });
+
+    hitArea.on('pointerdown', () => {
+      this.playClickSound();
+      this.cleanup();
+      this.scene.start('menu');
+    });
+
+    btnContainer.add(hitArea);
+    this.backButton = btnContainer;
+  }
+
   createFooter() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const line = this.add.graphics();
-    line.lineStyle(2, 0x00ffff, 0.3);
-    line.lineBetween(50, h - 100, w - 50, h - 100);
-    this.add.text(w - 30, h - 25, 'v3.5.0', {
-      fontSize: '12px',
+    // Версию опустим чуть ниже, чтобы не мешала
+    this.add.text(w - 30, h - 12, 'v3.5.0', {
+      fontSize: '10px',
       fontFamily: '"Share Tech Mono", monospace',
       color: '#666666'
     }).setOrigin(1, 0.5);
-    [-1, 1].forEach(side => {
-      const x = side === -1 ? 30 : w - 30;
-      const light = this.add.circle(x, h - 85, 5, 0x00ffff, 0.5);
-      light.setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({
-        targets: light,
-        alpha: 0.2,
-        scale: 1.5,
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        delay: side === -1 ? 0 : 500
-      });
-    });
   }
 
   // =========================================================================
