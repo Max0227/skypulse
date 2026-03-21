@@ -1009,7 +1009,8 @@ updateCameraZoom() {
     this.powerUpGroup = this.physics.add.group();
     this.playerBullets = this.physics.add.group({
   classType: Phaser.GameObjects.Image,
-  runChildUpdate: false
+  runChildUpdate: false,
+  allowGravity: false
 });
     this.enemyBullets = this.physics.add.group({
       classType: Phaser.GameObjects.Image,
@@ -3703,16 +3704,14 @@ playHoverSound() {
 /**
  * Атака по врагам
  */
-/**
- * Атака по врагам
- */
 attackEnemies() {
   if (this.weaponCooldown > 0) return;
   if (!this.player || !this.player.active) return;
+  if (!this.playerBullets) return;
   
   this.weaponCooldown = this.weaponFireDelay;
   
-  // Правильный способ создать пулю через группу
+  // Создаём пулю
   const bullet = this.playerBullets.create(
     this.player.x + 30, 
     this.player.y, 
@@ -3721,17 +3720,28 @@ attackEnemies() {
   
   if (!bullet) return;
   
+  // Настройка пули
   bullet.setScale(1.5);
   bullet.damage = this.weaponDamage;
+  bullet.setDepth(20);
+  
+  // ВАЖНО: добавляем физическое тело, если его нет
+  if (!bullet.body) {
+    this.physics.add.existing(bullet);
+  }
+  
+  // Отключаем гравитацию
   bullet.body.setAllowGravity(false);
   bullet.body.setGravityY(0);
-  bullet.setVelocityX(this.weaponBulletSpeed);
-  bullet.setVelocityY(0);
-  bullet.setDepth(20);
+  
+  // Устанавливаем скорость
+  bullet.body.setVelocityX(this.weaponBulletSpeed);
+  bullet.body.setVelocityY(0);
   
   // Эффект выстрела
   this.createMuzzleFlash(this.player.x + 30, this.player.y);
   
+  // Звук
   try { 
     audioManager.playSound(this, 'tap_sound', 0.3); 
   } catch(e) {}
