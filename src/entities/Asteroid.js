@@ -1,145 +1,306 @@
+// src/entities/Asteroid.js
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 
 export class Asteroid {
   constructor(scene, x, y, speed = null, size = null, worldType = null) {
     this.scene = scene;
-    this.worldType = worldType || (scene.levelManager?.currentWorld ?? 0);
+    this.worldType = worldType ?? (scene.levelManager?.currentWorld ?? 0);
     
-    // Определяем характеристики в зависимости от мира
+    // Определяем тип препятствия в зависимости от мира
+    this.obstacleType = this.getObstacleType();
+    
+    // Получаем конфигурацию для текущего мира и типа
     this.worldConfig = this.getWorldConfig();
+    this.typeConfig = this.getTypeConfig();
     
-    // Случайный выбор текстуры в зависимости от мира
-    this.texture = this.getTextureForWorld();
+    // Размер
+    this.size = size ?? Phaser.Math.FloatBetween(this.typeConfig.minSize, this.typeConfig.maxSize);
     
-    // Размер астероида
-    this.size = size || Phaser.Math.FloatBetween(0.5, 2.2);
-    
-    // Скорость зависит от мира и размера
-    const baseSpeed = speed || this.getSpeedForWorld();
+    // Скорость
+    const baseSpeed = speed ?? this.getSpeedForWorld();
     this.speed = baseSpeed * (1.5 - this.size * 0.3);
     
-    // Создаём спрайт
-    this.sprite = scene.physics.add.image(x, y, this.texture)
-      .setScale(this.size)
-      .setDepth(5);
+    // Создаём спрайт с учётом типа
+    this.createSprite(x, y);
     
     // Настройка физики
-    this.sprite.body.setCircle(15 * this.size);
-    this.sprite.body.setAllowGravity(false);
+    this.setupPhysics();
     
-    // Направление движения (с учётом эффектов мира)
-    const angleVariation = this.getAngleVariation();
-    const angle = Phaser.Math.FloatBetween(-angleVariation, angleVariation);
-    
-    // Скорость по X и Y
-    this.sprite.setVelocityX(-this.speed * (0.6 + Math.random() * 0.5));
-    this.sprite.setVelocityY(this.speed * angle);
-    this.sprite.setAngularVelocity(Phaser.Math.Between(-150, 150) * (this.size > 1 ? 0.5 : 1));
-    
-    // Ссылка на объект
-    this.sprite.asteroidRef = this;
-    
-    // Характеристики в зависимости от мира и размера
+    // Характеристики
     this.active = true;
     this.damage = this.getDamage();
     this.health = this.getHealth();
     this.maxHealth = this.health;
     this.scoreValue = this.getScoreValue();
-    this.rarity = this.getRarity();
     
-    // Цветовая гамма для мира
-    this.colorTint = this.getColorTint();
-    if (this.colorTint) {
-      this.sprite.setTint(this.colorTint);
-    }
+    // Специальные эффекты для разных миров
+    this.specialEffect = this.typeConfig.specialEffect || null;
+    this.effectTimer = 0;
     
-    // Полоска здоровья (для крупных или в сложных мирах)
+    // Полоска здоровья (для крупных)
     if (this.size > 1.2 || this.worldType >= 3) {
       this.createHealthBar();
     }
     
-    // Специальные эффекты для миров
-    this.applyWorldEffects();
+    // Применяем визуальные эффекты мира
+    this.applyWorldVisuals();
     
-    // Эффект вращения
-    this.rotationSpeed = Phaser.Math.Between(-3, 3);
+    // Создаём дополнительные эффекты для некоторых типов
+    this.createSpecialEffects();
+    
+    // Вращение
+    this.rotationSpeed = Phaser.Math.Between(-3, 3) * this.typeConfig.rotationMultiplier;
     
     // Для чёрной дыры - эффект притяжения
     this.isPulled = false;
     this.pullStrength = 0;
-    
-    // Пылевой след (для астероидов в поле астероидов)
-    this.trailEmitter = null;
-    if (this.worldType === 3 && this.size < 1) {
-      this.createTrail();
-    }
   }
 
   // =========================================================================
-  // КОНФИГУРАЦИЯ В ЗАВИСИМОСТИ ОТ МИРА
+  // ОПРЕДЕЛЕНИЕ ТИПА ПРЕПЯТСТВИЯ
   // =========================================================================
 
-  getWorldConfig() {
+  getObstacleType() {
+    const typesByWorld = {
+      0: ['asteroid'], // Космос - только астероиды
+      1: ['laser_trap', 'energy_orb', 'neon_crystal'], // Киберпанк
+      2: ['spike', 'dark_shadow', 'falling_rock'], // Подземелье
+      3: ['meteor', 'rock_chunk', 'dust_cloud'], // Астероиды
+      4: ['gravity_anomaly', 'void_fragment', 'dark_matter'] // Чёрная дыра
+    };
+    
+    const availableTypes = typesByWorld[this.worldType] || typesByWorld[0];
+    const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    
+    // Увеличиваем шанс специальных препятствий на сложных уровнях
+    const gameLevel = this.scene.gameLevel || 0;
+    if (gameLevel > 5 && Math.random() < 0.3) {
+      return availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    }
+    
+    return randomType;
+  }
+
+  getTypeConfig() {
     const configs = {
-      0: { // Космос
-        speedMultiplier: 1.0,
+      // Космос
+      asteroid: {
+        textures: ['bg_asteroid_1', 'bg_asteroid_2'],
+        minSize: 0.5,
+        maxSize: 2.2,
         healthMultiplier: 1.0,
         damageMultiplier: 1.0,
         scoreMultiplier: 1.0,
-        textures: ['bg_asteroid_1', 'bg_asteroid_2'],
-        colors: [0x888888, 0xaaaaaa],
-        special: null,
+        rotationMultiplier: 1,
+        specialEffect: null,
+        explosionColor: 0xffaa00,
+        description: 'Обычный астероид'
       },
-      1: { // Киберпанк
-        speedMultiplier: 1.3,
+      
+      // Киберпанк
+      laser_trap: {
+        textures: ['cyber_trap', 'neon_trap'],
+        minSize: 0.6,
+        maxSize: 1.2,
         healthMultiplier: 0.8,
-        damageMultiplier: 1.2,
-        scoreMultiplier: 1.2,
-        textures: ['bg_asteroid_1', 'bg_asteroid_2'],
-        colors: [0xff44ff, 0xaa44ff, 0x44aaff],
-        special: 'neon',
-      },
-      2: { // Подземелье
-        speedMultiplier: 0.8,
-        healthMultiplier: 1.3,
         damageMultiplier: 1.5,
         scoreMultiplier: 1.3,
-        textures: ['bg_asteroid_1', 'bg_asteroid_2'],
-        colors: [0xaa6644, 0x884422, 0x663322],
-        special: 'dark',
+        rotationMultiplier: 0.5,
+        specialEffect: 'laser_pulse',
+        explosionColor: 0xff44ff,
+        description: 'Лазерная ловушка'
       },
-      3: { // Астероиды
-        speedMultiplier: 1.4,
+      energy_orb: {
+        textures: ['energy_orb', 'neon_orb'],
+        minSize: 0.4,
+        maxSize: 0.9,
+        healthMultiplier: 0.5,
+        damageMultiplier: 2,
+        scoreMultiplier: 1.5,
+        rotationMultiplier: 2,
+        specialEffect: 'pulse',
+        explosionColor: 0x00ffff,
+        description: 'Энергетическая сфера'
+      },
+      neon_crystal: {
+        textures: ['neon_crystal'],
+        minSize: 0.7,
+        maxSize: 1.5,
         healthMultiplier: 1.2,
+        damageMultiplier: 1.2,
+        scoreMultiplier: 1.8,
+        rotationMultiplier: 0.8,
+        specialEffect: 'glow',
+        explosionColor: 0xff88ff,
+        description: 'Неоновый кристалл'
+      },
+      
+      // Подземелье
+      spike: {
+        textures: ['spike_trap'],
+        minSize: 0.5,
+        maxSize: 1.0,
+        healthMultiplier: 1.5,
+        damageMultiplier: 1.8,
+        scoreMultiplier: 1.2,
+        rotationMultiplier: 0.3,
+        specialEffect: 'spin',
+        explosionColor: 0xff6600,
+        description: 'Шипованная ловушка'
+      },
+      dark_shadow: {
+        textures: ['dark_shadow'],
+        minSize: 0.8,
+        maxSize: 1.8,
+        healthMultiplier: 1.3,
         damageMultiplier: 1.3,
         scoreMultiplier: 1.4,
-        textures: ['bg_asteroid_1', 'bg_asteroid_2', 'bg_asteroid_small'],
-        colors: [0xffaa66, 0xcc8866, 0xaa6644],
-        special: 'fragment',
+        rotationMultiplier: 0.2,
+        specialEffect: 'fade',
+        explosionColor: 0x886644,
+        description: 'Тёмная тень'
       },
-      4: { // Чёрная дыра
-        speedMultiplier: 0.6,
-        healthMultiplier: 1.5,
+      falling_rock: {
+        textures: ['falling_rock'],
+        minSize: 0.9,
+        maxSize: 2.0,
+        healthMultiplier: 1.8,
+        damageMultiplier: 1.5,
+        scoreMultiplier: 1.3,
+        rotationMultiplier: 0.4,
+        specialEffect: 'shake',
+        explosionColor: 0xaa6644,
+        description: 'Падающий камень'
+      },
+      
+      // Астероиды
+      meteor: {
+        textures: ['bg_asteroid_1', 'fire_meteor'],
+        minSize: 0.8,
+        maxSize: 2.5,
+        healthMultiplier: 1.2,
+        damageMultiplier: 1.4,
+        scoreMultiplier: 1.4,
+        rotationMultiplier: 1.2,
+        specialEffect: 'fire_trail',
+        explosionColor: 0xffaa44,
+        description: 'Огненный метеор'
+      },
+      rock_chunk: {
+        textures: ['bg_asteroid_2', 'rock_chunk'],
+        minSize: 0.4,
+        maxSize: 1.2,
+        healthMultiplier: 0.7,
+        damageMultiplier: 1.0,
+        scoreMultiplier: 1.0,
+        rotationMultiplier: 1.5,
+        specialEffect: 'fragment',
+        explosionColor: 0xcc8866,
+        description: 'Осколок породы'
+      },
+      dust_cloud: {
+        textures: ['dust_cloud'],
+        minSize: 1.0,
+        maxSize: 2.0,
+        healthMultiplier: 0.3,
+        damageMultiplier: 0.5,
+        scoreMultiplier: 0.8,
+        rotationMultiplier: 0.1,
+        specialEffect: 'slow_zone',
+        explosionColor: 0xaa8866,
+        description: 'Пылевое облако'
+      },
+      
+      // Чёрная дыра
+      gravity_anomaly: {
+        textures: ['gravity_anomaly'],
+        minSize: 0.6,
+        maxSize: 1.4,
+        healthMultiplier: 2.0,
         damageMultiplier: 2.0,
-        scoreMultiplier: 1.5,
-        textures: ['bg_asteroid_1', 'bg_asteroid_2'],
-        colors: [0xaa88ff, 0x8866cc, 0x6644aa],
-        special: 'gravity',
+        scoreMultiplier: 2.0,
+        rotationMultiplier: 0.6,
+        specialEffect: 'gravity_pull',
+        explosionColor: 0xaa88ff,
+        description: 'Гравитационная аномалия'
       },
+      void_fragment: {
+        textures: ['void_fragment'],
+        minSize: 0.5,
+        maxSize: 1.2,
+        healthMultiplier: 1.5,
+        damageMultiplier: 1.8,
+        scoreMultiplier: 1.6,
+        rotationMultiplier: 0.8,
+        specialEffect: 'warp',
+        explosionColor: 0x8866cc,
+        description: 'Осколок пустоты'
+      },
+      dark_matter: {
+        textures: ['dark_matter'],
+        minSize: 0.7,
+        maxSize: 1.5,
+        healthMultiplier: 2.5,
+        damageMultiplier: 2.2,
+        scoreMultiplier: 2.2,
+        rotationMultiplier: 0.4,
+        specialEffect: 'invisible',
+        explosionColor: 0x6644aa,
+        description: 'Тёмная материя'
+      }
+    };
+    
+    return configs[this.obstacleType] || configs.asteroid;
+  }
+
+  getWorldConfig() {
+    const configs = {
+      0: { speedMultiplier: 1.0, healthMultiplier: 1.0, damageMultiplier: 1.0, scoreMultiplier: 1.0 },
+      1: { speedMultiplier: 1.3, healthMultiplier: 0.9, damageMultiplier: 1.2, scoreMultiplier: 1.2 },
+      2: { speedMultiplier: 0.8, healthMultiplier: 1.4, damageMultiplier: 1.5, scoreMultiplier: 1.3 },
+      3: { speedMultiplier: 1.4, healthMultiplier: 1.1, damageMultiplier: 1.3, scoreMultiplier: 1.4 },
+      4: { speedMultiplier: 0.6, healthMultiplier: 1.6, damageMultiplier: 2.0, scoreMultiplier: 1.5 }
     };
     return configs[this.worldType] || configs[0];
   }
 
-  getTextureForWorld() {
-    const textures = this.worldConfig.textures;
-    const tex = textures[Math.floor(Math.random() * textures.length)];
+  // =========================================================================
+  // СОЗДАНИЕ СПРАЙТА
+  // =========================================================================
+
+  createSprite(x, y) {
+    const textures = this.typeConfig.textures;
+    const texture = textures[Math.floor(Math.random() * textures.length)];
     
-    // Для мира астероидов используем специальную текстуру для мелких
-    if (this.worldType === 3 && this.size < 0.8 && Math.random() > 0.7) {
-      return 'bg_asteroid_small';
-    }
-    return tex;
+    this.sprite = this.scene.physics.add.image(x, y, texture)
+      .setScale(this.size)
+      .setDepth(8);
+    
+    this.sprite.asteroidRef = this;
+    
+    // Цветовой оттенок для разных миров
+    if (this.worldType === 1) this.sprite.setTint(0xff44ff);
+    if (this.worldType === 2) this.sprite.setTint(0xff6600);
+    if (this.worldType === 3) this.sprite.setTint(0xffaa44);
+    if (this.worldType === 4) this.sprite.setTint(0xaa88ff);
+  }
+
+  setupPhysics() {
+    this.sprite.body.setCircle(15 * this.size);
+    this.sprite.body.setAllowGravity(false);
+    
+    const angleVariation = this.getAngleVariation();
+    const angle = Phaser.Math.FloatBetween(-angleVariation, angleVariation);
+    
+    this.sprite.setVelocityX(-this.speed * (0.6 + Math.random() * 0.5));
+    this.sprite.setVelocityY(this.speed * angle);
+    this.sprite.setAngularVelocity(Phaser.Math.Between(-150, 150) * this.typeConfig.rotationMultiplier);
+  }
+
+  getAngleVariation() {
+    const variations = { 0: 0.8, 1: 1.0, 2: 0.5, 3: 1.2, 4: 0.3 };
+    return variations[this.worldType] ?? 0.8;
   }
 
   getSpeedForWorld() {
@@ -147,58 +308,72 @@ export class Asteroid {
     return baseSpeed * this.worldConfig.speedMultiplier;
   }
 
-  getAngleVariation() {
-    const variations = {
-      0: 0.8,   // Космос
-      1: 1.0,   // Киберпанк
-      2: 0.5,   // Подземелье
-      3: 1.2,   // Астероиды
-      4: 0.3,   // Чёрная дыра
-    };
-    return variations[this.worldType] || 0.8;
-  }
-
   getDamage() {
     const baseDamage = Math.ceil(this.size * 0.8);
-    return Math.max(1, Math.floor(baseDamage * this.worldConfig.damageMultiplier));
+    return Math.max(1, Math.floor(baseDamage * this.worldConfig.damageMultiplier * this.typeConfig.damageMultiplier));
   }
 
   getHealth() {
     const baseHealth = Math.ceil(this.size * 2);
-    return Math.max(1, Math.floor(baseHealth * this.worldConfig.healthMultiplier));
+    return Math.max(1, Math.floor(baseHealth * this.worldConfig.healthMultiplier * this.typeConfig.healthMultiplier));
   }
 
   getScoreValue() {
     const baseValue = Math.floor(this.size * 5);
-    return Math.floor(baseValue * this.worldConfig.scoreMultiplier);
-  }
-
-  getRarity() {
-    if (this.size > 1.5) return 'legendary';
-    if (this.size > 1.0) return 'epic';
-    if (this.size > 0.6) return 'rare';
-    return 'common';
-  }
-
-  getColorTint() {
-    if (this.worldType === 1 && this.worldConfig.special === 'neon') {
-      const colors = this.worldConfig.colors;
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-    if (this.worldType === 2) {
-      const colors = this.worldConfig.colors;
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-    if (this.worldType === 4) {
-      const colors = this.worldConfig.colors;
-      return colors[Math.floor(Math.random() * colors.length)];
-    }
-    return null;
+    return Math.floor(baseValue * this.worldConfig.scoreMultiplier * this.typeConfig.scoreMultiplier);
   }
 
   // =========================================================================
   // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
   // =========================================================================
+
+  applyWorldVisuals() {
+    // Эффект свечения для киберпанка
+    if (this.worldType === 1) {
+      this.sprite.setBlendMode(Phaser.BlendModes.ADD);
+      this.scene.tweens.add({
+        targets: this.sprite,
+        alpha: { from: 0.8, to: 1.0 },
+        duration: Phaser.Math.Between(200, 500),
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+    
+    // Эффект тени для подземелья
+    if (this.worldType === 2) {
+      this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
+    }
+    
+    // Для чёрной дыры
+    if (this.worldType === 4) {
+      this.pullStrength = 0.5 + Math.random() * 0.5;
+      this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+  }
+
+  createSpecialEffects() {
+    if (this.typeConfig.specialEffect === 'fire_trail' && this.worldType === 3) {
+      this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
+        speed: { min: 20, max: 50 },
+        scale: { start: 0.2, end: 0 },
+        alpha: { start: 0.5, end: 0 },
+        lifespan: 300,
+        quantity: 1,
+        frequency: 40,
+        blendMode: Phaser.BlendModes.ADD,
+        tint: [0xff6600, 0xffaa44],
+        follow: this.sprite,
+        followOffset: { x: -15, y: 0 }
+      });
+    }
+    
+    if (this.typeConfig.specialEffect === 'glow') {
+      this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 20, 0xff44ff, 0.3);
+      this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
+      this.glowEffect.setDepth(7);
+    }
+  }
 
   createHealthBar() {
     const barWidth = 35;
@@ -206,7 +381,6 @@ export class Asteroid {
     
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
     
-    // Цвет полоски в зависимости от мира
     let barColor = 0xffaa00;
     if (this.worldType === 1) barColor = 0xff44ff;
     if (this.worldType === 2) barColor = 0xff6600;
@@ -239,48 +413,6 @@ export class Asteroid {
     }
   }
 
-  applyWorldEffects() {
-    // Эффект свечения для киберпанка
-    if (this.worldType === 1 && this.colorTint) {
-      this.sprite.setBlendMode(Phaser.BlendModes.ADD);
-      
-      // Мерцание
-      this.scene.tweens.add({
-        targets: this.sprite,
-        alpha: { from: 0.8, to: 1.0 },
-        duration: Phaser.Math.Between(200, 500),
-        yoyo: true,
-        repeat: -1,
-      });
-    }
-    
-    // Эффект тени для подземелья
-    if (this.worldType === 2) {
-      this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
-    }
-    
-    // Для чёрной дыры - сохраняем силу притяжения
-    if (this.worldType === 4) {
-      this.pullStrength = 0.5 + Math.random() * 0.5;
-      this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
-    }
-  }
-
-  createTrail() {
-    const colors = [0xffaa66, 0xcc8866, 0xaa6644];
-    this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
-      speed: { min: 10, max: 30 },
-      scale: { start: 0.15, end: 0 },
-      alpha: { start: 0.4, end: 0 },
-      lifespan: 300,
-      quantity: 1,
-      frequency: 50,
-      blendMode: Phaser.BlendModes.ADD,
-      tint: colors,
-    });
-    this.trailEmitter.startFollow(this.sprite, -10, 0);
-  }
-
   // =========================================================================
   // ОСНОВНЫЕ МЕТОДЫ
   // =========================================================================
@@ -293,15 +425,15 @@ export class Asteroid {
       return true;
     }
     
-    // Визуальный эффект урона в зависимости от мира
+    // Визуальный эффект урона
     this.sprite.setTint(0xff8888);
     this.scene.time.delayedCall(100, () => {
       if (this.sprite && this.sprite.active) {
-        if (this.colorTint) {
-          this.sprite.setTint(this.colorTint);
-        } else {
-          this.sprite.clearTint();
-        }
+        this.sprite.clearTint();
+        if (this.worldType === 1) this.sprite.setTint(0xff44ff);
+        if (this.worldType === 2) this.sprite.setTint(0xff6600);
+        if (this.worldType === 3) this.sprite.setTint(0xffaa44);
+        if (this.worldType === 4) this.sprite.setTint(0xaa88ff);
       }
     });
     
@@ -327,11 +459,16 @@ export class Asteroid {
     // Вращение
     this.sprite.rotation += this.rotationSpeed * 0.01;
     
-    // Специальные эффекты для миров
-    this.updateWorldEffects();
+    // Специальные эффекты
+    this.updateSpecialEffects();
     
     // Обновляем полоску здоровья
     this.updateHealthBar();
+    
+    // Обновляем свечение
+    if (this.glowEffect) {
+      this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+    }
     
     // Проверка выхода за границы
     const bounds = this.scene.scale;
@@ -346,7 +483,7 @@ export class Asteroid {
     return true;
   }
 
-  updateWorldEffects() {
+  updateSpecialEffects() {
     // Эффект притяжения для чёрной дыры
     if (this.worldType === 4 && this.scene.levelManager?.currentWorld === 4) {
       const centerX = this.scene.scale.width / 2;
@@ -377,30 +514,50 @@ export class Asteroid {
       const intensity = 0.7 + Math.sin(time) * 0.3;
       this.sprite.setAlpha(intensity);
     }
+    
+    // Эффект пульсации для энергетических сфер
+    if (this.typeConfig.specialEffect === 'pulse') {
+      this.effectTimer += 16;
+      if (this.effectTimer > 500) {
+        this.effectTimer = 0;
+        const pulse = this.scene.add.circle(this.sprite.x, this.sprite.y, 20, 0x00ffff, 0.5);
+        pulse.setBlendMode(Phaser.BlendModes.ADD);
+        this.scene.tweens.add({
+          targets: pulse,
+          radius: 40,
+          alpha: 0,
+          duration: 300,
+          onComplete: () => pulse.destroy()
+        });
+      }
+    }
+    
+    // Эффект замедления для пылевых облаков
+    if (this.typeConfig.specialEffect === 'slow_zone' && this.scene.player) {
+      const distToPlayer = Phaser.Math.Distance.Between(
+        this.sprite.x, this.sprite.y,
+        this.scene.player.x, this.scene.player.y
+      );
+      if (distToPlayer < 50 && this.scene.player.body) {
+        this.scene.player.body.velocity.x *= 0.98;
+        this.scene.player.body.velocity.y *= 0.98;
+      }
+    }
   }
 
   destroy(withExplosion = false) {
     if (withExplosion && this.scene.particleManager) {
-      // Тип взрыва зависит от мира
-      let explosionColor = 0xffaa00;
+      let explosionColor = this.typeConfig.explosionColor;
       let explosionSize = 'medium';
-      
-      if (this.worldType === 1) explosionColor = 0xff44ff;
-      if (this.worldType === 2) explosionColor = 0xff6600;
-      if (this.worldType === 3) explosionColor = 0xffaa44;
-      if (this.worldType === 4) explosionColor = 0xaa88ff;
       
       if (this.size > 1.2) explosionSize = 'large';
       if (this.size < 0.7) explosionSize = 'small';
       
       this.scene.particleManager.createExplosion(
-        this.sprite.x, 
-        this.sprite.y, 
-        explosionColor,
-        explosionSize
+        this.sprite.x, this.sprite.y, explosionColor, explosionSize
       );
       
-      // Осколки в зависимости от размера
+      // Осколки
       const debrisCount = Math.floor(this.size * 5);
       for (let i = 0; i < debrisCount; i++) {
         this.createDebris();
@@ -412,7 +569,7 @@ export class Asteroid {
         audioManager.playSound(this.scene, 'explosion_sound', Math.min(0.5, volume));
       } catch (e) {}
       
-      // Добавляем кристаллы за уничтожение
+      // Добавляем кристаллы
       if (this.scene.crystals) {
         this.scene.crystals += this.scoreValue;
         if (this.scene.crystalText) {
@@ -431,6 +588,11 @@ export class Asteroid {
     if (this.trailEmitter) {
       this.trailEmitter.stop();
       this.trailEmitter.destroy();
+    }
+    
+    // Удаляем свечение
+    if (this.glowEffect) {
+      this.glowEffect.destroy();
     }
     
     // Удаляем полоску здоровья
@@ -465,7 +627,6 @@ export class Asteroid {
     
     debris.setBlendMode(Phaser.BlendModes.ADD);
     
-    // Анимация разлета
     const angle = Math.random() * Math.PI * 2;
     const speed = Phaser.Math.Between(50, 150);
     
@@ -494,7 +655,11 @@ export class Asteroid {
   }
 
   getType() {
-    return this.rarity;
+    return this.obstacleType;
+  }
+
+  getDescription() {
+    return this.typeConfig.description;
   }
 
   isActive() {

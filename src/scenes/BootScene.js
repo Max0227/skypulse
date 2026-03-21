@@ -204,9 +204,11 @@ export class BootScene extends Phaser.Scene {
   createAllTextures() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
     
+    // Основные текстуры
     this.createPlayerTexture(g);
     this.createSkinTextures(g);
     this.createWagonTextures(g);
+    this.createWagonVariants(g);
     this.createGateTextures(g);
     this.createCoinTextures(g);
     this.createPlanetTextures(g);
@@ -215,6 +217,7 @@ export class BootScene extends Phaser.Scene {
     this.createBossTextures(g);
     this.createAsteroidTextures(g);
     this.createPowerUpTextures(g);
+    this.createPowerUpVariants(g);
     this.createLaserTextures(g);
     this.createParticleTextures(g);
     this.createHeartTexture(g);
@@ -222,8 +225,12 @@ export class BootScene extends Phaser.Scene {
     this.createButtonTextures(g);
     this.createEffectTextures(g);
     this.createWorldTextures(g);
-    this.createWagonVariants(g);
-    this.createPowerUpVariants(g);
+    
+    // НОВЫЕ ТЕКСТУРЫ ДЛЯ ПРЕПЯТСТВИЙ МИРОВ
+    this.createCyberpunkObstacles(g);
+    this.createDungeonObstacles(g);
+    this.createAsteroidObstacles(g);
+    this.createBlackholeObstacles(g);
     
     g.destroy();
     console.log('BootScene: all textures created');
@@ -833,29 +840,25 @@ export class BootScene extends Phaser.Scene {
     g.strokeCircle(30, 30, 20);
     g.generateTexture('blackhole_ring', 60, 60);
     
-    // Неоновая вывеска (без fillText - рисуем примитивами)
+    // Неоновая вывеска
     g.clear();
     g.fillStyle(0xff00ff);
     g.fillRoundedRect(0, 0, 60, 20, 4);
     g.fillStyle(0xff88ff);
     g.fillRoundedRect(2, 2, 56, 16, 3);
     g.fillStyle(0xffffff);
-    // N
     g.fillRect(8, 5, 3, 10);
     g.fillRect(8, 5, 8, 3);
     g.fillRect(8, 12, 8, 3);
     g.fillRect(13, 5, 3, 10);
-    // E
     g.fillRect(18, 5, 3, 10);
     g.fillRect(18, 5, 8, 3);
     g.fillRect(18, 8, 5, 3);
     g.fillRect(18, 12, 8, 3);
-    // O
     g.fillRect(28, 5, 3, 10);
     g.fillRect(28, 5, 8, 3);
     g.fillRect(28, 12, 8, 3);
     g.fillRect(33, 5, 3, 10);
-    // N
     g.fillRect(38, 5, 3, 10);
     g.fillRect(38, 5, 8, 3);
     g.fillRect(38, 12, 8, 3);
@@ -920,5 +923,159 @@ export class BootScene extends Phaser.Scene {
       g.fillRect(8 + i * 6, 22, 6, 2);
     }
     g.generateTexture('digital_icon', 32, 26);
+  }
+
+  // =========================================================================
+  // НОВЫЕ ТЕКСТУРЫ ДЛЯ ПРЕПЯТСТВИЙ МИРОВ
+  // =========================================================================
+
+  createCyberpunkObstacles(g) {
+    // Лазерная ловушка
+    g.clear();
+    g.fillStyle(0xff44ff);
+    g.fillRoundedRect(0, 0, 30, 30, 8);
+    g.fillStyle(0xffffff);
+    g.fillRect(12, 5, 6, 20);
+    g.fillRect(5, 12, 20, 6);
+    g.generateTexture('cyber_trap', 30, 30);
+    
+    // Неоновая ловушка
+    g.clear();
+    g.fillStyle(0x00ffff);
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      g.fillCircle(15 + Math.cos(angle) * 10, 15 + Math.sin(angle) * 10, 3);
+    }
+    g.fillCircle(15, 15, 5);
+    g.generateTexture('neon_trap', 30, 30);
+    
+    // Энергетическая сфера
+    g.clear();
+    g.fillStyle(0x88aaff);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xffffff);
+    g.fillCircle(10, 10, 3);
+    g.fillCircle(20, 20, 3);
+    g.lineStyle(1, 0x00ffff, 0.8);
+    g.strokeCircle(15, 15, 13);
+    g.generateTexture('energy_orb', 30, 30);
+    
+    // Неоновая сфера
+    g.clear();
+    g.fillStyle(0xff88ff);
+    g.fillCircle(15, 15, 12);
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      g.fillStyle(Phaser.Display.Color.HSLToColor(i / 6, 1, 0.6).color);
+      g.fillCircle(15 + Math.cos(angle) * 8, 15 + Math.sin(angle) * 8, 2);
+    }
+    g.generateTexture('neon_orb', 30, 30);
+    
+    // Неоновый кристалл
+    g.clear();
+    g.fillStyle(0xff44ff);
+    g.fillTriangle(15, 5, 22, 25, 8, 25);
+    g.fillStyle(0xff88ff);
+    g.fillTriangle(15, 12, 19, 22, 11, 22);
+    g.fillStyle(0xffffff);
+    g.fillCircle(15, 15, 2);
+    g.generateTexture('neon_crystal', 30, 30);
+  }
+
+  createDungeonObstacles(g) {
+    // Шипованная ловушка
+    g.clear();
+    g.fillStyle(0xaa6644);
+    g.fillRoundedRect(5, 5, 20, 20, 4);
+    for (let i = 0; i < 5; i++) {
+      g.fillCircle(7 + i * 4, 15, 2);
+    }
+    g.generateTexture('spike_trap', 30, 30);
+    
+    // Тёмная тень
+    g.clear();
+    g.fillStyle(0x442211);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0x221100);
+    g.fillCircle(15, 15, 8);
+    g.fillStyle(0x000000, 0.5);
+    g.fillCircle(15, 15, 5);
+    g.generateTexture('dark_shadow', 30, 30);
+    
+    // Падающий камень
+    g.clear();
+    g.fillStyle(0x886644);
+    g.fillRoundedRect(8, 5, 14, 20, 4);
+    g.fillStyle(0xaa8866);
+    g.fillRoundedRect(10, 3, 10, 22, 4);
+    g.fillStyle(0x664422);
+    g.fillRoundedRect(12, 8, 6, 14, 2);
+    g.generateTexture('falling_rock', 30, 30);
+  }
+
+  createAsteroidObstacles(g) {
+    // Огненный метеор
+    g.clear();
+    g.fillStyle(0xff6644);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xffaa44);
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      g.fillCircle(15 + Math.cos(angle) * 10, 15 + Math.sin(angle) * 10, 2);
+    }
+    g.fillStyle(0xff4400);
+    g.fillCircle(15, 15, 6);
+    g.generateTexture('fire_meteor', 30, 30);
+    
+    // Осколок породы
+    g.clear();
+    g.fillStyle(0xccaa88);
+    g.fillTriangle(8, 5, 22, 5, 15, 25);
+    g.fillStyle(0xaa8866);
+    g.fillTriangle(10, 8, 20, 8, 15, 22);
+    g.fillStyle(0x886644);
+    g.fillTriangle(12, 11, 18, 11, 15, 19);
+    g.generateTexture('rock_chunk', 30, 30);
+    
+    // Пылевое облако
+    g.clear();
+    g.fillStyle(0xccaa88, 0.5);
+    for (let i = 0; i < 10; i++) {
+      g.fillCircle(8 + i * 2, 15, 3);
+      g.fillCircle(15, 5 + i * 2, 3);
+      g.fillCircle(22 - i, 22 - i, 2);
+    }
+    g.generateTexture('dust_cloud', 30, 30);
+  }
+
+  createBlackholeObstacles(g) {
+    // Гравитационная аномалия
+    g.clear();
+    g.fillStyle(0x8866cc);
+    g.fillCircle(15, 15, 12);
+    g.fillStyle(0xaa88ff);
+    for (let i = 0; i < 3; i++) {
+      g.strokeCircle(15, 15, 8 + i * 3);
+    }
+    g.generateTexture('gravity_anomaly', 30, 30);
+    
+    // Осколок пустоты
+    g.clear();
+    g.fillStyle(0x6644aa);
+    g.fillStar(15, 15, 5, 10, 5);
+    g.fillStyle(0x8866cc);
+    g.fillStar(15, 15, 4, 8, 5);
+    g.generateTexture('void_fragment', 30, 30);
+    
+    // Тёмная материя
+    g.clear();
+    g.fillStyle(0x442288);
+    g.fillCircle(15, 15, 10);
+    g.fillStyle(0x6644aa);
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      g.fillCircle(15 + Math.cos(angle) * 8, 15 + Math.sin(angle) * 8, 3);
+    }
+    g.generateTexture('dark_matter', 30, 30);
   }
 }
