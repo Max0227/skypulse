@@ -2694,12 +2694,62 @@ updatePlayerVisuals() {
   /**
    * Метод для проверки квестов
    */
-  checkQuests() {
-    if (!this.questSystem) return;
+  /**
+ * Метод для проверки квестов
+ */
+checkQuests() {
+  if (!this.questSystem) return;
 
-    // Проверка активных квестов
-    if (typeof this.questSystem.getActiveQuests === 'function') {
-      const activeQuests = this.questSystem.getActiveQuests() || [];
+  // Проверка активных квестов
+  if (typeof this.questSystem.getActiveQuests === 'function') {
+    const activeQuests = this.questSystem.getActiveQuests();
+    
+    // Если вернулся объект с полями daily, weekly, event (новая версия)
+    if (activeQuests && typeof activeQuests === 'object' && !Array.isArray(activeQuests)) {
+      // Обрабатываем дневные квесты
+      if (Array.isArray(activeQuests.daily)) {
+        for (let quest of activeQuests.daily) {
+          if (quest.completed && !quest.claimed) {
+            quest.claimed = true;
+            this.crystals += quest.reward || 0;
+            if (this.crystalText) {
+              this.crystalText.setText(`💎 ${this.crystals}`);
+            }
+            this.showNotification(`Квест выполнен! +${quest.reward || 0} 💎`, 2000, '#00ff00');
+          }
+        }
+      }
+      
+      // Обрабатываем недельные квесты
+      if (Array.isArray(activeQuests.weekly)) {
+        for (let quest of activeQuests.weekly) {
+          if (quest.completed && !quest.claimed) {
+            quest.claimed = true;
+            this.crystals += quest.reward || 0;
+            if (this.crystalText) {
+              this.crystalText.setText(`💎 ${this.crystals}`);
+            }
+            this.showNotification(`Еженедельный квест выполнен! +${quest.reward || 0} 💎`, 2000, '#ffaa00');
+          }
+        }
+      }
+      
+      // Обрабатываем ивентовые квесты
+      if (Array.isArray(activeQuests.event)) {
+        for (let quest of activeQuests.event) {
+          if (quest.completed && !quest.claimed) {
+            quest.claimed = true;
+            this.crystals += quest.reward || 0;
+            if (this.crystalText) {
+              this.crystalText.setText(`💎 ${this.crystals}`);
+            }
+            this.showNotification(`Ивентовый квест выполнен! +${quest.reward || 0} 💎`, 2000, '#ff44ff');
+          }
+        }
+      }
+    }
+    // Если вернулся массив (старая версия)
+    else if (Array.isArray(activeQuests)) {
       for (let quest of activeQuests) {
         if (quest.completed && !quest.claimed) {
           quest.claimed = true;
@@ -2712,6 +2762,7 @@ updatePlayerVisuals() {
       }
     }
   }
+}
 
   /**
    * Метод для обновления статистики в реальном времени
