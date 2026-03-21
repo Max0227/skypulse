@@ -18,6 +18,8 @@ export class ShopScene extends Phaser.Scene {
     this.dragVelocity = 0;
     this.lastDragX = 0;
     this.scrollTween = null;
+    this.cardWidth = 280;
+    this.cardSpacing = 24;
   }
 
   create() {
@@ -30,23 +32,25 @@ export class ShopScene extends Phaser.Scene {
     this.createFloatingParticles();
     this.createStars();
 
-    // Заголовок и баланс (вверху, над каруселью)
+    // Заголовок (уменьшен)
     this.createHeader();
+
+    // Баланс кристаллов – выдвинут на передний план, яркий, над каруселью
     this.createBalanceDisplay();
 
     // Карусель улучшений (центральная часть)
     this.createUpgradeCarousel();
 
-    // Детальная панель (под каруселью, выше кнопок)
+    // Детальная панель – поднимаем повыше, примерно на середину экрана
     this.createDetailPanel();
 
-    // Кнопки действий (под детальной панелью)
+    // Кнопки действий – под детальной панелью
     this.createActionButtons();
 
-    // Кнопка назад (внизу экрана)
+    // Кнопка назад (внизу)
     this.createBackButton();
 
-    // Нижняя панель с версией (оставляем, но сместим)
+    // Версия (оставляем)
     this.createFooter();
 
     // Анимации
@@ -201,12 +205,11 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ЗАГОЛОВОК И БАЛАНС (теперь видны и не перекрываются)
+  // ЗАГОЛОВОК (уменьшен)
   // =========================================================================
   createHeader() {
     const w = this.scale.width;
-    // Заголовок уменьшен
-    this.title = this.add.text(w / 2, 30, 'МАГАЗИН УЛУЧШЕНИЙ', {
+    this.title = this.add.text(w / 2, 25, 'МАГАЗИН УЛУЧШЕНИЙ', {
       fontSize: '28px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
@@ -214,7 +217,7 @@ export class ShopScene extends Phaser.Scene {
       strokeThickness: 4,
       shadow: { blur: 15, color: '#00ffff', fill: true }
     }).setOrigin(0.5);
-    this.titleGlow = this.add.text(w / 2, 30, 'МАГАЗИН УЛУЧШЕНИЙ', {
+    this.titleGlow = this.add.text(w / 2, 25, 'МАГАЗИН УЛУЧШЕНИЙ', {
       fontSize: '28px',
       fontFamily: '"Audiowide", "Orbitron", sans-serif',
       color: '#ffffff',
@@ -233,13 +236,18 @@ export class ShopScene extends Phaser.Scene {
     });
   }
 
+  // =========================================================================
+  // БАЛАНС – крупный, неоновый, на переднем плане
+  // =========================================================================
   createBalanceDisplay() {
     const w = this.scale.width;
-    // Баланс под заголовком, но выше карусели
     const container = this.add.container(w / 2, 75);
-    const bg = this.add.rectangle(0, 0, 260, 40, 0x0a0a1a, 0.9);
-    bg.setStrokeStyle(2, 0x00ffff, 0.8);
-    const icon = this.add.text(-70, 0, '💎', { fontSize: '28px' }).setOrigin(0.5);
+    container.setDepth(20); // выше остальных
+
+    const bg = this.add.rectangle(0, 0, 280, 48, 0x0a0a1a, 0.95);
+    bg.setStrokeStyle(3, 0x00ffff, 0.9);
+    bg.setShadow(0, 0, '#00ffff', 10, true, true);
+    const icon = this.add.text(-75, 0, '💎', { fontSize: '36px' }).setOrigin(0.5);
     this.tweens.add({
       targets: icon,
       angle: 360,
@@ -248,21 +256,22 @@ export class ShopScene extends Phaser.Scene {
       ease: 'Linear'
     });
     this.balanceText = this.add.text(15, 0, `${gameManager.data.crystals}`, {
-      fontSize: '24px',
-      fontFamily: '"Share Tech Mono", monospace',
+      fontSize: '32px',
+      fontFamily: '"Audiowide", sans-serif',
       color: '#ffaa00',
       stroke: '#000000',
-      strokeThickness: 3
+      strokeThickness: 4,
+      shadow: { blur: 10, color: '#ffaa00', fill: true }
     }).setOrigin(0, 0.5);
-    const label = this.add.text(0, -15, 'КРИСТАЛЛЫ', {
-      fontSize: '9px',
+    const label = this.add.text(0, -20, 'КРИСТАЛЛЫ', {
+      fontSize: '10px',
       fontFamily: '"Share Tech Mono", monospace',
       color: '#88aaff'
     }).setOrigin(0.5);
     container.add([bg, icon, this.balanceText, label]);
     this.tweens.add({
       targets: bg,
-      strokeWidth: 3,
+      strokeWidth: 4,
       alpha: 1,
       duration: 1500,
       yoyo: true,
@@ -272,29 +281,26 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КАРУСЕЛЬ УЛУЧШЕНИЙ (сдвинута немного вверх, чтобы освободить место)
+  // КАРУСЕЛЬ (горизонтальная, плавный drag и инерция)
   // =========================================================================
   createUpgradeCarousel() {
     const w = this.scale.width;
-    const carouselY = 135; // подняли выше
-    const cardWidth = 280;
-    const cardSpacing = 24;
-
+    const carouselY = 145; // чуть ниже баланса
     this.carouselContainer = this.add.container(w / 2, carouselY);
     this.carouselContainer.setDepth(10);
 
     SHOP_UPGRADES.forEach((upgrade, idx) => {
-      const card = this.createUpgradeCard(upgrade, idx, cardWidth);
-      const x = (idx - (SHOP_UPGRADES.length - 1) / 2) * (cardWidth + cardSpacing);
+      const card = this.createUpgradeCard(upgrade, idx);
+      const x = (idx - (SHOP_UPGRADES.length - 1) / 2) * (this.cardWidth + this.cardSpacing);
       card.x = x;
       this.carouselContainer.add(card);
       this.upgradeCards.push({ card, upgrade, index: idx });
     });
 
-    this.setupCarouselDrag(cardWidth, cardSpacing);
+    this.setupCarouselDrag();
   }
 
-  createUpgradeCard(upgrade, index, cardWidth) {
+  createUpgradeCard(upgrade, index) {
     const level = gameManager.getUpgradeLevel(upgrade.key);
     const maxLevel = upgrade.maxLevel;
     const cost = gameManager.getUpgradeCost(upgrade.key);
@@ -309,10 +315,10 @@ export class ShopScene extends Phaser.Scene {
     // Фон
     const bg = this.add.graphics();
     bg.fillStyle(0x1a1a3a, 0.9);
-    bg.fillRoundedRect(-cardWidth / 2, -100, cardWidth, 200, 20);
+    bg.fillRoundedRect(-this.cardWidth / 2, -100, this.cardWidth, 200, 20);
     const borderColor = isMax ? 0x00ff00 : (canAfford ? 0x00ffff : 0x444444);
     bg.lineStyle(3, borderColor, 0.8);
-    bg.strokeRoundedRect(-cardWidth / 2, -100, cardWidth, 200, 20);
+    bg.strokeRoundedRect(-this.cardWidth / 2, -100, this.cardWidth, 200, 20);
     container.setData('bg', bg);
 
     // Иконка
@@ -353,8 +359,8 @@ export class ShopScene extends Phaser.Scene {
 
     container.add([bg, icon, name, levelText, progressBg, progressFill, valueText, priceText]);
 
-    // Интерактивная область для выбора карточки
-    const hitArea = this.add.rectangle(0, 0, cardWidth, 200, 0x000000, 0)
+    // Интерактивная область для выбора карточки (будет также обновляться при скролле)
+    const hitArea = this.add.rectangle(0, 0, this.cardWidth, 200, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
       .setData('upgrade', upgrade);
     hitArea.on('pointerdown', () => this.selectCard(index));
@@ -363,17 +369,18 @@ export class ShopScene extends Phaser.Scene {
     return container;
   }
 
-  setupCarouselDrag(cardWidth, cardSpacing) {
+  setupCarouselDrag() {
     const w = this.scale.width;
-    const totalWidth = SHOP_UPGRADES.length * (cardWidth + cardSpacing);
+    const totalWidth = SHOP_UPGRADES.length * (this.cardWidth + this.cardSpacing);
     const minX = w / 2 - totalWidth / 2;
-    const maxX = w / 2 + totalWidth / 2 - cardWidth;
+    const maxX = w / 2 + totalWidth / 2 - this.cardWidth;
 
     let startX = 0;
     let startContainerX = 0;
     let isDragging = false;
     let velocity = 0;
     let lastX = 0;
+    let lastTimestamp = 0;
 
     const zone = this.add.zone(0, 0, w, this.scale.height).setOrigin(0).setInteractive();
     zone.on('pointerdown', (pointer) => {
@@ -381,81 +388,92 @@ export class ShopScene extends Phaser.Scene {
       startX = pointer.x;
       startContainerX = this.carouselContainer.x;
       lastX = pointer.x;
+      lastTimestamp = pointer.time;
       isDragging = true;
       velocity = 0;
     });
     zone.on('pointermove', (pointer) => {
       if (!isDragging) return;
+      const now = pointer.time;
+      const dt = Math.max(1, now - lastTimestamp);
       const delta = pointer.x - lastX;
-      velocity = delta;
+      velocity = delta * (1000 / dt); // скорость в пикселях/сек
       let newX = startContainerX + delta;
       newX = Phaser.Math.Clamp(newX, minX, maxX);
       this.carouselContainer.x = newX;
       lastX = pointer.x;
+      lastTimestamp = now;
       this.updateSelectedCardByPosition();
     });
     zone.on('pointerup', () => {
       isDragging = false;
-      if (Math.abs(velocity) > 5) {
-        const targetX = this.carouselContainer.x + velocity * 3;
+      // Инерция
+      if (Math.abs(velocity) > 30) {
+        const targetX = this.carouselContainer.x + velocity * 0.15;
         this.scrollTween = this.tweens.add({
           targets: this.carouselContainer,
           x: Phaser.Math.Clamp(targetX, minX, maxX),
-          duration: 300,
+          duration: 400,
           ease: 'Power2.easeOut',
           onUpdate: () => this.updateSelectedCardByPosition(),
-          onComplete: () => { this.scrollTween = null; }
+          onComplete: () => {
+            this.scrollTween = null;
+            this.snapToNearestCard(minX, maxX);
+          }
         });
       } else {
-        this.snapToNearestCard(cardWidth, cardSpacing, minX, maxX);
+        this.snapToNearestCard(minX, maxX);
       }
     });
 
+    // Поддержка колесика мыши
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
       if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        const newX = this.carouselContainer.x + deltaX;
+        const newX = this.carouselContainer.x + deltaX * 2;
         this.carouselContainer.x = Phaser.Math.Clamp(newX, minX, maxX);
         this.updateSelectedCardByPosition();
       }
     });
   }
 
-  snapToNearestCard(cardWidth, cardSpacing, minX, maxX) {
+  snapToNearestCard(minX, maxX) {
     const w = this.scale.width;
     const centerX = w / 2;
     let bestIdx = 0;
     let bestDist = Infinity;
     SHOP_UPGRADES.forEach((_, idx) => {
-      const targetX = centerX + (idx - (SHOP_UPGRADES.length - 1) / 2) * (cardWidth + cardSpacing);
+      const targetX = centerX + (idx - (SHOP_UPGRADES.length - 1) / 2) * (this.cardWidth + this.cardSpacing);
       const dist = Math.abs(this.carouselContainer.x - targetX);
       if (dist < bestDist) {
         bestDist = dist;
         bestIdx = idx;
       }
     });
-    const targetX = centerX + (bestIdx - (SHOP_UPGRADES.length - 1) / 2) * (cardWidth + cardSpacing);
-    this.scrollTween = this.tweens.add({
-      targets: this.carouselContainer,
-      x: Phaser.Math.Clamp(targetX, minX, maxX),
-      duration: 300,
-      ease: 'Power2.easeOut',
-      onUpdate: () => this.updateSelectedCardByPosition(),
-      onComplete: () => {
-        this.selectCard(bestIdx);
-        this.scrollTween = null;
-      }
-    });
+    const targetX = centerX + (bestIdx - (SHOP_UPGRADES.length - 1) / 2) * (this.cardWidth + this.cardSpacing);
+    if (Math.abs(this.carouselContainer.x - targetX) > 5) {
+      this.scrollTween = this.tweens.add({
+        targets: this.carouselContainer,
+        x: Phaser.Math.Clamp(targetX, minX, maxX),
+        duration: 250,
+        ease: 'Power2.easeOut',
+        onUpdate: () => this.updateSelectedCardByPosition(),
+        onComplete: () => {
+          this.scrollTween = null;
+          this.selectCard(bestIdx, true);
+        }
+      });
+    } else {
+      this.selectCard(bestIdx, true);
+    }
   }
 
   updateSelectedCardByPosition() {
     const w = this.scale.width;
     const centerX = w / 2;
-    const cardWidth = 280;
-    const cardSpacing = 24;
     let bestIdx = 0;
     let bestDist = Infinity;
     SHOP_UPGRADES.forEach((_, idx) => {
-      const targetX = centerX + (idx - (SHOP_UPGRADES.length - 1) / 2) * (cardWidth + cardSpacing);
+      const targetX = centerX + (idx - (SHOP_UPGRADES.length - 1) / 2) * (this.cardWidth + this.cardSpacing);
       const dist = Math.abs(this.carouselContainer.x - targetX);
       if (dist < bestDist) {
         bestDist = dist;
@@ -485,9 +503,9 @@ export class ShopScene extends Phaser.Scene {
       const borderColor = i === index ? 0xffff00 : (isMax ? 0x00ff00 : (canAfford ? 0x00ffff : 0x444444));
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(-140, -100, 280, 200, 20);
+      bg.fillRoundedRect(-this.cardWidth / 2, -100, this.cardWidth, 200, 20);
       bg.lineStyle(3, borderColor, i === index ? 1 : 0.8);
-      bg.strokeRoundedRect(-140, -100, 280, 200, 20);
+      bg.strokeRoundedRect(-this.cardWidth / 2, -100, this.cardWidth, 200, 20);
     });
 
     // Обновляем детальную панель
@@ -497,12 +515,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // ДЕТАЛЬНАЯ ПАНЕЛЬ (поднята выше, над кнопками)
+  // ДЕТАЛЬНАЯ ПАНЕЛЬ – поднята выше (y = середина экрана)
   // =========================================================================
   createDetailPanel() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const panelY = h - 170; // выше, чтобы освободить место для кнопок
+    const panelY = h * 0.55; // чуть выше середины
     this.detailContainer = this.add.container(w / 2, panelY);
     this.detailContainer.setDepth(15);
 
@@ -520,7 +538,7 @@ export class ShopScene extends Phaser.Scene {
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff'
     }).setOrigin(0.5);
-    // Описание (более подробное)
+    // Описание
     this.detailDesc = this.add.text(0, -12, '', {
       fontSize: '12px',
       fontFamily: "'Share Tech Mono', monospace",
@@ -603,12 +621,12 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КНОПКИ ДЕЙСТВИЙ (под детальной панелью, уменьшенные)
+  // КНОПКИ ДЕЙСТВИЙ – под детальной панелью
   // =========================================================================
   createActionButtons() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const btnY = h - 95; // выше, чем раньше, чтобы не сливаться с кнопкой назад
+    const btnY = h * 0.75; // ниже детальной панели, но выше кнопки назад
 
     this.buyBtn = this.createActionButton(w / 2 - 120, btnY, 'КУПИТЬ', '#00ff00', () => this.buyUpgrade(), 130);
     this.sellBtn = this.createActionButton(w / 2, btnY, 'ПРОДАТЬ', '#ffaa00', () => this.sellUpgrade(), 130);
@@ -719,7 +737,7 @@ export class ShopScene extends Phaser.Scene {
     const cardData = this.upgradeCards[this.currentCardIndex];
     if (!cardData) return;
     const oldCard = cardData.card;
-    const newCard = this.createUpgradeCard(cardData.upgrade, this.currentCardIndex, 280);
+    const newCard = this.createUpgradeCard(cardData.upgrade, this.currentCardIndex);
     newCard.x = oldCard.x;
     this.carouselContainer.add(newCard);
     oldCard.destroy();
@@ -878,7 +896,7 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // КНОПКА НАЗАД (внизу экрана)
+  // КНОПКА НАЗАД (внизу)
   // =========================================================================
   createBackButton() {
     const w = this.scale.width;
@@ -940,7 +958,6 @@ export class ShopScene extends Phaser.Scene {
   createFooter() {
     const w = this.scale.width;
     const h = this.scale.height;
-    // Версию опустим чуть ниже, чтобы не мешала
     this.add.text(w - 30, h - 12, 'v3.5.0', {
       fontSize: '10px',
       fontFamily: '"Share Tech Mono", monospace',
