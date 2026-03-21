@@ -4089,9 +4089,6 @@ confirmExit() {
 /**
  * Закрытие диалога выхода
  */
-/**
- * Закрытие диалога выхода
- */
 closeExitDialog() {
   if (this.exitOverlay) this.exitOverlay.destroy();
   if (this.exitPanel) this.exitPanel.destroy();
@@ -4280,8 +4277,6 @@ startRun() {
  */
 scheduleNextSpawn() {
   if (this.dead) return;
-  
-  const difficulty = this.getDifficulty();
   const delay = Math.max(300, Math.min(2000, difficulty.spawnDelay));
   
   this.spawnTimer = this.time.delayedCall(delay, () => {
@@ -4341,134 +4336,6 @@ showWaveStartNotification(waveNumber) {
     if (this.levelUpSound) this.levelUpSound.play();
   } catch (e) {}
 }
-
-  /**
- * Получение параметров сложности с учётом мира и уровня
- */
-getDifficulty() {
-  const level = Math.min(this.gameLevel, 20);
-  const worldBonus = this.world * 0.1; // +10% сложности за каждый мир
-  
-  // Базовая скорость (увеличивается с миром)
-  const baseSpeed = 240 * (1 + worldBonus);
-  const speed = Math.floor(baseSpeed * Math.pow(1.08, level));
-  
-  // Зазор между воротами
-  const baseGap = 240;
-  const gap = Math.max(130, Math.floor(baseGap - level * 4 - this.world * 5));
-  
-  // Задержка спавна
-  const baseDelay = 1500;
-  const spawnDelay = Math.max(400, Math.floor(baseDelay - level * 45 - this.world * 30));
-  
-  // Шансы (увеличиваются с уровнем и миром)
-  const asteroidChance = Math.min(0.75, 0.25 + level * 0.025 + this.world * 0.05);
-  const powerUpChance = Math.min(0.35, 0.1 + level * 0.012 + this.world * 0.02);
-  const coinChance = Math.min(0.9, 0.7 + level * 0.01);
-  
-  return {
-    speed: Math.max(200, speed + Phaser.Math.Between(-15, 15)),
-    gap: Math.max(120, gap + Phaser.Math.Between(-12, 12)),
-    spawnDelay: Math.max(350, spawnDelay + Phaser.Math.Between(-60, 60)),
-    coinChance: coinChance,
-    asteroidChance: asteroidChance,
-    powerUpChance: powerUpChance
-  };
-}
-
-/**
- * Переключение паузы
- */
-togglePause() {
-  this.isPaused = !this.isPaused;
-  
-  if (this.isPaused) {
-    this.physics.pause();
-    if (this.spawnTimer) this.spawnTimer.paused = true;
-    if (this.bonusTimer) this.bonusTimer.paused = true;
-    if (this.stationTimer) this.stationTimer.paused = true;
-    
-    // ВАЖНО: НЕ добавляем setInteractive() на оверлей!
-    this.pauseOverlay = this.add.rectangle(
-      this.scale.width / 2, this.scale.height / 2,
-      this.scale.width, this.scale.height,
-      0x000000, 0.85
-    ).setDepth(100).setScrollFactor(0);
-    // НЕТ .setInteractive() - это важно!
-    
-    // Неоновая рамка
-    this.pauseBorder = this.add.graphics();
-    this.pauseBorder.lineStyle(3, 0x00ffff, 0.9);
-    this.pauseBorder.strokeRoundedRect(
-      this.scale.width / 2 - 150,
-      this.scale.height / 2 - 110,
-      300, 220, 25
-    );
-    this.pauseBorder.setDepth(101);
-    
-    // Текст паузы
-    this.pauseText = this.add.text(
-      this.scale.width / 2, this.scale.height / 2 - 50,
-      '⏸️ ПАУЗА',
-      {
-        fontSize: '52px',
-        fontFamily: "'Audiowide', 'Orbitron', sans-serif",
-        color: '#ffffff',
-        stroke: '#00ffff',
-        strokeThickness: 6,
-        shadow: { blur: 25, color: '#00ffff', fill: true }
-      }
-    ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
-    
-    this.pauseTip = this.add.text(
-      this.scale.width / 2, this.scale.height / 2 + 30,
-      '✦ НАЖМИТЕ КНОПКУ ПАУЗЫ, ЧТОБЫ ПРОДОЛЖИТЬ ✦',
-      {
-        fontSize: '12px',
-        fontFamily: "'Share Tech Mono', monospace",
-        color: '#88aaff',
-        stroke: '#000000',
-        strokeThickness: 2
-      }
-    ).setOrigin(0.5).setDepth(102).setScrollFactor(0);
-    
-    // Анимация рамки
-    this.tweens.add({
-      targets: this.pauseBorder,
-      alpha: { from: 0.6, to: 1 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1
-    });
-    
-    // Пульсация текста
-    this.tweens.add({
-      targets: this.pauseText,
-      scale: { from: 1, to: 1.05 },
-      duration: 800,
-      yoyo: true,
-      repeat: -1
-    });
-    
-  } else {
-    this.physics.resume();
-    if (this.spawnTimer) this.spawnTimer.paused = false;
-    if (this.bonusTimer) this.bonusTimer.paused = false;
-    if (this.stationTimer) this.stationTimer.paused = false;
-    
-    // Удаляем элементы паузы
-    if (this.pauseBorder) this.pauseBorder.destroy();
-    if (this.pauseText) this.pauseText.destroy();
-    if (this.pauseTip) this.pauseTip.destroy();
-    if (this.pauseOverlay) this.pauseOverlay.destroy();
-    
-    this.pauseBorder = null;
-    this.pauseText = null;
-    this.pauseTip = null;
-    this.pauseOverlay = null;
-  }
-}
-
 /**
  * Открыть магазин (убрано - магазин только в меню)
  */
@@ -4663,6 +4530,21 @@ startResumeCountdown() {
     },
     repeat: 2
   });
+}
+/**
+ * Скрыть магазин
+ */
+hideShop() {
+  if (!this.shopVisible) return;
+  
+  if (this.shopElements) {
+    this.shopElements.forEach(el => {
+      if (el && el.destroy) el.destroy();
+    });
+    this.shopElements = [];
+  }
+  
+  this.shopVisible = false;
 }
 
 /**
@@ -5868,6 +5750,141 @@ saveDailyReward() {
       a.rotationSpeed = Phaser.Math.Between(-50, 50);
     }
   }
+}
+// =========================================================================
+// МЕТОДЫ ИГРОВОЙ ЛОГИКИ
+// =========================================================================
+
+/**
+ * Обновление движения игрока
+ */
+updatePlayerMovement() {
+  if (!this.player) return;
+  
+  this.targetPlayerX = Math.min(this.maxTargetX, this.targetPlayerX);
+  this.player.x += (this.targetPlayerX - this.player.x) * this.playerXSpeed;
+
+  const body = this.player.body;
+  if (body) {
+    this.player.setAngle(Phaser.Math.Clamp(body.velocity.y * 0.05, -20, 75));
+  }
+
+  // Проверка смерти
+  if (!this.shieldActive && (this.player.y < -50 || this.player.y > this.scale.height + 50)) {
+    this.handleDeath();
+  }
+}
+
+/**
+ * Обновление бонусов и эффектов
+ */
+updateBonuses(delta) {
+  if (!this.player) return;
+  
+  // Магнит
+  if (this.magnetActive && this.coinGroup) {
+    const magnetCoins = this.coinGroup.getChildren();
+    for (let coin of magnetCoins) {
+      if (!coin || !coin.active) continue;
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, coin.x, coin.y);
+      if (dist < this.magnetRange) {
+        const angle = Phaser.Math.Angle.Between(coin.x, coin.y, this.player.x, this.player.y);
+        coin.x += Math.cos(angle) * 10;
+        coin.y += Math.sin(angle) * 10;
+      }
+    }
+  }
+  
+  // Обновление визуальных эффектов
+  if (this.updatePlayerEffects) this.updatePlayerEffects();
+  if (this.updateMultiplier) this.updateMultiplier();
+}
+
+/**
+ * Обновление всех игровых объектов
+ */
+updateObjects(delta) {
+  if (!this.player) return;
+  
+  // Обновление вагонов
+  this.updateWagons();
+  this.cleanupObjects();
+  
+  // Обновление пуль
+  if (this.playerBullets) {
+    this.playerBullets.getChildren().forEach((b) => {
+      if (b && b.x > this.scale.width + 100) b.destroy();
+    });
+  }
+  if (this.enemyBullets) {
+    this.enemyBullets.getChildren().forEach((b) => {
+      if (b && (b.x < -100 || b.y < -100 || b.y > this.scale.height + 100)) b.destroy();
+    });
+  }
+  
+  // Обновление астероидов
+  for (let i = this.asteroids.length - 1; i >= 0; i--) {
+    const asteroid = this.asteroids[i];
+    if (!asteroid || typeof asteroid.update !== 'function') {
+      this.asteroids.splice(i, 1);
+      continue;
+    }
+    if (!asteroid.update()) {
+      this.asteroids.splice(i, 1);
+    }
+  }
+  
+  // Обновление усилителей
+  for (let i = this.powerUps.length - 1; i >= 0; i--) {
+    const powerUp = this.powerUps[i];
+    if (!powerUp || typeof powerUp.update !== 'function') {
+      this.powerUps.splice(i, 1);
+      continue;
+    }
+    if (!powerUp.update()) {
+      this.powerUps.splice(i, 1);
+    }
+  }
+  
+  // Обновление оружия
+  if (this.weaponCooldown > 0) {
+    this.weaponCooldown -= delta;
+  }
+}
+
+/**
+ * Проверка достижений и рекордов
+ */
+checkAchievementsAndRecords() {
+  this.checkAchievements();
+  this.checkNewRecords();
+  this.checkMaxCombo();
+  this.checkQuests();
+  if (this.checkWaveAchievements) this.checkWaveAchievements();
+  if (this.createComboEffect) this.createComboEffect();
+}
+
+/**
+ * Обновление метража
+ */
+updateMeters(delta) {
+  const distanceDelta = (this.currentSpeed * delta) / 1000 / 10;
+  this.meters += distanceDelta;
+  this.levelProgress += distanceDelta;
+  
+  if (this.meterText) {
+    this.meterText.setText(`📏 ${Math.floor(this.meters)} м`);
+  }
+}
+/**
+ * Обновление фоновых элементов
+ */
+updateBackground(delta) {
+  const time = Date.now() / 1000;
+  this.updateStars(time, delta);
+  this.updatePlanets(delta);
+  this.updateShips(delta);
+  this.updateAsteroids(delta);
 }
 
   onResize() {
