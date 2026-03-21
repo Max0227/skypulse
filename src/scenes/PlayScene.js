@@ -738,36 +738,35 @@ updateCameraZoom() {
    * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
    */
   getDifficulty() {
-    // Базовая скорость мира (240 для космоса, +20 за каждый следующий мир)
-    const worldBase = 240 + this.world * 20;
-    
-    // Внутренний уровень сложности (0-20)
-    const level = Math.min(this.gameLevel, 20);
-
-    // Увеличение на 10% каждый внутренний уровень ОТ БАЗЫ МИРА
-    const speed = Math.floor(worldBase * Math.pow(1.1, level));
-
-    // Зазор: уменьшается с внутренним уровнем
-    const baseGap = 240;
-    const gap = Math.max(140, Math.floor(baseGap - level * 5));
-
-    // Задержка спавна
-    const baseDelay = 1500;
-    const spawnDelay = Math.max(500, baseDelay - level * 50);
-
-    // Шансы
-    const asteroidChance = Math.min(0.7, 0.3 + level * 0.02);
-    const powerUpChance = Math.min(0.3, 0.1 + level * 0.01);
-
-    return {
-      speed: speed + Phaser.Math.Between(-10, 10),
-      gap: gap + Phaser.Math.Between(-10, 10),
-      spawnDelay: spawnDelay + Phaser.Math.Between(-50, 50),
-      coinChance: 0.8,
-      asteroidChance: asteroidChance,
-      powerUpChance: powerUpChance
-    };
-  }
+  const level = Math.min(this.gameLevel, 20);
+  const worldBonus = this.world * 0.1;
+  
+  // Базовая скорость
+  const baseSpeed = 240 * (1 + worldBonus);
+  const speed = Math.floor(baseSpeed * Math.pow(1.05, level));
+  
+  // Зазор между воротами
+  const baseGap = 240;
+  const gap = Math.max(140, Math.floor(baseGap - level * 3));
+  
+  // Задержка спавна
+  const baseDelay = 1500;
+  const spawnDelay = Math.max(600, Math.floor(baseDelay - level * 30));
+  
+  // Шансы (плавное нарастание)
+  const asteroidChance = Math.min(0.5, 0.12 + level * 0.012);
+  const powerUpChance = Math.min(0.25, 0.08 + level * 0.008);
+  const coinChance = Math.min(0.85, 0.7 + level * 0.008);
+  
+  return {
+    speed: Math.max(200, speed),
+    gap: Math.max(120, gap),
+    spawnDelay: Math.max(400, spawnDelay),
+    coinChance: coinChance,
+    asteroidChance: asteroidChance,
+    powerUpChance: powerUpChance
+  };
+}
 
   /**
    * Обновление прогресса уровня мира (НОВЫЙ МЕТОД)
@@ -791,52 +790,60 @@ updateCameraZoom() {
   /**
    * Завершение текущего уровня мира (НОВЫЙ МЕТОД)
    */
-  completeWorldLevel() {
-    if (this.level < 9) { // максимум 10 уровней в мире (0-9)
-      this.level++;
-      this.levelProgress = 0;
-      this.gameLevel = 0; // сбрасываем внутренний уровень
+  /**
+ * Завершение текущего уровня мира (НОВЫЙ МЕТОД)
+ */
+completeWorldLevel() {
+  if (this.level < 9) { // максимум 10 уровней в мире (0-9)
+    this.level++;
+    this.levelProgress = 0;
+    this.gameLevel = 0; // сбрасываем внутренний уровень
 
-      // Обновляем конфигурацию уровня
-      if (this.levelManager) {
-        this.levelManager.switchLevel(this.level);
-      }
-
-      // Показываем сообщение о новом уровне мира
-      const w = this.scale.width;
-      const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ МИРА ${this.level + 1}`, {
-        fontSize: '28px',
-        fontFamily: "'Orbitron', sans-serif",
-        color: '#00ffff',
-        stroke: '#ff00ff',
-        strokeThickness: 4
-      }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
-
-      this.tweens.add({
-        targets: levelText,
-        alpha: 0,
-        duration: 2000,
-        onComplete: () => levelText.destroy()
-      });
-
-      // Бонус за прохождение уровня
-      this.crystals += 50;
-      if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
-      if (gameManager.data) {
-        gameManager.data.crystals = this.crystals;
-        gameManager.save();
-      }
-
-      this.checkStationSpawn();
-      
-      if (this.questSystem) {
-        this.questSystem.updateProgress('level', 1);
-      }
-    } else {
-      // Достигнут последний уровень мира - переходим к следующему миру
-      this.completeWorld();
+    // Обновляем конфигурацию уровня
+    if (this.levelManager) {
+      this.levelManager.switchLevel(this.level);
     }
+
+    // Показываем сообщение о новом уровне мира
+    const w = this.scale.width;
+    const levelText = this.add.text(w / 2, 200, `УРОВЕНЬ МИРА ${this.level + 1}`, {
+      fontSize: '28px',
+      fontFamily: "'Orbitron', sans-serif",
+      color: '#00ffff',
+      stroke: '#ff00ff',
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(100).setScrollFactor(0);
+
+    this.tweens.add({
+      targets: levelText,
+      alpha: 0,
+      duration: 2000,
+      onComplete: () => levelText.destroy()
+    });
+
+    // Бонус за прохождение уровня
+    this.crystals += 50;
+    if (this.crystalText) this.crystalText.setText(`💎 ${this.crystals}`);
+    if (gameManager.data) {
+      gameManager.data.crystals = this.crystals;
+      gameManager.save();
+    }
+
+    // ВАЖНО: Разблокируем следующий уровень в GameManager
+    if (gameManager.unlockLevel) {
+      gameManager.unlockLevel(this.world, this.level);
+    }
+
+    this.checkStationSpawn();
+    
+    if (this.questSystem) {
+      this.questSystem.updateProgress('level', 1);
+    }
+  } else {
+    // Достигнут последний уровень мира - переходим к следующему миру
+    this.completeWorld();
   }
+}
 
   /**
    * Завершение мира, переход к следующему (НОВЫЙ МЕТОД)
@@ -1516,53 +1523,74 @@ updateCameraZoom() {
   // =========================================================================
 
   /**
-   * Спавн астероида
-   */
-  spawnAsteroid() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const speed = 300 + this.gameLevel * 30;
-    const x = w + 50;
-    const y = Phaser.Math.Between(50, h - 50);
-
-    const asteroid = new Asteroid(this, x, y, speed);
-    this.asteroids.push(asteroid);
-    if (asteroid.sprite) {
-      this.asteroidGroup.add(asteroid.sprite);
+ * Спавн астероида (игровой, с коллизией)
+ */
+spawnAsteroid() {
+  // Шанс спавна зависит от уровня сложности
+  const spawnChance = 0.15 + (this.gameLevel * 0.01);
+  if (Math.random() > spawnChance) return;
+  
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  // Позиция спавна - справа за экраном
+  const x = w + Phaser.Math.Between(50, 150);
+  const y = Phaser.Math.Between(80, h - 80);
+  
+  // Создаём астероид с учётом уровня сложности
+  const asteroid = new Asteroid(this, x, y, this.world, this.gameLevel);
+  this.asteroids.push(asteroid);
+  this.asteroidGroup.add(asteroid.sprite);
+  
+  // Коллизия с игроком
+  this.physics.add.overlap(this.player, asteroid.sprite, (player, astSprite) => {
+    const ast = astSprite.asteroidRef;
+    if (ast?.isActive()) {
+      if (this.shieldActive) {
+        this.particleManager.createBonusEffect('shield', ast.sprite.x, ast.sprite.y);
+        if (this.player.body) this.player.body.setVelocityY(-100);
+      } else {
+        this.headHP -= ast.damage;
+        this.updateHearts();
+        this.cameras.main.shake(150, 0.005);
+        try { audioManager.playSound(this, 'hit_sound', 0.3); } catch(e) {}
+        
+        if (this.headHP <= 0) {
+          this.handleDeath();
+        }
+      }
+      ast.destroy(true);
+      this.asteroids = this.asteroids.filter(a => a !== ast);
     }
-
-    if (this.player) {
-      this.physics.add.overlap(
-        this.player,
-        asteroid.sprite,
-        (p, a) => {
-          if (!this.shieldActive && a) {
-            this.headHP--;
-            this.updateHearts();
-            this.cameras.main.shake(100, 0.005);
-
-            try {
-              if (audioManager && typeof audioManager.playSound === 'function') {
-                audioManager.playSound(this, 'hit_sound', 0.3);
-              }
-            } catch (e) {}
-
-            if (this.headHP <= 0) {
-              this.handleDeath();
-            }
-
-            a.destroy();
-            this.asteroids = this.asteroids.filter(
-              (ast) => ast.sprite !== a
-            );
-            if (this.comboSystem) this.comboSystem.reset();
-          }
-        },
-        null,
-        this
-      );
+  }, null, this);
+  
+  // Коллизия с вагонами
+  this.physics.add.overlap(this.wagons, asteroid.sprite, (wagon, astSprite) => {
+    const ast = astSprite.asteroidRef;
+    if (ast?.isActive() && wagon?.active) {
+      if (wagon.takeDamage) {
+        const destroyed = wagon.takeDamage(ast.damage);
+        if (destroyed) {
+          this.wagons = this.wagons.filter(w => w !== wagon);
+        }
+      }
+      ast.destroy(true);
+      this.asteroids = this.asteroids.filter(a => a !== ast);
     }
-  }
+  }, null, this);
+  
+  // Коллизия с пулями игрока
+  this.physics.add.overlap(this.playerBullets, asteroid.sprite, (bullet, astSprite) => {
+    const ast = astSprite.asteroidRef;
+    if (ast?.isActive() && bullet?.active) {
+      const killed = ast.takeDamage(bullet.damage || 1);
+      bullet.destroy();
+      if (killed) {
+        this.asteroids = this.asteroids.filter(a => a !== ast);
+      }
+    }
+  }, null, this);
+}
 
   // =========================================================================
   // МЕТОДЫ ДЛЯ УСИЛИТЕЛЕЙ

@@ -823,6 +823,17 @@ export class BootScene extends Phaser.Scene {
     g.fillStyle(0x000000, 0.3);
     g.fillCircle(20, 20, 20);
     g.generateTexture('dungeon_shadow', 40, 40);
+
+    // Ледяной астероид
+    g.clear();
+    g.fillStyle(0x88ccff);
+    g.fillCircle(20, 20, 15);
+    g.fillStyle(0xaaddff);
+    g.fillCircle(12, 12, 6);
+    g.fillCircle(28, 28, 5);
+    g.lineStyle(2, 0xccffff, 0.5);
+    g.strokeCircle(20, 20, 16);
+    g.generateTexture('ice_asteroid', 40, 40);
     
     // Астероиды: мелкий астероид
     g.clear();
