@@ -4,7 +4,6 @@ import {
   LEVEL_CONFIG,
   ENEMY_CONFIG,
   ACHIEVEMENTS,
-  SHOP_UPGRADES,
 } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
