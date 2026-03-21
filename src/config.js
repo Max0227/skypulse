@@ -70,6 +70,9 @@ export const SHOP_UPGRADES = [
   { key: 'weaponDamage', name: 'Урон оружия', icon: '💥', maxLevel: 15 },
   { key: 'weaponSpeed', name: 'Скорость пуль', icon: '⚡', maxLevel: 15 },
   { key: 'weaponFireRate', name: 'Скорострельность', icon: '🔫', maxLevel: 15 },
+  { key: 'weaponDamage', name: 'Урон оружия', icon: '💥', maxLevel: 15, cost: 20 },
+  { key: 'weaponSpeed', name: 'Скорость пуль', icon: '⚡', maxLevel: 15, cost: 15 },
+  { key: 'weaponFireRate', name: 'Скорострельность', icon: '🔫', maxLevel: 15, cost: 25 },
 ];
 
 export const ACHIEVEMENTS = {

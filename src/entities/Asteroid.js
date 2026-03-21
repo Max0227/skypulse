@@ -6,21 +6,21 @@ export class Asteroid {
   constructor(scene, x, y, worldType = null, level = 0) {
     this.scene = scene;
     this.worldType = worldType ?? (scene.levelManager?.currentWorld ?? 0);
-    this.level = level; // уровень сложности (0-20)
+    this.level = Math.min(level, 20);
     
-    // Размер астероида (меньше = быстрее уничтожается)
-    this.size = Phaser.Math.FloatBetween(0.4, 1.2);
+    // Размер астероида (0.3 - 1.5)
+    this.size = Phaser.Math.FloatBetween(0.4, 1.3);
     
-    // Скорость зависит от уровня сложности (медленно в начале)
-    this.speed = this.getBaseSpeed();
-    
-    // Тип астероида (обычный, огненный, ледяной)
+    // Тип астероида
     this.type = this.getAsteroidType();
+    
+    // Скорость (медленная, без гравитации)
+    this.speed = this.getBaseSpeed();
     
     // Создаём спрайт
     this.createSprite(x, y);
     
-    // Настройка физики (без гравитации)
+    // Настройка физики (полное отключение гравитации)
     this.setupPhysics();
     
     // Характеристики
@@ -30,85 +30,80 @@ export class Asteroid {
     this.maxHealth = this.health;
     this.scoreValue = this.getScoreValue();
     
-    // Полоска здоровья (для крупных астероидов)
+    // Полоска здоровья для крупных
     if (this.size > 0.8) {
       this.createHealthBar();
     }
     
-    // Визуальные эффекты в зависимости от типа
+    // Визуальные эффекты
     this.applyVisualEffects();
     
     // Вращение
-    this.rotationSpeed = Phaser.Math.Between(-2, 2);
+    this.rotationSpeed = Phaser.Math.Between(-1.5, 1.5);
     
-    // Таймер для пульсации
+    // Таймеры для эффектов
     this.pulseTimer = 0;
+    this.wobbleTimer = 0;
+    this.wobbleOffset = 0;
+    
+    // Начальное вертикальное смещение (для плавного полёта)
+    this.verticalDrift = Phaser.Math.Between(-20, 20);
+    this.driftSpeed = Phaser.Math.FloatBetween(0.2, 0.8);
   }
 
   // =========================================================================
-  // ОПРЕДЕЛЕНИЕ ХАРАКТЕРИСТИК
+  // ОПРЕДЕЛЕНИЕ ТИПА И ХАРАКТЕРИСТИК
   // =========================================================================
-
-  getBaseSpeed() {
-    // Базовая скорость астероида (очень медленно в начале)
-    const baseSpeed = this.scene.baseSpeed || 240;
-    
-    // Скорость зависит от уровня сложности (0.2 - 0.8 от скорости игры)
-    const speedFactor = 0.2 + (this.level / 50); // от 0.2 до 0.6 на 20 уровне
-    
-    // Медленное нарастание сложности
-    return baseSpeed * Math.min(0.8, speedFactor);
-  }
 
   getAsteroidType() {
     const rand = Math.random();
     const levelBonus = this.level / 100;
     
-    // Типы астероидов
-    if (this.level >= 10 && rand < 0.15 + levelBonus) return 'fire';     // огненные (редкие)
-    if (this.level >= 5 && rand < 0.1 + levelBonus) return 'ice';        // ледяные
-    return 'normal'; // обычные
+    if (this.level >= 12 && rand < 0.12 + levelBonus) return 'void';      // редкие
+    if (this.level >= 8 && rand < 0.1 + levelBonus) return 'fire';        // огненные
+    if (this.level >= 4 && rand < 0.08 + levelBonus) return 'ice';        // ледяные
+    return 'normal';
+  }
+
+  getBaseSpeed() {
+    const baseSpeed = this.scene.baseSpeed || 240;
+    // Скорость 0.2 - 0.5 от скорости игры (медленно)
+    const speedFactor = 0.2 + (this.level / 60);
+    return baseSpeed * Math.min(0.55, speedFactor);
   }
 
   getDamage() {
-    // Урон зависит от размера и типа
-    let baseDamage = Math.floor(this.size * 1.2);
-    
-    if (this.type === 'fire') baseDamage = Math.floor(baseDamage * 1.5);
-    if (this.type === 'ice') baseDamage = Math.floor(baseDamage * 0.8);
-    
-    return Math.max(1, baseDamage);
+    let damage = Math.floor(this.size * 1.2);
+    if (this.type === 'fire') damage = Math.floor(damage * 1.4);
+    if (this.type === 'void') damage = Math.floor(damage * 1.6);
+    return Math.max(1, damage);
   }
 
   getHealth() {
-    // Здоровье зависит от размера и типа
-    let baseHealth = Math.floor(this.size * 3);
-    
-    if (this.type === 'fire') baseHealth = Math.floor(baseHealth * 1.3);
-    if (this.type === 'ice') baseHealth = Math.floor(baseHealth * 1.5);
-    
-    return Math.max(1, baseHealth);
+    let health = Math.floor(this.size * 2.5);
+    if (this.type === 'ice') health = Math.floor(health * 1.4);
+    if (this.type === 'void') health = Math.floor(health * 1.8);
+    return Math.max(1, health);
   }
 
   getScoreValue() {
-    let baseValue = Math.floor(this.size * 8);
-    
-    if (this.type === 'fire') baseValue = Math.floor(baseValue * 1.5);
-    if (this.type === 'ice') baseValue = Math.floor(baseValue * 1.3);
-    
-    return Math.max(1, baseValue);
+    let value = Math.floor(this.size * 6);
+    if (this.type === 'fire') value = Math.floor(value * 1.4);
+    if (this.type === 'ice') value = Math.floor(value * 1.3);
+    if (this.type === 'void') value = Math.floor(value * 2);
+    return Math.max(1, value);
   }
 
   // =========================================================================
-  // СОЗДАНИЕ СПРАЙТА
+  // СОЗДАНИЕ СПРАЙТА И ФИЗИКИ
   // =========================================================================
 
   createSprite(x, y) {
-    // Выбираем текстуру в зависимости от типа
     let texture = 'bg_asteroid_1';
     
     if (this.type === 'fire') texture = 'fire_meteor';
     else if (this.type === 'ice') texture = 'ice_asteroid';
+    else if (this.type === 'void') texture = 'void_fragment';
     else texture = Math.random() > 0.5 ? 'bg_asteroid_1' : 'bg_asteroid_2';
     
     this.sprite = this.scene.physics.add.image(x, y, texture)
@@ -119,16 +114,29 @@ export class Asteroid {
   }
 
   setupPhysics() {
-    // Полное отключение гравитации
+    // ===== ПОЛНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
     this.sprite.body.setAllowGravity(false);
     this.sprite.body.setGravityY(0);
+    this.sprite.body.setGravityX(0);
+    
+    // Размер коллизии
     this.sprite.body.setCircle(14 * this.size);
     
-    // Движение только влево с небольшим вертикальным смещением
-    const verticalVariation = Phaser.Math.Between(-30, 30);
+    // ===== ДВИЖЕНИЕ ТОЛЬКО ВЛЕВО С МИНИМАЛЬНЫМ ВЕРТИКАЛЬНЫМ СМЕЩЕНИЕМ =====
+    // Горизонтальная скорость
     this.sprite.setVelocityX(-this.speed);
-    this.sprite.setVelocityY(verticalVariation * 0.5);
-    this.sprite.setAngularVelocity(Phaser.Math.Between(-60, 60));
+    
+    // Вертикальная скорость (минимальная, плавное парение)
+    const verticalSpeed = Phaser.Math.Between(-15, 15);
+    this.sprite.setVelocityY(verticalSpeed);
+    
+    // Медленное вращение
+    this.sprite.setAngularVelocity(Phaser.Math.Between(-40, 40));
+    
+    // Отключаем трение
+    this.sprite.body.setDrag(0);
+    this.sprite.body.setDragX(0);
+    this.sprite.body.setDragY(0);
   }
 
   applyVisualEffects() {
@@ -137,26 +145,35 @@ export class Asteroid {
       this.sprite.setTint(0xff6600);
       this.sprite.setBlendMode(Phaser.BlendModes.ADD);
       this.createFireTrail();
-    } else if (this.type === 'ice') {
+    } 
+    else if (this.type === 'ice') {
       this.sprite.setTint(0x88ccff);
       this.createIceTrail();
-    } else if (this.worldType === 1) {
+    }
+    else if (this.type === 'void') {
+      this.sprite.setTint(0xaa88ff);
+      this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
+      this.createVoidTrail();
+    }
+    else if (this.worldType === 1) {
       this.sprite.setTint(0xff44ff);
-    } else if (this.worldType === 2) {
+    }
+    else if (this.worldType === 2) {
       this.sprite.setTint(0xff6600);
-    } else if (this.worldType === 4) {
+    }
+    else if (this.worldType === 4) {
       this.sprite.setTint(0xaa88ff);
     }
   }
 
   createFireTrail() {
     this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
-      speed: { min: 15, max: 35 },
+      speed: { min: 10, max: 25 },
       scale: { start: 0.2, end: 0 },
-      alpha: { start: 0.6, end: 0 },
+      alpha: { start: 0.7, end: 0 },
       lifespan: 250,
       quantity: 1,
-      frequency: 40,
+      frequency: 35,
       blendMode: Phaser.BlendModes.ADD,
       tint: [0xff6600, 0xffaa44],
       follow: this.sprite,
@@ -166,12 +183,12 @@ export class Asteroid {
 
   createIceTrail() {
     this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'flare', {
-      speed: { min: 10, max: 25 },
+      speed: { min: 5, max: 15 },
       scale: { start: 0.15, end: 0 },
       alpha: { start: 0.5, end: 0 },
       lifespan: 300,
       quantity: 1,
-      frequency: 50,
+      frequency: 45,
       blendMode: Phaser.BlendModes.ADD,
       tint: [0x88ccff, 0xaaddff],
       follow: this.sprite,
@@ -179,8 +196,23 @@ export class Asteroid {
     });
   }
 
+  createVoidTrail() {
+    this.trailEmitter = this.scene.add.particles(this.sprite.x, this.sprite.y, 'spark', {
+      speed: { min: 8, max: 20 },
+      scale: { start: 0.12, end: 0 },
+      alpha: { start: 0.4, end: 0 },
+      lifespan: 280,
+      quantity: 1,
+      frequency: 40,
+      blendMode: Phaser.BlendModes.ADD,
+      tint: [0xaa88ff, 0x8866cc],
+      follow: this.sprite,
+      followOffset: { x: -8, y: 0 }
+    });
+  }
+
   createHealthBar() {
-    const barWidth = 30;
+    const barWidth = 32;
     const barHeight = 4;
     
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
@@ -188,13 +220,14 @@ export class Asteroid {
     let barColor = 0xffaa00;
     if (this.type === 'fire') barColor = 0xff6600;
     if (this.type === 'ice') barColor = 0x88ccff;
+    if (this.type === 'void') barColor = 0xaa88ff;
     
     graphics.fillStyle(barColor, 1);
     graphics.fillRect(0, 0, barWidth, barHeight);
     graphics.generateTexture('asteroid_health_bar', barWidth, barHeight);
     graphics.destroy();
     
-    this.healthBar = this.scene.add.image(this.sprite.x, this.sprite.y - 15, 'asteroid_health_bar')
+    this.healthBar = this.scene.add.image(this.sprite.x, this.sprite.y - 18, 'asteroid_health_bar')
       .setScale(1, 0.5)
       .setDepth(20);
   }
@@ -204,7 +237,7 @@ export class Asteroid {
     
     const healthPercent = this.health / this.maxHealth;
     this.healthBar.setScale(healthPercent, 0.5);
-    this.healthBar.setPosition(this.sprite.x, this.sprite.y - 15);
+    this.healthBar.setPosition(this.sprite.x, this.sprite.y - 18);
     
     if (healthPercent < 0.3) {
       this.healthBar.setTint(0xff0000);
@@ -255,15 +288,26 @@ export class Asteroid {
       return false;
     }
     
-    // Вращение
+    // ===== ПЛАВНОЕ ВРАЩЕНИЕ =====
     this.sprite.rotation += this.rotationSpeed * 0.02;
+    
+    // ===== ПЛАВНОЕ КОЛЕБАНИЕ ВЕРТИКАЛИ (парящий эффект) =====
+    this.wobbleTimer += 0.03;
+    this.wobbleOffset = Math.sin(this.wobbleTimer) * 0.8;
+    
+    if (this.sprite.body) {
+      // Небольшая корректировка вертикальной скорости для парения
+      const currentVy = this.sprite.body.velocity.y;
+      const targetVy = this.verticalDrift * this.driftSpeed + this.wobbleOffset;
+      this.sprite.body.velocity.y += (targetVy - currentVy) * 0.05;
+    }
     
     // Пульсация для огненных астероидов
     if (this.type === 'fire') {
       this.pulseTimer += 16;
-      if (this.pulseTimer > 300) {
+      if (this.pulseTimer > 400) {
         this.pulseTimer = 0;
-        this.sprite.setScale(this.size * (1 + Math.random() * 0.1));
+        this.sprite.setScale(this.size * (1 + Math.random() * 0.08));
         this.scene.time.delayedCall(100, () => {
           if (this.sprite) this.sprite.setScale(this.size);
         });
@@ -273,9 +317,8 @@ export class Asteroid {
     // Обновляем полоску здоровья
     this.updateHealthBar();
     
-    // Проверка выхода за границы
-    const bounds = this.scene.scale;
-    if (this.sprite.x < -150) {
+    // Проверка выхода за границы (удаляем когда улетел далеко влево)
+    if (this.sprite.x < -200) {
       this.destroy();
       return false;
     }
@@ -290,7 +333,8 @@ export class Asteroid {
       
       if (this.type === 'fire') explosionColor = 0xff6600;
       if (this.type === 'ice') explosionColor = 0x88ccff;
-      if (this.size > 0.8) explosionSize = 'medium';
+      if (this.type === 'void') explosionColor = 0xaa88ff;
+      if (this.size > 0.9) explosionSize = 'medium';
       
       this.scene.particleManager.createExplosion(
         this.sprite.x, this.sprite.y, explosionColor, explosionSize

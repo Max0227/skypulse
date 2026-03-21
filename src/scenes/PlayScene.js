@@ -3730,7 +3730,7 @@ playHoverSound() {
 }
 
 /**
- * Атака по врагам
+ * Атака по врагам (с учётом улучшений оружия)
  */
 attackEnemies() {
   if (this.weaponCooldown > 0) return;
@@ -3748,22 +3748,15 @@ attackEnemies() {
   
   if (!bullet) return;
   
-  // Настройка пули
+  // Применяем улучшения
   bullet.setScale(1.5);
-  bullet.damage = this.weaponDamage;
+  bullet.damage = this.weaponDamage;        // урон
   bullet.setDepth(20);
   
-  // ВАЖНО: добавляем физическое тело, если его нет
-  if (!bullet.body) {
-    this.physics.add.existing(bullet);
-  }
-  
-  // Отключаем гравитацию
+  // Физика пули
   bullet.body.setAllowGravity(false);
   bullet.body.setGravityY(0);
-  
-  // Устанавливаем скорость
-  bullet.body.setVelocityX(this.weaponBulletSpeed);
+  bullet.body.setVelocityX(this.weaponBulletSpeed);  // скорость пули
   bullet.body.setVelocityY(0);
   
   // Эффект выстрела

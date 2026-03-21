@@ -31,10 +31,10 @@ export class ShopScene extends Phaser.Scene {
     // Баланс кристаллов
     this.createBalanceDisplay();
 
-    // Сетка улучшений (2 ряда)
+    // Сетка улучшений (3 колонки, 4 ряда)
     this.createUpgradeGrid();
 
-    // Детальная панель (СОЗДАЁМ ПЕРВОЙ, ДО КНОПОК)
+    // Детальная панель (под карточками)
     this.createDetailPanel();
 
     // Кнопки действий
@@ -281,16 +281,16 @@ export class ShopScene extends Phaser.Scene {
   }
 
   // =========================================================================
-  // СЕТКА УЛУЧШЕНИЙ (2 ряда)
+  // СЕТКА УЛУЧШЕНИЙ (3 колонки, 4 ряда)
   // =========================================================================
   createUpgradeGrid() {
     const w = this.scale.width;
-    const startY = 125;
-    const cardWidth = 170;
-    const cardHeight = 140;
-    const spacingX = 20;
-    const spacingY = 20;
-    const cols = 2;
+    const startY = 115;
+    const cardWidth = 110;
+    const cardHeight = 125;
+    const spacingX = 10;
+    const spacingY = 8;
+    const cols = 3;
     
     const totalWidth = cols * cardWidth + (cols - 1) * spacingX;
     const startX = (w - totalWidth) / 2 + cardWidth / 2;
@@ -318,59 +318,49 @@ export class ShopScene extends Phaser.Scene {
     container.setData('upgrade', upgrade);
     container.setData('index', index);
     
-    // Фон карточки
+    // Фон карточки с неоновой рамкой
     const bg = this.add.graphics();
     const borderColor = isMax ? 0x00ff00 : (canAfford ? 0x00ffff : 0x444444);
     bg.fillStyle(0x1a1a3a, 0.9);
-    bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+    bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
     bg.lineStyle(2, borderColor, 0.8);
-    bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+    bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
     container.setData('bg', bg);
     container.add(bg);
     
     // Иконка
-    const icon = this.add.text(0, -45, upgrade.icon, { fontSize: '40px' }).setOrigin(0.5);
+    const icon = this.add.text(0, -35, upgrade.icon, { fontSize: '28px' }).setOrigin(0.5);
     container.add(icon);
     
     // Название
-    const name = this.add.text(0, -12, upgrade.name, {
-      fontSize: '12px',
+    const name = this.add.text(0, -8, upgrade.name, {
+      fontSize: '10px',
       fontFamily: "'Orbitron', sans-serif",
       color: '#ffffff',
       stroke: isMax ? '#00ff00' : (canAfford ? '#00ffff' : '#888888'),
       strokeThickness: 0.5,
-      wordWrap: { width: cardWidth - 20 }
+      wordWrap: { width: cardWidth - 10 }
     }).setOrigin(0.5);
     container.add(name);
     
     // Уровень
-    const levelText = this.add.text(0, 12, `УРОВЕНЬ ${level}/${maxLevel}`, {
-      fontSize: '9px',
+    const levelText = this.add.text(0, 12, `${level}/${maxLevel}`, {
+      fontSize: '8px',
       fontFamily: "'Share Tech Mono', monospace",
       color: '#88aaff'
     }).setOrigin(0.5);
     container.add(levelText);
     
     // Прогресс-бар
-    const progressBg = this.add.rectangle(0, 32, 120, 4, 0x333333);
-    const progressFill = this.add.rectangle(-60, 32, 120 * progress, 4, 
+    const progressBg = this.add.rectangle(0, 30, 70, 3, 0x333333);
+    const progressFill = this.add.rectangle(-35, 30, 70 * progress, 3, 
       isMax ? 0x00ff00 : (canAfford ? 0x00ffff : 0x666666)
     ).setOrigin(0, 0.5);
     container.add([progressBg, progressFill]);
     
-    // Значение
-    const currentVal = this.getUpgradeValue(upgrade.key, level);
-    const nextVal = !isMax ? this.getUpgradeValue(upgrade.key, level + 1) : null;
-    const valueText = this.add.text(0, 45, `${currentVal} → ${nextVal || 'MAX'}`, {
-      fontSize: '9px',
-      fontFamily: "'Share Tech Mono', monospace",
-      color: isMax ? '#00ff00' : '#ffaa00'
-    }).setOrigin(0.5);
-    container.add(valueText);
-    
     // Цена
-    const priceText = this.add.text(0, 60, isMax ? 'MAX' : `${cost} 💎`, {
-      fontSize: '11px',
+    const priceText = this.add.text(0, 48, isMax ? 'MAX' : `${cost} 💎`, {
+      fontSize: '9px',
       fontFamily: "'Audiowide', sans-serif",
       color: isMax ? '#00ff00' : (canAfford ? '#ffaa00' : '#ff4444')
     }).setOrigin(0.5);
@@ -385,9 +375,9 @@ export class ShopScene extends Phaser.Scene {
       if (!isMax) {
         bg.clear();
         bg.fillStyle(0x2a2a4a, 0.9);
-        bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+        bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
         bg.lineStyle(2, borderColor, 1);
-        bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+        bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
         icon.setScale(1.1);
         this.playHoverSound();
       }
@@ -396,9 +386,9 @@ export class ShopScene extends Phaser.Scene {
     hitArea.on('pointerout', () => {
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+      bg.fillRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
       bg.lineStyle(2, borderColor, 0.8);
-      bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 12);
+      bg.strokeRoundedRect(-cardWidth / 2, -cardHeight / 2, cardWidth, cardHeight, 8);
       icon.setScale(1);
     });
     
@@ -411,13 +401,16 @@ export class ShopScene extends Phaser.Scene {
     return container;
   }
 
+  // =========================================================================
+  // ВЫБОР КАРТОЧКИ (ИСПРАВЛЕННЫЙ)
+  // =========================================================================
   selectCard(index, silent = false) {
     if (index === this.currentCardIndex && !silent) return;
     this.currentCardIndex = index;
     const upgrade = SHOP_UPGRADES[index];
     this.selectedUpgrade = upgrade;
     
-    // Обновляем рамки карточек
+    // Обновляем рамки карточек (с правильными размерами 110x125)
     this.upgradeCards.forEach((cardData, i) => {
       const bg = cardData.card.getData('bg');
       if (!bg) return;
@@ -429,12 +422,12 @@ export class ShopScene extends Phaser.Scene {
       const borderColor = i === index ? 0xffff00 : (isMax ? 0x00ff00 : (canAfford ? 0x00ffff : 0x444444));
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(-85, -70, 170, 140, 12);
+      bg.fillRoundedRect(-55, -62.5, 110, 125, 8);
       bg.lineStyle(i === index ? 3 : 2, borderColor, i === index ? 1 : 0.8);
-      bg.strokeRoundedRect(-85, -70, 170, 140, 12);
+      bg.strokeRoundedRect(-55, -62.5, 110, 125, 8);
     });
     
-    // Обновляем детальную панель (только если она создана)
+    // Обновляем детальную панель
     if (this.detailName && this.detailDesc && this.detailNext) {
       this.updateDetailPanel();
     }
@@ -448,7 +441,7 @@ export class ShopScene extends Phaser.Scene {
   createDetailPanel() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const panelY = h - 125;
+    const panelY = h - 115;
     
     this.detailContainer = this.add.container(w / 2, panelY);
     this.detailContainer.setDepth(15);
@@ -552,11 +545,11 @@ export class ShopScene extends Phaser.Scene {
   createActionButtons() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const btnY = h - 45;
+    const btnY = h - 35;
     
-    this.buyBtn = this.createActionButton(w / 2 - 100, btnY, 'КУПИТЬ', '#00ff00', () => this.buyUpgrade(), 110);
-    this.sellBtn = this.createActionButton(w / 2, btnY, 'ПРОДАТЬ', '#ffaa00', () => this.sellUpgrade(), 110);
-    this.resetBtn = this.createActionButton(w / 2 + 100, btnY, 'СБРОС ВСЕ', '#ff4444', () => this.confirmReset(), 110);
+    this.buyBtn = this.createActionButton(w / 2 - 100, btnY, 'КУПИТЬ', '#00ff00', () => this.buyUpgrade(), 100);
+    this.sellBtn = this.createActionButton(w / 2, btnY, 'ПРОДАТЬ', '#ffaa00', () => this.sellUpgrade(), 100);
+    this.resetBtn = this.createActionButton(w / 2 + 100, btnY, 'СБРОС ВСЕ', '#ff4444', () => this.confirmReset(), 100);
     
     this.tweens.add({
       targets: this.buyBtn.button,
@@ -568,26 +561,26 @@ export class ShopScene extends Phaser.Scene {
     });
   }
 
-  createActionButton(x, y, text, color, callback, width = 130) {
+  createActionButton(x, y, text, color, callback, width = 120) {
     const btnColor = Phaser.Display.Color.HexStringToColor(color).color;
     const button = this.add.graphics();
     const state = { glowAlpha: 0.3 };
     const update = () => {
       button.clear();
       button.fillStyle(0x1a1a3a, 0.9);
-      button.fillRoundedRect(x - width / 2, y - 16, width, 32, 10);
+      button.fillRoundedRect(x - width / 2, y - 14, width, 28, 8);
       button.lineStyle(2, btnColor, state.glowAlpha);
-      button.strokeRoundedRect(x - width / 2, y - 16, width, 32, 10);
+      button.strokeRoundedRect(x - width / 2, y - 14, width, 28, 8);
     };
     update();
     const textObj = this.add.text(x, y, text, {
-      fontSize: '13px',
+      fontSize: '12px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff',
       stroke: color,
       strokeThickness: 1
     }).setOrigin(0.5);
-    const hit = this.add.rectangle(x, y, width, 32, 0x000000, 0).setInteractive({ useHandCursor: true });
+    const hit = this.add.rectangle(x, y, width, 28, 0x000000, 0).setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => {
       this.tweens.add({ targets: state, glowAlpha: 0.8, duration: 200, onUpdate: update });
       textObj.setScale(1.05);
@@ -662,8 +655,8 @@ export class ShopScene extends Phaser.Scene {
     const cardData = this.upgradeCards[this.currentCardIndex];
     if (!cardData) return;
     const oldCard = cardData.card;
-    const cardWidth = 170;
-    const cardHeight = 140;
+    const cardWidth = 110;
+    const cardHeight = 125;
     const newCard = this.createUpgradeCard(cardData.upgrade, this.currentCardIndex, oldCard.x, oldCard.y, cardWidth, cardHeight);
     this.add.existing(newCard);
     oldCard.destroy();
@@ -801,17 +794,17 @@ export class ShopScene extends Phaser.Scene {
 
   createDetailButton(x, y, text, color) {
     const btn = this.add.text(x, y, text, {
-      fontSize: '18px',
+      fontSize: '16px',
       fontFamily: '"Audiowide", sans-serif',
       color: '#ffffff',
       backgroundColor: '#1a1a3a',
-      padding: { x: 20, y: 10 },
+      padding: { x: 15, y: 8 },
       stroke: color,
       strokeThickness: 2
     }).setInteractive({ useHandCursor: true }).setOrigin(0.5);
     btn.on('pointerover', () => {
       btn.setStyle({ backgroundColor: color, stroke: '#ffffff' });
-      btn.setScale(1.1);
+      btn.setScale(1.05);
       this.playHoverSound();
     });
     btn.on('pointerout', () => {
@@ -827,19 +820,19 @@ export class ShopScene extends Phaser.Scene {
   createBackButton() {
     const w = this.scale.width;
     const h = this.scale.height;
-    const btnY = h - 12;
+    const btnY = h - 10;
 
     const btnContainer = this.add.container(w / 2, btnY);
     btnContainer.setDepth(20);
 
     const bg = this.add.graphics();
     bg.fillStyle(0x1a1a3a, 0.9);
-    bg.fillRoundedRect(-60, -12, 120, 24, 12);
+    bg.fillRoundedRect(-60, -10, 120, 20, 10);
     bg.lineStyle(2, 0x00ffff, 0.8);
-    bg.strokeRoundedRect(-60, -12, 120, 24, 12);
+    bg.strokeRoundedRect(-60, -10, 120, 20, 10);
     
     const text = this.add.text(0, 0, '⏎ НАЗАД', {
-      fontSize: '12px',
+      fontSize: '11px',
       fontFamily: "'Audiowide', sans-serif",
       color: '#ffffff',
       stroke: '#00ffff',
@@ -848,16 +841,16 @@ export class ShopScene extends Phaser.Scene {
 
     btnContainer.add([bg, text]);
 
-    const hitArea = this.add.rectangle(0, 0, 120, 24, 0x000000, 0)
+    const hitArea = this.add.rectangle(0, 0, 120, 20, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
       .setDepth(25);
 
     hitArea.on('pointerover', () => {
       bg.clear();
       bg.fillStyle(0x2a2a5a, 0.9);
-      bg.fillRoundedRect(-60, -12, 120, 24, 12);
+      bg.fillRoundedRect(-60, -10, 120, 20, 10);
       bg.lineStyle(2, '#ffffff', 1);
-      bg.strokeRoundedRect(-60, -12, 120, 24, 12);
+      bg.strokeRoundedRect(-60, -10, 120, 20, 10);
       text.setScale(1.05);
       this.playHoverSound();
     });
@@ -865,9 +858,9 @@ export class ShopScene extends Phaser.Scene {
     hitArea.on('pointerout', () => {
       bg.clear();
       bg.fillStyle(0x1a1a3a, 0.9);
-      bg.fillRoundedRect(-60, -12, 120, 24, 12);
+      bg.fillRoundedRect(-60, -10, 120, 20, 10);
       bg.lineStyle(2, 0x00ffff, 0.8);
-      bg.strokeRoundedRect(-60, -12, 120, 24, 12);
+      bg.strokeRoundedRect(-60, -10, 120, 20, 10);
       text.setScale(1);
     });
 
