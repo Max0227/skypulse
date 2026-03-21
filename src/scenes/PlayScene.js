@@ -1036,7 +1036,6 @@ updateCameraZoom() {
     this.createBackground();
     this.createPlanets();
     this.createShips();
-    this.createAsteroids();
     this.createPlayer();
     this.createUI();
 
@@ -1071,6 +1070,15 @@ updateCameraZoom() {
 
   update(time, delta) {
   if (this.isPaused || this.countdownActive) return;
+  this.updateBackground(delta);
+  
+  if (!this.started || this.dead || !this.player) return;
+  
+  this.updatePlayerMovement();
+  this.updateBonuses(delta);
+  this.updateWorldProgress();
+  this.updateObjects(delta);
+  this.checkAchievementsAndRecords();
 
   // ===== ОБНОВЛЕНИЕ ФОНА =====
   this.updateStars(time, delta);
@@ -1242,7 +1250,7 @@ updateCameraZoom() {
   if (this.checkWaveAchievements) this.checkWaveAchievements();
   if (this.createComboEffect) this.createComboEffect();
   if (this.checkNewRecords) this.checkNewRecords();
-  if (this.checkQuests) this.checkQuests();
+  this.checkQuests();
   if (this.updateRealTimeStats) this.updateRealTimeStats();
   if (this.checkMaxCombo) this.checkMaxCombo();
   if (this.checkPerformance) this.checkPerformance();
@@ -1492,7 +1500,9 @@ updateCameraZoom() {
       this.handleDeath();
     } else {
       if (this.player) {
-        this.player.setTint(0xff8888);
+        if (this.player?.active) {
+     this.player.setTint(0xff8888);
+}
         this.time.delayedCall(500, () => {
           if (this.player) this.player.clearTint();
         });
@@ -2788,50 +2798,6 @@ checkQuests() {
       this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
     }
   }
-
-
-  /**
- * Метод для обновления сложности в реальном времени
- */
-updateDifficultyInRealTime() {
-  // Этот метод больше не нужен, так как мы используем updateWorldProgress()
-  // Оставляем пустым или удаляем
-  return;
-  
-  /* Старый код закомментирован
-  const newGameLevel = Math.floor(this.meters / 1000);
-  if (newGameLevel > this.gameLevel) {
-    this.gameLevel = newGameLevel;
-    this.updateDifficulty();
-    this.createLevelEffect();
-    this.checkWaveAchievements();
-  }
-  */
-}/**
- * Обновление прогресса уровня мира
- */
-updateWorldProgress() {
-  if (!this.started || this.dead) return;
-
-  // Обновляем gameLevel каждые 1000 метров
-  const newGameLevel = Math.floor(this.levelProgress / 1000);
-  if (newGameLevel > this.gameLevel) {
-    this.gameLevel = newGameLevel;
-    this.updateDifficulty(); // увеличиваем скорость
-    
-    // Легкий эффект при повышении сложности (без надписи)
-    this.cameras.main.flash(50, 100, 100, 255, false);
-    try { if (this.levelUpSound) this.levelUpSound.play(); } catch (e) {}
-    
-    this.checkWaveAchievements();
-  }
-
-  // Проверяем завершение уровня мира (10 км)
-  if (this.levelProgress >= this.levelGoal) {
-    this.completeWorldLevel();
-  }
-}
-
     /**
    * Метод для проверки максимального комбо - ЛЕГКАЯ ВЕРСИЯ
    */
@@ -3121,33 +3087,6 @@ createShips() {
   }
 }
 
-createAsteroids() {
-  const w = this.scale.width;
-  const h = this.scale.height;
-
-  for (let i = 0; i < 15; i++) { // Увеличил количество
-    const tex = i % 2 === 0 ? 'bg_asteroid_1' : 'bg_asteroid_2';
-    const x = Phaser.Math.Between(w, w * 12);
-    const y = Phaser.Math.Between(50, h - 50);
-    const asteroid = this.add.image(x, y, tex);
-    const scale = Phaser.Math.FloatBetween(0.6, 1.8);
-    asteroid.setScale(scale);
-    asteroid.setTint(0xff8800);
-    asteroid.setAlpha(0.7);
-    asteroid.setDepth(-12);
-    asteroid.setBlendMode(Phaser.BlendModes.ADD);
-    this.asteroids.push({
-      sprite: asteroid,
-      speed: Phaser.Math.Between(30, 100), // Скорость в пикселях в секунду
-      baseSpeed: Phaser.Math.Between(30, 100),
-      scale: scale,
-      x: asteroid.x,
-      y: asteroid.y,
-      rotationSpeed: Phaser.Math.Between(-50, 50)
-    });
-  }
-}
-
 /**
  * Создание игрока
  */
@@ -3275,23 +3214,39 @@ createUI() {
   const w = this.scale.width;
   const h = this.scale.height;
   
+  // Создаём неоновую рамку по краям
+  this.createNeonFrame();
+  
   this.createTopPanel();
   this.createBottomPanel();
   
+  // Контейнер сердечек с неоновым свечением
   this.heartContainer = this.add.container(12, 38).setDepth(10).setScrollFactor(0);
   this.updateHearts();
   
+  // Интро текст с киберпанк-эффектом
   this.introText = this.add.text(w / 2, h * 0.42, 'СОБИРАЙ МОНЕТЫ\nЧТОБЫ УДЛИНИТЬ ТАКСИ', {
     fontSize: '14px',
     fontFamily: "'Orbitron', sans-serif",
     color: '#ffffff',
     align: 'center',
-    stroke: '#7c3aed',
+    stroke: '#00ffff',
     strokeThickness: 2,
     lineSpacing: 10,
-    shadow: { blur: 8, color: '#7c3aed', fill: true }
+    shadow: { blur: 8, color: '#00ffff', fill: true }
   }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
   
+  // Анимация пульсации интро текста
+  this.tweens.add({
+    targets: this.introText,
+    alpha: { from: 0.7, to: 1 },
+    scale: { from: 0.98, to: 1.02 },
+    duration: 1000,
+    yoyo: true,
+    repeat: -1
+  });
+  
+  // Подсказка о монетах
   this.coinTipsText = this.add.text(w / 2, h * 0.52, '🟡 Золото  |  🔴 Скорость  |  🔵 Щит  |  🟢 Магнит  |  🟣 Замедление', {
     fontSize: '8px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3303,20 +3258,137 @@ createUI() {
   this.createGameOverBox();
   this.applySkinBonuses();
   this.setupCollisions();
+  
+  // Создаём индикатор комбо (если ещё не создан)
+  this.createComboIndicator();
+}
+
+/**
+ * Создание неоновой рамки
+ */
+createNeonFrame() {
+  const w = this.scale.width;
+  const h = this.scale.height;
+  
+  this.frameGraphics = this.add.graphics();
+  this.frameGraphics.lineStyle(2, 0x00ffff, 0.3);
+  this.frameGraphics.strokeRect(8, 8, w - 16, h - 16);
+  
+  // Анимация свечения рамки
+  this.tweens.add({
+    targets: this.frameGraphics,
+    alpha: { from: 0.2, to: 0.5 },
+    duration: 2000,
+    yoyo: true,
+    repeat: -1
+  });
+  
+  // Угловые неоновые элементы
+  const cornerSize = 25;
+  const corners = [
+    { x: 8, y: 8, angle: 0 },
+    { x: w - 8, y: 8, angle: 90 },
+    { x: 8, y: h - 8, angle: -90 },
+    { x: w - 8, y: h - 8, angle: 180 }
+  ];
+  
+  corners.forEach(corner => {
+    const cornerGraphics = this.add.graphics();
+    cornerGraphics.lineStyle(2, 0x00ffff, 0.6);
+    cornerGraphics.moveTo(corner.x, corner.y);
+    cornerGraphics.lineTo(corner.x + cornerSize, corner.y);
+    cornerGraphics.moveTo(corner.x, corner.y);
+    cornerGraphics.lineTo(corner.x, corner.y + cornerSize);
+    cornerGraphics.strokePath();
+    
+    this.tweens.add({
+      targets: cornerGraphics,
+      alpha: { from: 0.3, to: 0.8 },
+      duration: 1000,
+      yoyo: true,
+      repeat: -1
+    });
+  });
+}
+
+/**
+ * Создание индикатора комбо
+ */
+createComboIndicator() {
+  const w = this.scale.width;
+  
+  this.comboIndicator = this.add.container(w / 2, 180);
+  this.comboIndicator.setDepth(12).setScrollFactor(0);
+  this.comboIndicator.setVisible(false);
+  
+  // Фон индикатора
+  const bg = this.add.graphics();
+  bg.fillStyle(0x1a1a3a, 0.85);
+  bg.fillRoundedRect(-60, -20, 120, 40, 12);
+  bg.lineStyle(2, 0xff44ff, 0.8);
+  bg.strokeRoundedRect(-60, -20, 120, 40, 12);
+  
+  // Текст комбо
+  this.comboValueText = this.add.text(0, 0, 'x1', {
+    fontSize: '24px',
+    fontFamily: "'Audiowide', sans-serif",
+    color: '#ff44ff',
+    stroke: '#ff00ff',
+    strokeThickness: 2
+  }).setOrigin(0.5);
+  
+  this.comboIndicator.add([bg, this.comboValueText]);
+}
+
+/**
+ * Обновление индикатора комбо
+ */
+updateComboIndicator(combo) {
+  if (!this.comboIndicator) return;
+  
+  if (combo > 1) {
+    this.comboIndicator.setVisible(true);
+    this.comboValueText.setText(`x${combo}`);
+    
+    // Анимация при увеличении комбо
+    this.tweens.add({
+      targets: this.comboIndicator,
+      scale: { from: 1, to: 1.1 },
+      duration: 100,
+      yoyo: true
+    });
+    
+    // Меняем цвет в зависимости от комбо
+    if (combo >= 20) {
+      this.comboValueText.setColor('#ff4444');
+      this.comboValueText.setStroke('#ff0000');
+    } else if (combo >= 10) {
+      this.comboValueText.setColor('#ffaa00');
+      this.comboValueText.setStroke('#ff8800');
+    } else {
+      this.comboValueText.setColor('#ff44ff');
+      this.comboValueText.setStroke('#ff00ff');
+    }
+  } else {
+    this.comboIndicator.setVisible(false);
+  }
 }
 
 createTopPanel() {
   const w = this.scale.width;
+  const worldColor = this.getWorldColor();
   
+  // Счёт с неоновым эффектом
   this.scoreText = this.add.text(w / 2, 22, '0', {
     fontSize: '48px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
     color: '#ffffff',
-    stroke: '#00ffff',
+    stroke: worldColor,
     strokeThickness: 6,
-    shadow: { blur: 15, color: '#00ffff', fill: true }
+    shadow: { blur: 15, color: worldColor, fill: true }
   }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
   
+  // Лучший результат
   this.bestText = this.add.text(12, 10, `🏆 ${this.best}`, {
     fontSize: '12px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3325,6 +3397,7 @@ createTopPanel() {
     strokeThickness: 2
   }).setDepth(10).setScrollFactor(0);
   
+  // Кристаллы с анимацией
   this.crystalText = this.add.text(w - 12, 10, `💎 ${this.crystals}`, {
     fontSize: '12px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3333,6 +3406,7 @@ createTopPanel() {
     strokeThickness: 2
   }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
   
+  // Текст активного бонуса
   this.bonusText = this.add.text(w - 12, 42, '', {
     fontSize: '12px',
     fontFamily: "'Orbitron', sans-serif",
@@ -3341,6 +3415,7 @@ createTopPanel() {
     align: 'right'
   }).setOrigin(1, 0).setDepth(10).setVisible(false).setScrollFactor(0);
   
+  // Текст уровня (появляется при переходе)
   this.levelText = this.add.text(w / 2, 100, '', {
     fontSize: '28px',
     fontFamily: "'Audiowide', 'Orbitron', sans-serif",
@@ -3355,6 +3430,7 @@ createBottomPanel() {
   const w = this.scale.width;
   const h = this.scale.height;
   
+  // Метраж
   this.meterText = this.add.text(12, h - 70, `📏 ${Math.floor(this.meters)} м`, {
     fontSize: '11px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3363,6 +3439,7 @@ createBottomPanel() {
     strokeThickness: 2
   }).setDepth(10).setScrollFactor(0);
   
+  // Счётчик вагонов
   this.wagonCountText = this.add.text(w - 12, h - 70, `🚃 ${this.wagons.length}/${this.maxWagons}`, {
     fontSize: '11px',
     fontFamily: "'Share Tech Mono', monospace",
@@ -3370,14 +3447,25 @@ createBottomPanel() {
     stroke: '#000000',
     strokeThickness: 2
   }).setOrigin(1, 0).setDepth(10).setScrollFactor(0);
+  
+  // Индикатор сложности (появляется при повышении)
+  this.difficultyIndicator = this.add.text(w / 2, h - 35, '', {
+    fontSize: '10px',
+    fontFamily: "'Orbitron', sans-serif",
+    color: '#ffaa00',
+    stroke: '#000000',
+    strokeThickness: 1
+  }).setOrigin(0.5).setDepth(10).setScrollFactor(0);
+  this.difficultyIndicator.setVisible(false);
 }
 
 /**
- * Создание кнопок управления (стильные неоновые)
+ * Создание кнопок управления (улучшенные)
  */
 createButtons() {
   const w = this.scale.width;
   const h = this.scale.height;
+  const worldColor = this.getWorldColorString();
   
   // Кнопка паузы
   this.pauseButton = this.add.circle(w - 35, h - 35, 24, 0x1a1a3a, 0.9);
@@ -3392,6 +3480,7 @@ createButtons() {
   this.pauseButton.on('pointerover', () => {
     this.pauseButton.setStrokeStyle(3, 0x00ffff, 1);
     pauseIcon.setScale(1.1);
+    this.playHoverSound();
   });
   this.pauseButton.on('pointerout', () => {
     this.pauseButton.setStrokeStyle(2, 0x00ffff, 0.9);
@@ -3415,6 +3504,7 @@ createButtons() {
   this.menuButton.on('pointerover', () => {
     this.menuButton.setStrokeStyle(3, 0xff00ff, 1);
     menuIcon.setScale(1.1);
+    this.playHoverSound();
   });
   this.menuButton.on('pointerout', () => {
     this.menuButton.setStrokeStyle(2, 0xff00ff, 0.9);
@@ -3425,8 +3515,72 @@ createButtons() {
     this.confirmExit();
   });
   
+  // Кнопка атаки (если нужно)
+  this.attackButton = this.add.circle(45, h - 35, 24, 0x1a1a3a, 0.9);
+  this.attackButton.setStrokeStyle(2, 0xff4444, 0.9);
+  this.attackButton.setInteractive({ useHandCursor: true });
+  this.attackButton.setDepth(20);
+  
+  const attackIcon = this.add.text(45, h - 35, '⚔️', {
+    fontSize: '24px'
+  }).setOrigin(0.5).setDepth(21);
+  
+  this.attackButton.on('pointerover', () => {
+    this.attackButton.setStrokeStyle(3, 0xff4444, 1);
+    attackIcon.setScale(1.1);
+  });
+  this.attackButton.on('pointerout', () => {
+    this.attackButton.setStrokeStyle(2, 0xff4444, 0.9);
+    attackIcon.setScale(1);
+  });
+  this.attackButton.on('pointerdown', (pointer) => {
+    pointer.event.stopPropagation();
+    this.attackEnemies();
+  });
+  
   this.pauseIcon = pauseIcon;
   this.menuIcon = menuIcon;
+  this.attackIcon = attackIcon;
+}
+
+/**
+ * Получить цвет мира для UI
+ */
+getWorldColor() {
+  const colors = [0x00ffff, 0xff00ff, 0xff6600, 0xffaa00, 0xaa88ff];
+  return colors[this.world] || 0x00ffff;
+}
+
+getWorldColorString() {
+  const colors = ['#00ffff', '#ff00ff', '#ff6600', '#ffaa00', '#aa88ff'];
+  return colors[this.world] || '#00ffff';
+}
+
+/**
+ * Показать индикатор сложности
+ */
+showDifficultyIndicator(level) {
+  if (!this.difficultyIndicator) return;
+  
+  const difficulties = ['ЛЁГКИЙ', 'СРЕДНИЙ', 'СЛОЖНЫЙ', 'ЭКСТРЕМАЛЬНЫЙ', 'БЕЗУМНЫЙ'];
+  const colors = ['#44ff44', '#ffff44', '#ffaa44', '#ff6644', '#ff4444'];
+  const index = Math.min(Math.floor(level / 5), 4);
+  
+  this.difficultyIndicator.setText(`⚡ ${difficulties[index]} УРОВЕНЬ ${level + 1}`);
+  this.difficultyIndicator.setColor(colors[index]);
+  this.difficultyIndicator.setVisible(true);
+  this.difficultyIndicator.setAlpha(1);
+  
+  this.tweens.add({
+    targets: this.difficultyIndicator,
+    alpha: 0,
+    y: this.difficultyIndicator.y - 30,
+    duration: 2000,
+    onComplete: () => {
+      this.difficultyIndicator.setVisible(false);
+      this.difficultyIndicator.y = this.scale.height - 35;
+    }
+  });
 }
 
 applySkinBonuses() {
@@ -3441,10 +3595,157 @@ applySkinBonuses() {
         if (this.headHP > this.maxHeadHP) this.headHP = this.maxHeadHP;
         this.updateHearts();
       }
+      
+      // Применяем эффект скина
+      this.applySkinEffect(currentSkin);
     }
   } catch (e) {
     console.warn('Error applying skin stats:', e);
   }
+}
+
+/**
+ * Применение визуального эффекта скина
+ */
+applySkinEffect(skinId) {
+  if (!this.player) return;
+  
+  const effects = {
+    neon: () => {
+      this.player.setTint(0x00ffff);
+      this.player.setBlendMode(Phaser.BlendModes.ADD);
+    },
+    cyber: () => {
+      this.player.setTint(0xff00ff);
+      this.createDigitalTrail();
+    },
+    gold: () => {
+      this.player.setTint(0xffaa00);
+    },
+    fire: () => {
+      this.player.setTint(0xff4400);
+      this.createFireTrail();
+    },
+    ice: () => {
+      this.player.setTint(0x44aaff);
+      this.createIceTrail();
+    },
+    void: () => {
+      this.player.setTint(0x8800ff);
+      this.player.setBlendMode(Phaser.BlendModes.SCREEN);
+    }
+  };
+  
+  const effect = effects[skinId];
+  if (effect) effect();
+}
+
+createDigitalTrail() {
+  if (this.digitalTrail) return;
+  
+  this.digitalTrail = this.add.particles(0, 0, 'digital_icon', {
+    speed: 30,
+    scale: { start: 0.2, end: 0 },
+    alpha: { start: 0.5, end: 0 },
+    lifespan: 300,
+    quantity: 1,
+    frequency: 40,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: [0xff00ff, 0x00ffff],
+    follow: this.player,
+    followOffset: { x: -15, y: 0 }
+  });
+}
+
+createFireTrail() {
+  if (this.fireTrail) return;
+  
+  this.fireTrail = this.add.particles(0, 0, 'flare', {
+    speed: 40,
+    scale: { start: 0.3, end: 0 },
+    alpha: { start: 0.6, end: 0 },
+    lifespan: 250,
+    quantity: 2,
+    frequency: 30,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: [0xff4400, 0xff8800],
+    follow: this.player,
+    followOffset: { x: -18, y: 0 }
+  });
+}
+
+createIceTrail() {
+  if (this.iceTrail) return;
+  
+  this.iceTrail = this.add.particles(0, 0, 'flare', {
+    speed: 35,
+    scale: { start: 0.25, end: 0 },
+    alpha: { start: 0.5, end: 0 },
+    lifespan: 280,
+    quantity: 2,
+    frequency: 35,
+    blendMode: Phaser.BlendModes.ADD,
+    tint: [0x44aaff, 0x88ccff],
+    follow: this.player,
+    followOffset: { x: -16, y: 0 }
+  });
+}
+
+/**
+ * Звук при наведении
+ */
+playHoverSound() {
+  try {
+    audioManager.playSound(this, 'tap_sound', 0.1);
+  } catch (e) {}
+}
+
+/**
+ * Атака по врагам
+ */
+attackEnemies() {
+  if (this.weaponCooldown > 0) return;
+  
+  this.weaponCooldown = this.weaponFireDelay;
+  
+  // Создаём пулю
+  const bullet = this.playerBullets.create(
+    this.player.x + 30, 
+    this.player.y, 
+    'laser_player'
+  );
+  
+  bullet.setScale(1.5);
+  bullet.damage = this.weaponDamage;
+  bullet.setVelocityX(this.weaponBulletSpeed);
+  bullet.setVelocityY(0);
+  bullet.body.setAllowGravity(false);
+  bullet.setDepth(20);
+  
+  // Эффект выстрела
+  this.createMuzzleFlash(this.player.x + 30, this.player.y);
+  
+  try { audioManager.playSound(this, 'tap_sound', 0.3); } catch(e) {}
+  
+  // Анимация кнопки
+  this.tweens.add({
+    targets: this.attackButton,
+    scale: 0.8,
+    duration: 100,
+    yoyo: true
+  });
+}
+
+createMuzzleFlash(x, y) {
+  const flash = this.add.circle(x, y, 8, 0xffaa44, 0.8);
+  flash.setBlendMode(Phaser.BlendModes.ADD);
+  this.tweens.add({
+    targets: flash,
+    alpha: 0,
+    scale: 2,
+    duration: 100,
+    onComplete: () => flash.destroy()
+  });
 }
 
 setupCollisions() {
@@ -3474,6 +3775,27 @@ setupCollisions() {
     }
     bullet.destroy();
   }, null, this);
+  
+  // Коллизия астероидов с игроком и вагонами
+  this.physics.add.overlap(this.player, this.asteroidGroup, (player, astSprite) => {
+    const ast = astSprite.asteroidRef;
+    if (ast?.isActive()) {
+      if (this.shieldActive) {
+        this.particleManager.createBonusEffect('shield', ast.sprite.x, ast.sprite.y);
+      } else {
+        this.headHP -= ast.damage;
+        this.updateHearts();
+        this.cameras.main.shake(150, 0.005);
+        try { audioManager.playSound(this, 'hit_sound', 0.3); } catch(e) {}
+        
+        if (this.headHP <= 0) {
+          this.handleDeath();
+        }
+      }
+      ast.destroy(true);
+      this.asteroids = this.asteroids.filter(a => a !== ast);
+    }
+  }, null, this);
 }
 
 updateHearts() {
@@ -3481,6 +3803,7 @@ updateHearts() {
   this.heartContainer.removeAll(true);
   
   const heartSpacing = 18;
+  const worldColor = this.getWorldColor();
   
   for (let i = 0; i < this.maxHeadHP; i++) {
     const heart = this.add.image(i * heartSpacing, 0, 'heart').setScale(0.55);
@@ -3492,7 +3815,8 @@ updateHearts() {
       heart.setTint(0xff44ff);
       heart.setAlpha(1);
       
-      if (i === this.headHP - 1 && this.headHP > 0) {
+      // Анимация для последнего сердца
+      if (i === this.headHP - 1 && this.headHP > 0 && this.headHP < this.maxHeadHP) {
         this.tweens.add({
           targets: heart,
           scaleX: { from: 0.55, to: 0.7 },
@@ -3512,6 +3836,7 @@ updateHearts() {
 createGameOverBox() {
   const w = this.scale.width;
   const h = this.scale.height;
+  const worldColor = this.getWorldColorString();
   
   this.gameOverBox = this.add.container(w / 2, h / 2);
   this.gameOverBox.setVisible(false);
@@ -3557,7 +3882,7 @@ createGameOverBox() {
   }).setOrigin(0.5);
   
   const glowLine = this.add.graphics();
-  glowLine.lineStyle(2, 0x00ffff, 0.6);
+  glowLine.lineStyle(2, worldColor, 0.6);
   glowLine.moveTo(-80, 105);
   glowLine.lineTo(80, 105);
   glowLine.strokePath();
@@ -4456,25 +4781,6 @@ updateLevel() {
 }
 
 /**
- * Обновление параметров сложности
- */
-updateDifficulty() {
-  const diff = this.getDifficulty();
-  this.baseSpeed = diff.speed;
-  this.gapSize = diff.gap;
-  this.spawnDelay = diff.spawnDelay;
-  
-  if (!this.bonusActive) {
-    this.currentSpeed = this.baseSpeed;
-  }
-  
-  this.updateExistingObjectsSpeed();
-  
-  // Визуальный эффект изменения скорости
-  this.createSpeedRings();
-}
-
-/**
  * Создать визуальный эффект изменения скорости
  */
 createSpeedRings() {
@@ -4494,82 +4800,6 @@ createSpeedRings() {
       onComplete: () => ring.destroy()
     });
   }
-}
-
-/**
- * Обновление скорости существующих объектов
- */
-updateExistingObjectsSpeed() {
-  // Обновляем скорость ворот
-  if (this.gateGroup) {
-    this.gateGroup.getChildren().forEach(gate => {
-      if (gate?.body) {
-        gate.body.velocity.x = -this.baseSpeed;
-        gate.body.velocity.y = 0;
-        gate.body.setGravityY(0);
-        gate.body.setAllowGravity(false);
-      }
-    });
-  }
-  
-  // Обновляем скорость зон
-  if (this.scoreZones) {
-    this.scoreZones.forEach(zone => {
-      if (zone?.body) {
-        zone.body.velocity.x = -this.baseSpeed;
-        zone.body.velocity.y = 0;
-        zone.body.setGravityY(0);
-        zone.body.setAllowGravity(false);
-      }
-    });
-  }
-  
-  // Обновляем скорость монет
-  const updateCoinSpeed = (coin) => {
-    if (coin?.body?.active) {
-      coin.body.setAllowGravity(false);
-      coin.body.setGravityY(0);
-      coin.body.setVelocityY(0);
-      coin.body.setVelocityX(-this.currentSpeed);
-    }
-  };
-  
-  if (this.coins) {
-    this.coins.forEach(updateCoinSpeed);
-  }
-  
-  if (this.coinGroup) {
-    this.coinGroup.getChildren().forEach(updateCoinSpeed);
-  }
-}
-
-/**
- * Получение параметров сложности
- */
-getDifficulty() {
-  const level = Math.min(this.gameLevel, 20);
-  const worldBonus = 1 + this.world * 0.08;
-  
-  // Базовая скорость с множителем мира
-  const baseSpeed = 240;
-  const speed = Math.floor(baseSpeed * Math.pow(1.08, level) * worldBonus);
-  
-  // Зазор между воротами
-  const baseGap = 240;
-  const gap = Math.max(130, Math.floor(baseGap - level * 4 - this.world * 3));
-  
-  // Задержка спавна
-  const baseDelay = 1500;
-  const spawnDelay = Math.max(450, Math.floor(baseDelay - level * 40 - this.world * 20));
-  
-  return {
-    speed: Math.max(200, speed + Phaser.Math.Between(-12, 12)),
-    gap: Math.max(120, gap + Phaser.Math.Between(-8, 8)),
-    spawnDelay: Math.max(400, spawnDelay + Phaser.Math.Between(-50, 50)),
-    coinChance: Math.min(0.85, 0.75 + level * 0.005),
-    asteroidChance: Math.min(0.7, 0.25 + level * 0.018 + this.world * 0.03),
-    powerUpChance: Math.min(0.32, 0.08 + level * 0.01 + this.world * 0.015)
-  };
 }
 
 /**
@@ -5493,12 +5723,6 @@ saveDailyReward() {
   localStorage.setItem('skypulse_daily_date', this.dailyReward.lastClaimDate);
   localStorage.setItem('skypulse_daily_streak', String(this.dailyReward.streak));
 }
-
-  saveDailyReward() {
-    localStorage.setItem('skypulse_daily_date', this.dailyReward.lastClaimDate);
-    localStorage.setItem('skypulse_daily_streak', String(this.dailyReward.streak));
-  }
-
   initLeaderboard() {
     this.leaderboard = [];
     try {
