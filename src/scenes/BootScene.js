@@ -1049,33 +1049,44 @@ export class BootScene extends Phaser.Scene {
   }
 
   createBlackholeObstacles(g) {
-    // Гравитационная аномалия
-    g.clear();
-    g.fillStyle(0x8866cc);
-    g.fillCircle(15, 15, 12);
-    g.fillStyle(0xaa88ff);
-    for (let i = 0; i < 3; i++) {
-      g.strokeCircle(15, 15, 8 + i * 3);
-    }
-    g.generateTexture('gravity_anomaly', 30, 30);
-    
-    // Осколок пустоты
-    g.clear();
-    g.fillStyle(0x6644aa);
-    g.fillStar(15, 15, 5, 10, 5);
-    g.fillStyle(0x8866cc);
-    g.fillStar(15, 15, 4, 8, 5);
-    g.generateTexture('void_fragment', 30, 30);
-    
-    // Тёмная материя
-    g.clear();
-    g.fillStyle(0x442288);
-    g.fillCircle(15, 15, 10);
-    g.fillStyle(0x6644aa);
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2;
-      g.fillCircle(15 + Math.cos(angle) * 8, 15 + Math.sin(angle) * 8, 3);
-    }
-    g.generateTexture('dark_matter', 30, 30);
+  // Гравитационная аномалия
+  g.clear();
+  g.fillStyle(0x8866cc);
+  g.fillCircle(15, 15, 12);
+  g.fillStyle(0xaa88ff);
+  for (let i = 0; i < 3; i++) {
+    g.strokeCircle(15, 15, 8 + i * 3);
   }
+  g.generateTexture('gravity_anomaly', 30, 30);
+  
+  // Осколок пустоты (исправлено: вместо fillStar используем ромб)
+  g.clear();
+  g.fillStyle(0x6644aa);
+  // Рисуем ромб (квадрат повёрнутый на 45 градусов)
+  g.fillPoints([
+    { x: 15, y: 5 },
+    { x: 22, y: 15 },
+    { x: 15, y: 25 },
+    { x: 8, y: 15 }
+  ]);
+  g.fillStyle(0x8866cc);
+  g.fillPoints([
+    { x: 15, y: 8 },
+    { x: 20, y: 15 },
+    { x: 15, y: 22 },
+    { x: 10, y: 15 }
+  ]);
+  g.generateTexture('void_fragment', 30, 30);
+  
+  // Тёмная материя
+  g.clear();
+  g.fillStyle(0x442288);
+  g.fillCircle(15, 15, 10);
+  g.fillStyle(0x6644aa);
+  for (let i = 0; i < 6; i++) {
+    const angle = (i / 6) * Math.PI * 2;
+    g.fillCircle(15 + Math.cos(angle) * 8, 15 + Math.sin(angle) * 8, 3);
+  }
+  g.generateTexture('dark_matter', 30, 30);
+}
 }
