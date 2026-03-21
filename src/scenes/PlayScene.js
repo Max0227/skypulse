@@ -1008,9 +1008,9 @@ updateCameraZoom() {
     this.asteroidGroup = this.physics.add.group();
     this.powerUpGroup = this.physics.add.group();
     this.playerBullets = this.physics.add.group({
-      classType: Phaser.GameObjects.Image,
-      runChildUpdate: false
-    });
+  classType: Phaser.GameObjects.Image,
+  runChildUpdate: false
+});
     this.enemyBullets = this.physics.add.group({
       classType: Phaser.GameObjects.Image,
       runChildUpdate: false
@@ -3703,39 +3703,53 @@ playHoverSound() {
 /**
  * Атака по врагам
  */
+/**
+ * Атака по врагам
+ */
 attackEnemies() {
   if (this.weaponCooldown > 0) return;
+  if (!this.player || !this.player.active) return;
   
   this.weaponCooldown = this.weaponFireDelay;
   
-  // Создаём пулю
+  // Правильный способ создать пулю через группу
   const bullet = this.playerBullets.create(
     this.player.x + 30, 
     this.player.y, 
     'laser_player'
   );
   
+  if (!bullet) return;
+  
   bullet.setScale(1.5);
   bullet.damage = this.weaponDamage;
+  bullet.body.setAllowGravity(false);
+  bullet.body.setGravityY(0);
   bullet.setVelocityX(this.weaponBulletSpeed);
   bullet.setVelocityY(0);
-  bullet.body.setAllowGravity(false);
   bullet.setDepth(20);
   
   // Эффект выстрела
   this.createMuzzleFlash(this.player.x + 30, this.player.y);
   
-  try { audioManager.playSound(this, 'tap_sound', 0.3); } catch(e) {}
+  try { 
+    audioManager.playSound(this, 'tap_sound', 0.3); 
+  } catch(e) {}
   
   // Анимация кнопки
-  this.tweens.add({
-    targets: this.attackButton,
-    scale: 0.8,
-    duration: 100,
-    yoyo: true
-  });
+  if (this.attackButton) {
+    this.tweens.add({
+      targets: this.attackButton,
+      scale: 0.8,
+      duration: 100,
+      yoyo: true
+    });
+  }
 }
 
+/**
+ * Создание эффекта вспышки выстрела
+ */
 createMuzzleFlash(x, y) {
   const flash = this.add.circle(x, y, 8, 0xffaa44, 0.8);
   flash.setBlendMode(Phaser.BlendModes.ADD);
