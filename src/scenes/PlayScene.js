@@ -1415,9 +1415,9 @@ updateCameraZoom() {
   }
 
   spawnGate() {
-    if (this.dead) return;
+  if (this.dead) return;
     const w = this.scale.width, h = this.scale.height;
-    const difficulty = this.getDifficulty();
+    const difficulty = this.getDifficulty(); // ← ЭТА СТРОКА ДОЛЖНА БЫТЬ
     const gateTexture = this.gateTextures[Math.min(this.level,4)];
     const gap = difficulty.gap + Phaser.Math.Between(-15,15);
     const centerY = Phaser.Math.Between(120, h - 120);
@@ -4273,10 +4273,14 @@ startRun() {
 }
 
 /**
+
  * Планирование следующего спавна ворот
  */
 scheduleNextSpawn() {
   if (this.dead) return;
+  
+  // Исправлено: получаем difficulty через this.getDifficulty()
+  const difficulty = this.getDifficulty();
   const delay = Math.max(300, Math.min(2000, difficulty.spawnDelay));
   
   this.spawnTimer = this.time.delayedCall(delay, () => {
