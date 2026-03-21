@@ -11,6 +11,7 @@ export class ShopScene extends Phaser.Scene {
     this.gridOffset = 0;
     this.lastHoverTime = 0;
     this.upgradeCards = [];
+    this.currentCardIndex = 0;
     this.selectedUpgrade = null;
   }
 
@@ -33,6 +34,9 @@ export class ShopScene extends Phaser.Scene {
     // Сетка улучшений (2 ряда)
     this.createUpgradeGrid();
 
+    // Детальная панель (СОЗДАЁМ ПЕРВОЙ, ДО КНОПОК)
+    this.createDetailPanel();
+
     // Кнопки действий
     this.createActionButtons();
 
@@ -52,8 +56,12 @@ export class ShopScene extends Phaser.Scene {
     });
     this.scale.on('resize', this.onResize, this);
 
-    // Выбираем первую карточку
-    if (SHOP_UPGRADES.length) this.selectCard(0);
+    // Выбираем первую карточку ПОСЛЕ создания всех элементов
+    if (SHOP_UPGRADES.length) {
+      this.time.delayedCall(100, () => {
+        this.selectCard(0);
+      });
+    }
   }
 
   // =========================================================================
@@ -426,8 +434,10 @@ export class ShopScene extends Phaser.Scene {
       bg.strokeRoundedRect(-85, -70, 170, 140, 12);
     });
     
-    // Обновляем детальную панель
-    this.updateDetailPanel();
+    // Обновляем детальную панель (только если она создана)
+    if (this.detailName && this.detailDesc && this.detailNext) {
+      this.updateDetailPanel();
+    }
     
     if (!silent) audioManager.playSound(this, 'tap_sound', 0.2);
   }
@@ -478,6 +488,8 @@ export class ShopScene extends Phaser.Scene {
 
   updateDetailPanel() {
     if (!this.selectedUpgrade) return;
+    if (!this.detailName || !this.detailDesc || !this.detailNext) return;
+    
     const upgrade = this.selectedUpgrade;
     const level = gameManager.getUpgradeLevel(upgrade.key);
     const maxLevel = upgrade.maxLevel;
