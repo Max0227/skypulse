@@ -16,38 +16,45 @@ export class Wagon {
     
     // Создаём спрайт с учётом мира
     this.sprite = scene.physics.add.image(x, y, this.texture)
-      .setScale(0.75)
+      .setScale(0.7)
       .setDepth(5 + index);
     
-    // Настройка физики
+    // Настройка физики (без гравитации, плавное движение)
     this.setupPhysics();
     
-    // Визуальные эффекты в зависимости от мира
+    // Визуальные эффекты
     this.setupVisuals();
     
     // Ссылка на объект вагона
     this.sprite.wagonRef = this;
     
-    // Характеристики с учётом мира и улучшений
+    // Характеристики
     this.hp = this.getMaxHealth();
     this.maxHp = this.hp;
     this.active = true;
     this.protectionFrames = 0;
     this.protectionDuration = 500;
     
-    // Специальные эффекты для вагона
+    // Множитель монет (от индекса вагона)
+    this.coinMultiplier = 1 + (this.index + 1) * 0.5; // 1.5, 2.0, 2.5, 3.0...
+    this.isConnected = true;
+    
+    // Специальные эффекты
     this.specialEffects = this.getSpecialEffects();
     this.buffs = [];
-    this.auraEffect = null;
     this.glowEffect = null;
     
-    // Полоска здоровья
-    this.healthBar = null;
+    // Визуальный индикатор множителя
+    this.multiplierIndicator = null;
+    this.createMultiplierIndicator();
+    
+    // Полоска здоровья (убрана, вместо неё индикатор прочности)
+    this.armorIndicator = null;
     if (this.maxHp > 1) {
-      this.createHealthBar();
+      this.createArmorIndicator();
     }
     
-    // Эффекты в зависимости от мира
+    // Эффекты мира
     this.applyWorldVisuals();
     
     // Анимация появления
@@ -58,56 +65,16 @@ export class Wagon {
   }
 
   // =========================================================================
-  // КОНФИГУРАЦИЯ В ЗАВИСИМОСТИ ОТ МИРА
+  // КОНФИГУРАЦИЯ
   // =========================================================================
 
   getWorldConfig() {
     const configs = {
-      0: { // Космос
-        color: 0x88aaff,
-        glowColor: 0x44aaff,
-        textureSet: 'space',
-        healthMultiplier: 1.0,
-        speedMultiplier: 1.0,
-        effect: 'normal',
-        particleColor: 0x44aaff,
-      },
-      1: { // Киберпанк
-        color: 0xff44ff,
-        glowColor: 0xff88ff,
-        textureSet: 'neon',
-        healthMultiplier: 0.9,
-        speedMultiplier: 1.2,
-        effect: 'neon',
-        particleColor: 0xff44ff,
-      },
-      2: { // Подземелье
-        color: 0xaa6644,
-        glowColor: 0xcc8866,
-        textureSet: 'dark',
-        healthMultiplier: 1.2,
-        speedMultiplier: 0.8,
-        effect: 'dark',
-        particleColor: 0xff6600,
-      },
-      3: { // Астероиды
-        color: 0xffaa66,
-        glowColor: 0xffcc88,
-        textureSet: 'rocky',
-        healthMultiplier: 1.1,
-        speedMultiplier: 1.1,
-        effect: 'rocky',
-        particleColor: 0xffaa44,
-      },
-      4: { // Чёрная дыра
-        color: 0xaa88ff,
-        glowColor: 0xcc88ff,
-        textureSet: 'void',
-        healthMultiplier: 1.3,
-        speedMultiplier: 0.7,
-        effect: 'void',
-        particleColor: 0xaa88ff,
-      },
+      0: { color: 0x88aaff, glowColor: 0x44aaff, textureSet: 'space', effect: 'normal', particleColor: 0x44aaff },
+      1: { color: 0xff44ff, glowColor: 0xff88ff, textureSet: 'neon', effect: 'neon', particleColor: 0xff44ff },
+      2: { color: 0xaa6644, glowColor: 0xcc8866, textureSet: 'dark', effect: 'dark', particleColor: 0xff6600 },
+      3: { color: 0xffaa66, glowColor: 0xffcc88, textureSet: 'rocky', effect: 'rocky', particleColor: 0xffaa44 },
+      4: { color: 0xaa88ff, glowColor: 0xcc88ff, textureSet: 'void', effect: 'void', particleColor: 0xaa88ff },
     };
     return configs[this.worldType] || configs[0];
   }
@@ -120,61 +87,32 @@ export class Wagon {
       rocky: ['wagon_rock_0', 'wagon_rock_1', 'wagon_rock_2', 'wagon_rock_3'],
       void: ['wagon_void_0', 'wagon_void_1', 'wagon_void_2', 'wagon_void_3'],
     };
-    
     const textures = textureMaps[this.worldConfig.textureSet] || textureMaps.space;
     const texIndex = this.index % textures.length;
-    const texture = textures[texIndex];
-    
-    if (this.scene.textures.exists(texture)) {
-      return texture;
-    }
-    return `wagon_${this.index % 10}`;
+    return this.scene.textures.exists(textures[texIndex]) ? textures[texIndex] : `wagon_${this.index % 10}`;
   }
 
   setupPhysics() {
     this.sprite.body.setCircle(12, 8, 6);
-    this.sprite.body.setAllowGravity(true);
-    this.sprite.body.setMass(0.5);
-    this.sprite.body.setDrag(0.9);
-    
-    if (this.worldType === 1) {
-      this.sprite.body.setMass(0.3);
-      this.sprite.body.setDrag(0.7);
-    } else if (this.worldType === 2) {
-      this.sprite.body.setMass(0.8);
-      this.sprite.body.setDrag(1.2);
-    } else if (this.worldType === 4) {
-      this.sprite.body.setMass(0.4);
-      this.sprite.body.setDrag(0.5);
-    }
+    this.sprite.body.setAllowGravity(false); // Отключаем гравитацию
+    this.sprite.body.setMass(0.3);
+    this.sprite.body.setDrag(0.95);
+    this.sprite.body.setBounce(0.2);
   }
 
   setupVisuals() {
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
-    
-    if (this.index % 3 === 0 && this.worldType === 1) {
-      this.createGlowEffect();
-    }
   }
 
   getMaxHealth() {
     let baseHealth = 1;
+    const upgradeLevel = gameManager.getUpgradeLevel?.('wagonHP') || 0;
+    baseHealth += upgradeLevel;
     
-    if (gameManager && gameManager.getUpgradeLevel) {
-      const upgradeLevel = gameManager.getUpgradeLevel('wagonHP');
-      if (upgradeLevel) {
-        baseHealth += upgradeLevel;
-      }
-    }
-    
-    baseHealth = Math.floor(baseHealth * this.worldConfig.healthMultiplier);
-    
-    if (gameManager && gameManager.getCurrentSkinStats) {
-      const skinStats = gameManager.getCurrentSkinStats();
-      if (skinStats && skinStats.armorBonus) {
-        baseHealth += Math.floor(skinStats.armorBonus / 10);
-      }
+    const skinStats = gameManager.getCurrentSkinStats?.();
+    if (skinStats?.armorBonus) {
+      baseHealth += Math.floor(skinStats.armorBonus / 10);
     }
     
     return Math.max(1, baseHealth);
@@ -182,12 +120,10 @@ export class Wagon {
 
   getSpecialEffects() {
     const effects = [];
-    
     if (this.worldType === 1 && this.index % 2 === 0) effects.push('glow');
     if (this.worldType === 2 && this.index % 3 === 0) effects.push('shadow');
     if (this.worldType === 3 && this.index % 4 === 0) effects.push('rock_armor');
     if (this.worldType === 4 && this.index % 5 === 0) effects.push('void_energy');
-    
     return effects;
   }
 
@@ -195,107 +131,46 @@ export class Wagon {
   // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
   // =========================================================================
 
-  createGlowEffect() {
-    this.glowEffect = this.scene.add.circle(
-      this.sprite.x,
-      this.sprite.y,
-      20,
-      this.worldConfig.glowColor,
-      0.3
-    );
-    this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
-    this.glowEffect.setDepth(4);
+  createMultiplierIndicator() {
+    const x = 0, y = -28;
+    this.multiplierIndicator = this.scene.add.text(x, y, `x${this.coinMultiplier.toFixed(1)}`, {
+      fontSize: '11px',
+      fontFamily: "'Audiowide', sans-serif",
+      color: '#ffaa00',
+      stroke: '#000000',
+      strokeThickness: 2,
+      shadow: { blur: 4, color: '#ffaa00', fill: true }
+    }).setOrigin(0.5);
+    this.sprite.add(this.multiplierIndicator);
   }
 
-  createHealthBar() {
-    const barWidth = 35;
-    const barHeight = 4;
-    
+  createArmorIndicator() {
+    const barWidth = 30, barHeight = 3;
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
-    
-    let barColor = 0x00ff00;
-    if (this.worldType === 1) barColor = 0xff44ff;
-    if (this.worldType === 2) barColor = 0xff6600;
-    if (this.worldType === 3) barColor = 0xffaa44;
-    if (this.worldType === 4) barColor = 0xaa88ff;
-    
-    graphics.fillStyle(barColor, 1);
+    graphics.fillStyle(0xffaa44, 1);
     graphics.fillRect(0, 0, barWidth, barHeight);
-    graphics.generateTexture('wagon_health_bar', barWidth, barHeight);
+    graphics.generateTexture('wagon_armor_bar', barWidth, barHeight);
     graphics.destroy();
     
-    this.healthBar = this.scene.add.image(this.sprite.x, this.sprite.y - 18, 'wagon_health_bar')
-      .setScale(1, 0.5)
-      .setDepth(20);
+    this.armorIndicator = this.scene.add.image(this.sprite.x, this.sprite.y - 22, 'wagon_armor_bar')
+      .setScale(1, 0.5).setDepth(20);
   }
 
-  updateHealthBar() {
-    if (!this.healthBar) return;
-    
-    const healthPercent = this.hp / this.maxHp;
-    this.healthBar.setScale(healthPercent, 0.5);
-    this.healthBar.setPosition(this.sprite.x, this.sprite.y - 18);
-    
-    if (healthPercent > 0.6) {
-      this.healthBar.setTint(0x00ff00);
-    } else if (healthPercent > 0.3) {
-      this.healthBar.setTint(0xffaa00);
-    } else {
-      this.healthBar.setTint(0xff0000);
-    }
+  updateArmorIndicator() {
+    if (!this.armorIndicator) return;
+    const percent = this.hp / this.maxHp;
+    this.armorIndicator.setScale(percent, 0.5);
+    this.armorIndicator.setPosition(this.sprite.x, this.sprite.y - 22);
+    this.armorIndicator.setTint(percent > 0.6 ? 0x00ff00 : (percent > 0.3 ? 0xffaa00 : 0xff0000));
   }
 
   applyWorldVisuals() {
-    if (this.worldType === 1) {
+    if (this.worldType === 1 && this.glowEffect) {
       this.scene.tweens.add({
-        targets: this.sprite,
-        alpha: { from: 0.8, to: 1.0 },
-        duration: 500,
-        yoyo: true,
-        repeat: -1,
-      });
-      
-      if (this.glowEffect) {
-        this.scene.tweens.add({
-          targets: this.glowEffect,
-          alpha: { from: 0.2, to: 0.5 },
-          scale: { from: 1, to: 1.2 },
-          duration: 800,
-          yoyo: true,
-          repeat: -1,
-        });
-      }
-    }
-    
-    if (this.worldType === 2) {
-      this.sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
-      
-      const darkAura = this.scene.add.circle(this.sprite.x, this.sprite.y, 15, 0x000000, 0.2);
-      darkAura.setBlendMode(Phaser.BlendModes.MULTIPLY);
-      darkAura.setDepth(4);
-      
-      this.scene.tweens.add({
-        targets: darkAura,
-        alpha: { from: 0.1, to: 0.3 },
-        duration: 1000,
-        yoyo: true,
-        repeat: -1,
-        onComplete: () => darkAura.destroy()
-      });
-    }
-    
-    if (this.worldType === 3) {
-      this.sprite.setTint(0xffaa66);
-    }
-    
-    if (this.worldType === 4) {
-      this.sprite.setBlendMode(Phaser.BlendModes.SCREEN);
-      
-      this.scene.tweens.add({
-        targets: this.sprite,
-        scaleX: { from: 0.75, to: 0.8 },
-        scaleY: { from: 0.75, to: 0.8 },
-        duration: 300,
+        targets: this.glowEffect,
+        alpha: { from: 0.2, to: 0.5 },
+        scale: { from: 1, to: 1.2 },
+        duration: 800,
         yoyo: true,
         repeat: -1,
       });
@@ -305,35 +180,20 @@ export class Wagon {
   animateSpawn() {
     this.sprite.setAlpha(0);
     this.sprite.setScale(0);
-    
     this.scene.tweens.add({
       targets: this.sprite,
       alpha: 1,
-      scaleX: 0.75,
-      scaleY: 0.75,
+      scaleX: 0.7,
+      scaleY: 0.7,
       duration: 400,
       ease: 'Back.out',
-      onComplete: () => {
-        if (this.glowEffect) {
-          this.scene.tweens.add({
-            targets: this.glowEffect,
-            alpha: 0.3,
-            duration: 300,
-          });
-        }
-      }
     });
   }
 
   playSpawnSound() {
     try {
-      const volume = 0.3 + (this.index % 5 === 0 ? 0.2 : 0);
-      if (audioManager && audioManager.playSound) {
-        audioManager.playSound(this.scene, 'wagon_spawn', volume);
-      }
-    } catch (e) {
-      // Игнорируем ошибки звука
-    }
+      audioManager.playSound(this.scene, 'wagon_spawn', 0.3);
+    } catch (e) {}
   }
 
   // =========================================================================
@@ -345,14 +205,11 @@ export class Wagon {
     this.maxHp = maxHp;
     this.sprite.setData('hp', hp);
     this.sprite.setData('maxHP', maxHp);
-    
-    if (maxHp > 1 && !this.healthBar) {
-      this.createHealthBar();
-    }
+    if (maxHp > 1 && !this.armorIndicator) this.createArmorIndicator();
   }
 
   takeDamage(amount = 1, source = null) {
-    if (this.protectionFrames > 0) return false;
+    if (this.protectionFrames > 0 || !this.isConnected) return false;
     
     this.hp -= amount;
     
@@ -363,7 +220,7 @@ export class Wagon {
     
     this.protectionFrames = this.protectionDuration;
     this.showDamageEffect();
-    this.updateHealthBar();
+    this.updateArmorIndicator();
     this.playDamageSound();
     
     return false;
@@ -372,104 +229,49 @@ export class Wagon {
   showDamageEffect() {
     this.sprite.setTint(0xff8888);
     this.scene.time.delayedCall(150, () => {
-      if (this.sprite && this.sprite.active) {
-        this.sprite.setTint(this.worldConfig.color);
-      }
+      if (this.sprite?.active) this.sprite.setTint(this.worldConfig.color);
     });
     
-    if (this.scene.particleManager) {
-      let particleColor = this.worldConfig.particleColor;
-      if (this.worldType === 1) particleColor = 0xff44ff;
-      if (this.worldType === 2) particleColor = 0xff6600;
-      if (this.worldType === 3) particleColor = 0xffaa44;
-      if (this.worldType === 4) particleColor = 0xaa88ff;
-      
-      for (let i = 0; i < 3; i++) {
-        const spark = this.scene.add.circle(
-          this.sprite.x + Phaser.Math.Between(-15, 15),
-          this.sprite.y + Phaser.Math.Between(-15, 15),
-          2,
-          particleColor,
-          0.7
-        );
-        spark.setBlendMode(Phaser.BlendModes.ADD);
-        
-        this.scene.tweens.add({
-          targets: spark,
-          alpha: 0,
-          scale: 0,
-          x: spark.x + Phaser.Math.Between(-30, 30),
-          y: spark.y + Phaser.Math.Between(-30, 30),
-          duration: 300,
-          onComplete: () => spark.destroy()
-        });
-      }
-    }
-    
-    if (amount >= 2) {
-      this.scene.cameras.main.shake(100, 0.002);
-    }
-  }
-
-  playDamageSound() {
-    try {
-      const volume = 0.2 + (this.hp / this.maxHp) * 0.2;
-      if (audioManager && audioManager.playSound) {
-        audioManager.playSound(this.scene, 'wagon_hit', volume);
-      }
-    } catch (e) {
-      // Игнорируем ошибки звука
-    }
-  }
-
-  addBuff(type, duration) {
-    this.buffs.push({ type, duration, startTime: Date.now() });
-    
-    if (type === 'shield') {
-      const shield = this.scene.add.circle(this.sprite.x, this.sprite.y, 18, 0x00ffff, 0.3);
-      shield.setBlendMode(Phaser.BlendModes.ADD);
-      shield.setDepth(6);
-      
+    for (let i = 0; i < 3; i++) {
+      const spark = this.scene.add.circle(
+        this.sprite.x + Phaser.Math.Between(-15, 15),
+        this.sprite.y + Phaser.Math.Between(-15, 15),
+        2,
+        this.worldConfig.particleColor,
+        0.7
+      );
+      spark.setBlendMode(Phaser.BlendModes.ADD);
       this.scene.tweens.add({
-        targets: shield,
+        targets: spark,
         alpha: 0,
-        duration: duration,
-        onComplete: () => shield.destroy()
+        scale: 0,
+        duration: 300,
+        onComplete: () => spark.destroy()
       });
     }
   }
 
-  updateBuffs() {
-    const now = Date.now();
-    this.buffs = this.buffs.filter(buff => {
-      const elapsed = now - buff.startTime;
-      return elapsed < buff.duration;
-    });
+  playDamageSound() {
+    try { audioManager.playSound(this.scene, 'hit_sound', 0.2); } catch(e) {}
   }
 
   update(prevX, prevY, gap, spring) {
-    if (!this.sprite || !this.sprite.active) {
+    if (!this.sprite?.active) {
       this.active = false;
       return;
     }
     
+    // Защитные кадры
     if (this.protectionFrames > 0) {
       this.protectionFrames -= 16;
-      if (this.protectionFrames < 0) this.protectionFrames = 0;
-      
-      if (this.protectionFrames % 100 < 50) {
-        this.sprite.setAlpha(0.6);
-      } else {
-        this.sprite.setAlpha(1);
-      }
+      this.sprite.setAlpha(this.protectionFrames % 100 < 50 ? 0.6 : 1);
     } else {
       this.sprite.setAlpha(1);
     }
     
-    this.updateBuffs();
-    
+    // Плавное следование за предыдущим объектом
     const targetX = prevX - gap;
-    const targetY = prevY;
+    const targetY = prevY + Math.sin(Date.now() * 0.005 + this.index) * 3;
     
     const dx = targetX - this.sprite.x;
     const dy = targetY - this.sprite.y;
@@ -482,85 +284,53 @@ export class Wagon {
     this.sprite.x += dx * springFactor;
     this.sprite.y += dy * springFactor;
     
-    if (this.sprite.body) {
-      this.sprite.body.reset(this.sprite.x, this.sprite.y);
+    if (this.sprite.body) this.sprite.body.reset(this.sprite.x, this.sprite.y);
+    
+    // Обновляем индикаторы
+    if (this.multiplierIndicator) {
+      this.multiplierIndicator.setPosition(0, -28);
+      const intensity = 0.7 + Math.sin(Date.now() * 0.008) * 0.3;
+      this.multiplierIndicator.setAlpha(intensity);
     }
-    
-    this.updateHealthBar();
-    
-    if (this.glowEffect) {
-      this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
-    }
-    
-    if (this.worldType === 4) {
-      const centerX = this.scene.scale.width / 2;
-      const centerY = this.scene.scale.height / 2;
-      const dxToCenter = centerX - this.sprite.x;
-      const dyToCenter = centerY - this.sprite.y;
-      const distance = Math.hypot(dxToCenter, dyToCenter);
-      
-      if (distance < 200) {
-        const angle = Math.atan2(dyToCenter, dxToCenter);
-        const pull = (1 - distance / 200) * 0.5;
-        this.sprite.x += Math.cos(angle) * pull;
-        this.sprite.y += Math.sin(angle) * pull;
-      }
+    if (this.armorIndicator) this.updateArmorIndicator();
+    if (this.glowEffect) this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+  }
+
+  // Обновление множителя при отцеплении вагона
+  updateMultiplierAfterDetach(newIndex) {
+    this.index = newIndex;
+    this.coinMultiplier = 1 + (this.index + 1) * 0.5;
+    if (this.multiplierIndicator) {
+      this.multiplierIndicator.setText(`x${this.coinMultiplier.toFixed(1)}`);
     }
   }
 
+  // Отцепление вагона (при разрушении)
+  detach() {
+    this.isConnected = false;
+    this.sprite.setTint(0x666666);
+    if (this.multiplierIndicator) {
+      this.multiplierIndicator.setColor('#888888');
+    }
+    this.playDetachSound();
+  }
+
+  playDetachSound() {
+    try { audioManager.playSound(this.scene, 'wagon_destroy', 0.4); } catch(e) {}
+  }
+
   destroy() {
-    if (this.glowEffect) {
-      this.glowEffect.destroy();
-    }
+    if (this.glowEffect) this.glowEffect.destroy();
+    if (this.armorIndicator) this.armorIndicator.destroy();
+    if (this.multiplierIndicator) this.multiplierIndicator.destroy();
     
-    if (this.healthBar) {
-      this.healthBar.destroy();
-    }
-    
-    if (this.sprite && this.sprite.active) {
+    if (this.sprite?.active) {
       if (this.scene.particleManager) {
         this.scene.particleManager.createWagonDestroyEffect(this.sprite);
       }
-      
-      if (this.worldType === 1) {
-        for (let i = 0; i < 8; i++) {
-          const debris = this.scene.add.text(
-            this.sprite.x + Phaser.Math.Between(-20, 20),
-            this.sprite.y + Phaser.Math.Between(-20, 20),
-            ['0','1'][Math.floor(Math.random() * 2)],
-            { fontSize: `${Phaser.Math.Between(8, 16)}px`, fontFamily: 'monospace', color: '#ff44ff' }
-          );
-          this.scene.tweens.add({
-            targets: debris,
-            alpha: 0,
-            y: debris.y - 50,
-            x: debris.x + Phaser.Math.Between(-50, 50),
-            duration: 500,
-            onComplete: () => debris.destroy()
-          });
-        }
-      }
-      
-      if (this.worldType === 4) {
-        const collapse = this.scene.add.circle(this.sprite.x, this.sprite.y, 15, 0xaa88ff, 0.6);
-        this.scene.tweens.add({
-          targets: collapse,
-          scale: 0,
-          alpha: 0,
-          duration: 300,
-          onComplete: () => collapse.destroy()
-        });
-      }
-      
-      try {
-        if (audioManager && audioManager.playSound) {
-          audioManager.playSound(this.scene, 'wagon_destroy', 0.5);
-        }
-      } catch (e) {}
-      
+      try { audioManager.playSound(this.scene, 'wagon_destroy', 0.5); } catch(e) {}
       this.sprite.destroy();
     }
-    
     this.active = false;
   }
 
@@ -568,35 +338,11 @@ export class Wagon {
   // ГЕТТЕРЫ
   // =========================================================================
 
-  getPosition() {
-    return { x: this.sprite.x, y: this.sprite.y };
-  }
-
-  getHealth() {
-    return this.hp;
-  }
-
-  getMaxHealth() {
-    return this.maxHp;
-  }
-
-  getHealthPercent() {
-    return this.hp / this.maxHp;
-  }
-
-  getIndex() {
-    return this.index;
-  }
-
-  getWorldType() {
-    return this.worldType;
-  }
-
-  hasShield() {
-    return this.buffs.some(b => b.type === 'shield');
-  }
-
-  isActive() {
-    return this.active && this.sprite && this.sprite.active;
-  }
+  getPosition() { return { x: this.sprite.x, y: this.sprite.y }; }
+  getHealth() { return this.hp; }
+  getMaxHealth() { return this.maxHp; }
+  getMultiplier() { return this.coinMultiplier; }
+  getIndex() { return this.index; }
+  isActive() { return this.active && this.sprite?.active && this.isConnected; }
+  isConnected() { return this.isConnected; }
 }
