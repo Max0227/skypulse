@@ -405,10 +405,11 @@ export class PlayScene extends Phaser.Scene {
       this.comboSystem.add();
     }
 
-    if (this.collectedCoins >= this.coinsForWagon && this.wagons.length < this.maxWagons) {
-      this.addWagon();
-      this.collectedCoins -= this.coinsForWagon;
-    }
+    const coinsNeeded = 10; // Каждые 10 монет
+if (this.collectedCoins >= coinsNeeded && this.wagons.length < this.maxWagons) {
+  this.addWagon();
+  this.collectedCoins -= coinsNeeded;
+}
 
     if (bonusType) {
       this.activateBonus(bonusType);
@@ -437,44 +438,120 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 // =========================================================================
-// МЕТОДЫ ДЛЯ ВАГОНОВ (используем импортированный класс Wagon)
+// МЕТОДЫ ДЛЯ ВАГОНОВ (улучшенная версия)
 // =========================================================================
 
 /**
- * Добавить вагон
+ * Добавить новый вагон (увеличенное расстояние, плавное появление)
  */
 addWagon() {
   if (this.wagons.length >= this.maxWagons || !this.player) return;
-
+  
+  // Определяем последний объект (игрок или последний вагон)
   const last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
-  const spawnX = last.x - this.wagonGap * 2;
-  const spawnY = last.y;
-
-  // Используем импортированный класс Wagon
-  const wagon = new Wagon(this, spawnX, spawnY, this.wagons.length);
+  
+  // Увеличенное расстояние между вагонами (чтобы не было наложения)
+  const spawnX = last.x - this.wagonGap;
+  const spawnY = last.y + Phaser.Math.Between(-5, 5); // небольшое смещение для реалистичности
+  
+  // Создаём вагон с правильным индексом
+  const wagon = new Wagon(this, spawnX, spawnY, this.wagons.length, this.world);
   wagon.setHP(this.wagonBaseHP, this.wagonBaseHP);
   
   this.wagons.push(wagon);
-
+  
+  // Обновляем счётчик вагонов
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+    // Анимация текста
+    this.tweens.add({
+      targets: this.wagonCountText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 200,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
   }
+  
+  // Эффект появления вагона
+  this.createWagonSpawnEffect(wagon);
+  
+  // Лёгкая тряска камеры при добавлении вагона
+  this.cameras.main.shake(80, 0.003);
+  
+  // Звук появления вагона
+  try { 
+    if (this.wagonSound) this.wagonSound.play(); 
+  } catch(e) {}
+  
+  // Обновляем зум камеры
   this.updateCameraZoom();
+  
+  // Показываем уведомление о новом множителе
+  this.showNotification(`✨ НОВЫЙ ВАГОН! МНОЖИТЕЛЬ x${wagon.getMultiplier().toFixed(1)} ✨`, 1500, '#ffaa00');
 }
 
 /**
- * Обновить позиции вагонов
+ * Эффект появления вагона
+ */
+createWagonSpawnEffect(wagon) {
+  if (!wagon || !wagon.sprite) return;
+  
+  // Частицы появления
+  for (let i = 0; i < 12; i++) {
+    const particle = this.add.circle(
+      wagon.sprite.x + Phaser.Math.Between(-25, 25),
+      wagon.sprite.y + Phaser.Math.Between(-25, 25),
+      Phaser.Math.Between(2, 5),
+      this.getWorldColor(),
+      0.8
+    );
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: particle,
+      alpha: 0,
+      scale: 0,
+      x: particle.x + Phaser.Math.Between(-50, 50),
+      y: particle.y + Phaser.Math.Between(-50, 50),
+      duration: 500,
+      onComplete: () => particle.destroy()
+    });
+  }
+  
+  // Кольцо появления
+  const ring = this.add.circle(wagon.sprite.x, wagon.sprite.y, 15, this.getWorldColor(), 0.6);
+  ring.setBlendMode(Phaser.BlendModes.ADD);
+  this.tweens.add({
+    targets: ring,
+    scale: 2.5,
+    alpha: 0,
+    duration: 400,
+    onComplete: () => ring.destroy()
+  });
+}
+
+/**
+ * Обновить позиции вагонов (улучшенная физика)
  */
 updateWagons() {
   if (this.wagons.length === 0 || !this.player) return;
+  
   let prev = this.player;
+  let prevX = prev.x;
+  let prevY = prev.y;
 
   for (let i = 0; i < this.wagons.length; i++) {
     const wagon = this.wagons[i];
     if (!wagon || !wagon.isActive()) continue;
     
-    wagon.update(prev.x, prev.y, this.wagonGap, this.wagonSpring);
-    prev = wagon.sprite;
+    // Обновляем позицию вагона с учётом расстояния
+    wagon.update(prevX, prevY, this.wagonGap);
+    
+    // Сохраняем позицию для следующего вагона
+    prevX = wagon.sprite.x;
+    prevY = wagon.sprite.y;
   }
 }
 
@@ -486,32 +563,147 @@ wagonHit(wagon, pipe) {
   
   const destroyed = wagon.takeDamage(1);
   if (destroyed) {
+    const destroyedIndex = this.wagons.findIndex(w => w === wagon);
     this.wagons = this.wagons.filter(w => w !== wagon);
+    
+    // Переиндексация оставшихся вагонов (обновляем множители)
+    for (let i = 0; i < this.wagons.length; i++) {
+      this.wagons[i].updateMultiplierAfterDetach(i);
+    }
+    
+    // Эффект потери вагона
+    this.createWagonLostEffect(wagon, destroyedIndex);
+    
+    // Показываем уведомление
+    this.showNotification(`💔 ВАГОН ПОТЕРЯН! МНОЖИТЕЛЬ СНИЖЕН`, 1500, '#ff4444');
   }
   
+  if (this.wagonCountText) {
+    this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
+    this.tweens.add({
+      targets: this.wagonCountText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 150,
+      yoyo: true
+    });
+  }
+  
+  // Обновляем зум камеры после потери вагона
+  this.updateCameraZoom();
+}
+
+/**
+ * Эффект потери вагона
+ */
+createWagonLostEffect(wagon, index) {
+  if (!wagon || !wagon.sprite) return;
+  
+  // Взрывные частицы
+  for (let i = 0; i < 15; i++) {
+    const particle = this.add.circle(
+      wagon.sprite.x + Phaser.Math.Between(-20, 20),
+      wagon.sprite.y + Phaser.Math.Between(-20, 20),
+      Phaser.Math.Between(3, 6),
+      0xff4444,
+      0.9
+    );
+    particle.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.tweens.add({
+      targets: particle,
+      alpha: 0,
+      scale: 0,
+      x: particle.x + Phaser.Math.Between(-80, 80),
+      y: particle.y + Phaser.Math.Between(-80, 80),
+      duration: 500,
+      onComplete: () => particle.destroy()
+    });
+  }
+  
+  // Ударная волна
+  const shockwave = this.add.circle(wagon.sprite.x, wagon.sprite.y, 15, 0xff6666, 0.7);
+  shockwave.setBlendMode(Phaser.BlendModes.ADD);
+  this.tweens.add({
+    targets: shockwave,
+    scale: 3,
+    alpha: 0,
+    duration: 400,
+    onComplete: () => shockwave.destroy()
+  });
+  
+  // Тряска камеры
+  this.cameras.main.shake(200, 0.008);
+}
+
+/**
+ * Обновить зум камеры в зависимости от количества вагонов (улучшенный)
+ */
+updateCameraZoom() {
+  if (!this.player) return;
+  
+  // Рассчитываем общую длину состава
+  const totalLength = (this.wagons.length + 1) * this.wagonGap;
+  const screenWidth = this.scale.width;
+  
+  // Целевой зум (чем больше вагонов, тем меньше зум)
+  let targetZoom = Math.min(1.2, screenWidth / (totalLength + 80));
+  targetZoom = Math.max(0.65, targetZoom);
+  
+  // Плавное изменение зума
+  this.tweens.add({
+    targets: this.cameras.main,
+    zoom: targetZoom,
+    duration: 400,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => {
+      // Центрируем камеру на игроке
+      this.cameras.main.centerOn(this.player.x, this.player.y);
+    }
+  });
+}
+
+/**
+ * Переиндексация вагонов после потери (обновление множителей)
+ */
+reindexWagons() {
+  for (let i = 0; i < this.wagons.length; i++) {
+    if (this.wagons[i] && this.wagons[i].updateMultiplierAfterDetach) {
+      this.wagons[i].updateMultiplierAfterDetach(i);
+    }
+  }
+  
+  // Обновляем счётчик
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
   }
 }
 
 /**
- * Обновить зум камеры в зависимости от количества вагонов
+ * Получить общий множитель от всех вагонов
  */
-updateCameraZoom() {
-  if (!this.player || this.wagons.length === 0) return;
-  
-  const totalLength = (this.wagons.length + 1) * this.wagonGap;
-  const screenWidth = this.scale.width;
-  let targetZoom = Math.min(1, screenWidth / (totalLength + 100));
-  targetZoom = Math.max(0.7, targetZoom);
-  
-  // Плавное изменение зума
-  this.tweens.add({
-    targets: this.cameras.main,
-    zoom: targetZoom,
-    duration: 500,
-    ease: 'Sine.easeInOut'
-  });
+getTotalWagonMultiplier() {
+  let total = 1;
+  for (const wagon of this.wagons) {
+    if (wagon.isConnected && wagon.isActive()) {
+      total *= wagon.getMultiplier();
+    }
+  }
+  return total;
+}
+
+/**
+ * Проверить, есть ли активные вагоны
+ */
+hasActiveWagons() {
+  return this.wagons.some(wagon => wagon.isActive() && wagon.isConnected);
+}
+
+/**
+ * Получить количество активных вагонов
+ */
+getActiveWagonCount() {
+  return this.wagons.filter(wagon => wagon.isActive() && wagon.isConnected).length;
 }
   /**
    * Обновление параметров сложности на основе gameLevel
@@ -785,7 +977,7 @@ completeWorldLevel() {
     this.collectedCoins = 0;
     this.coinsForWagon = 10;
     this.maxWagons = 12 + ((gameManager.data?.upgrades?.maxWagons) || 0) * 2;
-    this.wagonGap = 28 - ((gameManager.data?.upgrades?.wagonGap) || 0) * 2;
+    this.wagonGap = 52 - ((gameManager.data?.upgrades?.wagonGap) || 0) * 2;
     this.wagonSpring = 0.25;
     this.targetPlayerX = 110;
     this.playerXSpeed = 0.05;

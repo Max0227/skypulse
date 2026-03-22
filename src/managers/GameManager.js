@@ -350,21 +350,197 @@ export class GameManager {
   }
 
   importData(jsonString) {
-    try {
-      const imported = JSON.parse(jsonString);
-      if (imported.data) {
-        this.data = imported.data;
-        this.clearCaches();
-        this.save();
-        this.emit('import', imported);
-        return true;
-      }
+  try {
+    const imported = JSON.parse(jsonString);
+    
+    // Проверяем наличие основных данных
+    if (!imported.data) {
+      console.error('Import failed: No data field found');
       return false;
-    } catch (e) {
-      console.error('Failed to import data', e);
+    }
+    
+    // Валидация структуры данных
+    if (!this.validateImportedData(imported.data)) {
+      console.error('Import failed: Invalid data structure');
+      return false;
+    }
+    
+    // Сохраняем старые данные для возможного отката
+    const oldData = JSON.parse(JSON.stringify(this.data));
+    
+    try {
+      // Применяем импортированные данные
+      this.data = imported.data;
+      
+      // Применяем миграции для новых полей (на случай, если импортирована старая версия)
+      this.migrateImportedData(this.data);
+      
+      // Очищаем кэши
+      this.clearCaches();
+      
+      // Сохраняем в localStorage
+      this.save();
+      
+      // Уведомляем об успешном импорте
+      this.emit('import', { 
+        success: true, 
+        data: imported,
+        timestamp: Date.now()
+      });
+      
+      console.log('✅ Data imported successfully');
+      return true;
+      
+    } catch (applyError) {
+      // В случае ошибки восстанавливаем старые данные
+      console.error('Failed to apply imported data:', applyError);
+      this.data = oldData;
+      this.save();
+      return false;
+    }
+    
+  } catch (e) {
+    console.error('Failed to import data:', e);
+    this.emit('import', { 
+      success: false, 
+      error: e.message 
+    });
+    return false;
+  }
+}
+
+/**
+ * Валидация импортируемых данных
+ * @param {Object} data - Данные для проверки
+ * @returns {boolean} - Корректна ли структура
+ */
+validateImportedData(data) {
+  // Проверяем наличие обязательных полей
+  const requiredFields = [
+    'crystals', 'unlockedWorlds', 'unlockedLevels', 'levelStars',
+    'upgrades', 'ownedSkins', 'currentSkin', 'achievements',
+    'stats', 'worldProgress', 'settings'
+  ];
+  
+  for (const field of requiredFields) {
+    if (!(field in data)) {
+      console.warn(`Missing required field: ${field}`);
       return false;
     }
   }
+  
+  // Проверяем типы данных
+  if (typeof data.crystals !== 'number' || data.crystals < 0) return false;
+  if (!Array.isArray(data.unlockedWorlds)) return false;
+  if (typeof data.upgrades !== 'object') return false;
+  if (!Array.isArray(data.ownedSkins)) return false;
+  if (typeof data.achievements !== 'object') return false;
+  
+  // Проверяем структуру upgrades
+  const requiredUpgrades = [
+    'jumpPower', 'gravity', 'shieldDuration', 'magnetRange',
+    'wagonHP', 'maxWagons', 'wagonGap', 'headHP', 'revival',
+    'weaponDamage', 'weaponSpeed', 'weaponFireRate'
+  ];
+  
+  for (const upgrade of requiredUpgrades) {
+    if (typeof data.upgrades[upgrade] !== 'number' || data.upgrades[upgrade] < 0) {
+      console.warn(`Invalid upgrade value for: ${upgrade}`);
+      return false;
+    }
+  }
+  
+  // Проверяем, что текущий скин есть в ownedSkins
+  if (!data.ownedSkins.includes(data.currentSkin)) {
+    console.warn('Current skin not owned');
+    return false;
+  }
+  
+  // Проверяем, что разблокированные миры в допустимом диапазоне
+  for (const world of data.unlockedWorlds) {
+    if (world < 0 || world > 4) {
+      console.warn(`Invalid world: ${world}`);
+      return false;
+    }
+  }
+  
+  // Проверяем статистику
+  if (data.stats && typeof data.stats.totalGames !== 'number') {
+    return false;
+  }
+  
+  return true;
+}
+
+/**
+ * Миграция импортированных данных (для старых версий)
+ * @param {Object} data - Данные для миграции
+ */
+migrateImportedData(data) {
+  // Добавляем недостающие поля (как в loadData)
+  data.unlockedWorlds = data.unlockedWorlds || [0];
+  data.unlockedLevels = data.unlockedLevels || { '0': [0] };
+  data.levelStars = data.levelStars || {};
+  data.upgrades = data.upgrades || this.getDefaultData().upgrades;
+  data.ownedSkins = data.ownedSkins || ['taxi_classic'];
+  data.currentSkin = data.currentSkin || 'taxi_classic';
+  data.achievements = data.achievements || {};
+  data.stats = data.stats || this.getDefaultData().stats;
+  data.crystals = data.crystals ?? 0;
+  data.soundEnabled = data.soundEnabled ?? true;
+  data.musicEnabled = data.musicEnabled ?? true;
+  data.vibrationEnabled = data.vibrationEnabled ?? true;
+  data.tutorialCompleted = data.tutorialCompleted ?? false;
+  data.levelPrices = data.levelPrices || this.getDefaultLevelPrices();
+  data.worldProgress = data.worldProgress || { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0 };
+  data.dailyReward = data.dailyReward || this.getDefaultDailyReward();
+  data.leaderboard = data.leaderboard || [];
+  data.settings = data.settings || this.getDefaultSettings();
+  data.currentWorld = data.currentWorld ?? 0;
+  data.currentLevel = data.currentLevel ?? 0;
+  data.totalPlayTime = data.totalPlayTime ?? 0;
+  data.lastPlayed = data.lastPlayed ?? null;
+  data.skinStats = data.skinStats || {};
+  data.selectedEffects = data.selectedEffects || {};
+  data.favoriteSkins = data.favoriteSkins || [];
+  data.skinUsage = data.skinUsage || {};
+  data.completedAchievements = data.completedAchievements || [];
+  data.secretAchievements = data.secretAchievements || [];
+  data.purchasedItems = data.purchasedItems || {};
+  data.consumables = data.consumables || {};
+  data.dailyQuests = data.dailyQuests || this.generateDailyQuests();
+  data.weeklyQuests = data.weeklyQuests || this.generateWeeklyQuests();
+  data.eventProgress = data.eventProgress || {};
+  data.seasonPass = data.seasonPass || this.getDefaultSeasonPass();
+  data.goldenTickets = data.goldenTickets || 0;
+  data.prestigeLevel = data.prestigeLevel || 0;
+  data.prestigePoints = data.prestigePoints || 0;
+  data.achievementPoints = data.achievementPoints || 0;
+  data.collectionScore = data.collectionScore || 0;
+  
+  // Очищаем некорректные значения
+  if (data.crystals < 0) data.crystals = 0;
+  if (data.prestigeLevel < 0) data.prestigeLevel = 0;
+  if (data.currentWorld < 0 || data.currentWorld > 4) data.currentWorld = 0;
+  if (data.currentLevel < 0 || data.currentLevel > 9) data.currentLevel = 0;
+  
+  // Проверяем и исправляем upgrades
+  for (const key in data.upgrades) {
+    if (data.upgrades[key] < 0) data.upgrades[key] = 0;
+    if (data.upgrades[key] > 20) data.upgrades[key] = 20;
+  }
+  
+  // Проверяем ownedSkins
+  const validSkins = SKINS.map(s => s.id);
+  data.ownedSkins = data.ownedSkins.filter(skin => validSkins.includes(skin));
+  if (!data.ownedSkins.includes(data.currentSkin)) {
+    data.currentSkin = 'taxi_classic';
+  }
+  
+  // Проверяем unlockedWorlds
+  data.unlockedWorlds = data.unlockedWorlds.filter(w => w >= 0 && w <= 4);
+  if (data.unlockedWorlds.length === 0) data.unlockedWorlds = [0];
+}
 
   backup() {
     const backup = this.exportData();
@@ -1148,7 +1324,7 @@ export class GameManager {
 
   addLeaderboardEntry(score, level, wagons, meters, skinId) {
     const entry = {
-      id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+      id: Date.now().toString(36) + Math.random().toString(36).substring(2),
       score,
       level,
       wagons,
