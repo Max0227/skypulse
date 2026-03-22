@@ -736,21 +736,31 @@ getActiveWagonCount() {
    * Обновление скорости существующих объектов
    */
   updateExistingObjectsSpeed() {
-  // ... ворота и зоны
-
-  // ===== МОНЕТЫ =====
-  if (this.coinGroup) {
-    const coins = this.coinGroup.getChildren();
-    for (let i = 0; i < coins.length; i++) {
-      const coin = coins[i];
-      if (coin && coin.body && coin.active) {
-        // ТОЛЬКО ЭТО:
-        coin.body.setAllowGravity(false);
-        coin.body.setGravityY(0);
-        // НЕ ТРОГАЕМ velocity.x и velocity.y!
+  // Ворота
+  if (this.gateGroup) {
+    this.gateGroup.getChildren().forEach(gate => {
+      if (gate && gate.body) {
+        gate.body.velocity.x = -this.baseSpeed;
+        gate.body.velocity.y = 0;
+        gate.body.setGravityY(0);
+        gate.body.setAllowGravity(false);
       }
-    }
+    });
   }
+  
+  // Зоны прохода
+  if (this.scoreZones) {
+    this.scoreZones.forEach(zone => {
+      if (zone && zone.body) {
+        zone.body.velocity.x = -this.baseSpeed;
+        zone.body.velocity.y = 0;
+        zone.body.setGravityY(0);
+        zone.body.setAllowGravity(false);
+      }
+    });
+  }
+  
+  
 
   
   // Зоны прохода
