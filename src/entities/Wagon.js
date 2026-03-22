@@ -15,12 +15,12 @@ export class Wagon {
     // Текстура
     this.texture = this.getTextureForWorld();
     
-    // Спрайт
+    // Создаём спрайт
     this.sprite = scene.physics.add.image(x, y, this.texture)
       .setScale(0.7)
       .setDepth(5 + index);
     
-    // Физика
+    // Настройка физики (с гравитацией для реалистичного движения)
     this.setupPhysics();
     
     // Визуальные эффекты
@@ -33,29 +33,30 @@ export class Wagon {
     this.hp = this.getMaxHealth();
     this.maxHp = this.hp;
     this.active = true;
-    this.protectionFrames = 0;
-    this.protectionDuration = 500;
+    this.isConnected = true;
+    this.invincibleFrames = 0;
+    this.invincibleDuration = 500;
     
     // Множитель монет
     this.coinMultiplier = 1 + (this.index + 1) * 0.5; // 1.5, 2.0, 2.5...
-    this.isConnected = true;
     
-    // Параметры пружины (верёвочка)
-    this.springConstant = this.worldConfig.spring ?? 0.12;
-    this.damping = 0.92;
-    this.targetDistance = 38;      // желаемое расстояние до предыдущего объекта
-    this.minDistance = 28;
-    this.maxDistance = 48;
-    this.velocity = { x: 0, y: 0 };
+    // Параметры следования (змейка)
+    this.followDelay = 0.15;      // задержка следования
+    this.smoothFactor = 0.08;     // плавность движения
+    this.targetDistance = 42;      // желаемое расстояние до предыдущего объекта
+    
+    // Позиции для плавного следования
+    this.targetX = x;
+    this.targetY = y;
+    this.lastX = x;
+    this.lastY = y;
     
     // Спецэффекты
     this.specialEffects = this.getSpecialEffects();
-    this.buffs = [];
     this.glowEffect = null;
     
     // Визуальные индикаторы
     this.multiplierIndicator = null;
-    this.connectionLine = null;
     
     // Создаём индикатор множителя
     this.createMultiplierIndicator();
@@ -63,8 +64,8 @@ export class Wagon {
     // Применяем визуальные эффекты мира
     this.applyWorldVisuals();
     
-    // Анимация появления
-    this.animateSpawn();
+    // Анимация появления (справа налево)
+    this.animateSpawn(x);
     
     // Звук появления
     this.playSpawnSound();
@@ -76,11 +77,11 @@ export class Wagon {
   
   getWorldConfig() {
     const configs = {
-      0: { color: 0x88aaff, glowColor: 0x44aaff, textureSet: 'space', effect: 'normal', particleColor: 0x44aaff, spring: 0.12 },
-      1: { color: 0xff44ff, glowColor: 0xff88ff, textureSet: 'neon', effect: 'neon', particleColor: 0xff44ff, spring: 0.15 },
-      2: { color: 0xaa6644, glowColor: 0xcc8866, textureSet: 'dark', effect: 'dark', particleColor: 0xff6600, spring: 0.10 },
-      3: { color: 0xffaa66, glowColor: 0xffcc88, textureSet: 'rocky', effect: 'rocky', particleColor: 0xffaa44, spring: 0.11 },
-      4: { color: 0xaa88ff, glowColor: 0xcc88ff, textureSet: 'void', effect: 'void', particleColor: 0xaa88ff, spring: 0.16 },
+      0: { color: 0x88aaff, glowColor: 0x44aaff, textureSet: 'space', effect: 'normal', particleColor: 0x44aaff, gravity: 0 },
+      1: { color: 0xff44ff, glowColor: 0xff88ff, textureSet: 'neon', effect: 'neon', particleColor: 0xff44ff, gravity: 0 },
+      2: { color: 0xaa6644, glowColor: 0xcc8866, textureSet: 'dark', effect: 'dark', particleColor: 0xff6600, gravity: 200 },
+      3: { color: 0xffaa66, glowColor: 0xffcc88, textureSet: 'rocky', effect: 'rocky', particleColor: 0xffaa44, gravity: 100 },
+      4: { color: 0xaa88ff, glowColor: 0xcc88ff, textureSet: 'void', effect: 'void', particleColor: 0xaa88ff, gravity: 0 },
     };
     return configs[this.worldType] || configs[0];
   }
@@ -100,11 +101,20 @@ export class Wagon {
   }
   
   setupPhysics() {
+    // Настройка коллизии
     this.sprite.body.setCircle(12, 8, 6);
-    this.sprite.body.setAllowGravity(false);
-    this.sprite.body.setMass(0.5);
-    this.sprite.body.setDrag(0.98);
-    this.sprite.body.setBounce(0.1);
+    this.sprite.body.setMass(0.8);
+    this.sprite.body.setDrag(0.95);
+    this.sprite.body.setBounce(0.3);
+    
+    // Лёгкая гравитация для реалистичности (в зависимости от мира)
+    const gravityY = this.worldConfig.gravity ?? 0;
+    if (gravityY > 0) {
+      this.sprite.body.setAllowGravity(true);
+      this.sprite.body.setGravityY(gravityY);
+    } else {
+      this.sprite.body.setAllowGravity(false);
+    }
   }
   
   setupVisuals() {
@@ -168,19 +178,6 @@ export class Wagon {
     }
   }
   
-  createConnectionLine(prevX, prevY) {
-    if (!this.connectionLine) {
-      this.connectionLine = this.scene.add.graphics();
-      this.connectionLine.setDepth(4);
-    }
-    this.connectionLine.clear();
-    this.connectionLine.lineStyle(2, this.worldConfig.color, 0.4);
-    this.connectionLine.beginPath();
-    this.connectionLine.moveTo(prevX, prevY);
-    this.connectionLine.lineTo(this.sprite.x, this.sprite.y);
-    this.connectionLine.strokePath();
-  }
-  
   applyWorldVisuals() {
     if (this.worldType === 1 && this.glowEffect) {
       this.scene.tweens.add({
@@ -199,17 +196,20 @@ export class Wagon {
     }
   }
   
-  animateSpawn() {
+  animateSpawn(spawnX) {
+    // Начальная позиция справа за экраном
     this.sprite.setAlpha(0);
     this.sprite.setScale(0);
     if (this.multiplierIndicator) this.multiplierIndicator.setAlpha(0);
     
+    // Анимация появления: летит слева направо и увеличивается
     this.scene.tweens.add({
       targets: this.sprite,
+      x: spawnX,
       alpha: 1,
       scaleX: 0.7,
       scaleY: 0.7,
-      duration: 400,
+      duration: 500,
       ease: 'Back.out',
       onUpdate: () => {
         if (this.multiplierIndicator) {
@@ -218,6 +218,9 @@ export class Wagon {
         }
       }
     });
+    
+    // Импульс скорости для плавного прицепления
+    this.sprite.body.setVelocityX(-200);
   }
   
   playSpawnSound() {
@@ -238,7 +241,7 @@ export class Wagon {
   }
   
   takeDamage(amount = 1) {
-    if (this.protectionFrames > 0 || !this.isConnected) return false;
+    if (this.invincibleFrames > 0 || !this.isConnected) return false;
     
     this.hp -= amount;
     
@@ -247,7 +250,7 @@ export class Wagon {
       return true;
     }
     
-    this.protectionFrames = this.protectionDuration;
+    this.invincibleFrames = this.invincibleDuration;
     this.showDamageEffect();
     this.playDamageSound();
     return false;
@@ -259,7 +262,8 @@ export class Wagon {
       if (this.sprite?.active) this.sprite.setTint(this.worldConfig.color);
     });
     
-    for (let i = 0; i < 3; i++) {
+    // Частицы удара
+    for (let i = 0; i < 5; i++) {
       const spark = this.scene.add.circle(
         this.sprite.x + Phaser.Math.Between(-15, 15),
         this.sprite.y + Phaser.Math.Between(-15, 15),
@@ -283,7 +287,7 @@ export class Wagon {
   }
   
   // =========================================================================
-  // ОБНОВЛЕНИЕ (ФИЗИКА ВЕРЁВОЧКИ)
+  // ОБНОВЛЕНИЕ (ЗМЕЙКА)
   // =========================================================================
   
   update(prevX, prevY, gap, spring) {
@@ -292,63 +296,54 @@ export class Wagon {
       return;
     }
     
-    // Защитные кадры (мерцание)
-    if (this.protectionFrames > 0) {
-      this.protectionFrames -= 16;
-      this.sprite.setAlpha(this.protectionFrames % 100 < 50 ? 0.6 : 1);
+    // Неуязвимость (мерцание)
+    if (this.invincibleFrames > 0) {
+      this.invincibleFrames -= 16;
+      this.sprite.setAlpha(this.invincibleFrames % 100 < 50 ? 0.6 : 1);
     } else {
       this.sprite.setAlpha(1);
     }
     
-    // Целевая позиция (куда должен стремиться вагон)
+    // ===== ПЛАВНОЕ СЛЕДОВАНИЕ (ЗМЕЙКА) =====
+    // Целевая позиция – позади предыдущего объекта
     const targetX = prevX - gap;
     const targetY = prevY;
     
-    let dx = targetX - this.sprite.x;
-    let dy = targetY - this.sprite.y;
-    let distance = Math.hypot(dx, dy);
+    // Сохраняем предыдущую позицию для истории
+    this.lastX = this.sprite.x;
+    this.lastY = this.sprite.y;
     
-    // Отталкивание, если слишком близко
-    if (distance < this.minDistance && distance > 0) {
-      const angle = Math.atan2(dy, dx);
-      const push = (this.minDistance - distance) * 0.05;
-      this.sprite.x -= Math.cos(angle) * push;
-      this.sprite.y -= Math.sin(angle) * push;
-      dx = targetX - this.sprite.x;
-      dy = targetY - this.sprite.y;
-      distance = Math.hypot(dx, dy);
-    }
+    // Плавное движение к цели с задержкой
+    const dx = targetX - this.sprite.x;
+    const dy = targetY - this.sprite.y;
+    const distance = Math.hypot(dx, dy);
     
-    // Притяжение пружины, если расстояние больше желаемого
+    // Если расстояние больше желаемого, двигаемся быстрее
+    let speed = this.smoothFactor;
     if (distance > this.targetDistance) {
-      const force = Math.min(0.5, (distance - this.targetDistance) / this.maxDistance) * this.springConstant;
-      const angle = Math.atan2(dy, dx);
-      this.velocity.x += Math.cos(angle) * force * 1.5;
-      this.velocity.y += Math.sin(angle) * force * 1.5;
+      speed = Math.min(0.15, speed * 1.5);
     }
     
-    // Затухание
-    this.velocity.x *= this.damping;
-    this.velocity.y *= this.damping;
+    this.sprite.x += dx * speed;
+    this.sprite.y += dy * speed;
     
-    // Применение скорости
-    this.sprite.x += this.velocity.x;
-    this.sprite.y += this.velocity.y;
-    
-    // Болтание (синусоидальное движение)
-    this.sprite.y += Math.sin(Date.now() * 0.003 + this.index) * 1.2;
+    // Добавляем лёгкое "болтание" для реалистичности (как змейка)
+    const sway = Math.sin(Date.now() * 0.003 + this.index) * 1.5;
+    this.sprite.y += sway;
     
     // Поворот в направлении движения
-    const targetAngle = Math.atan2(this.velocity.y, this.velocity.x) * 0.5;
-    this.sprite.rotation += (targetAngle - this.sprite.rotation) * 0.1;
+    const moveAngle = Math.atan2(this.sprite.y - this.lastY, this.sprite.x - this.lastX);
+    this.sprite.rotation = moveAngle * 0.3;
+    
+    // Применяем гравитацию (если есть)
+    if (this.worldConfig.gravity > 0 && this.sprite.body) {
+      this.sprite.body.setVelocityY(this.sprite.body.velocity.y + this.worldConfig.gravity * 0.01);
+    }
     
     // Обновляем физическое тело
     if (this.sprite.body) {
       this.sprite.body.reset(this.sprite.x, this.sprite.y);
     }
-    
-    // Рисуем линию связи
-    this.createConnectionLine(prevX, prevY);
     
     // Обновляем индикатор множителя
     this.updateMultiplierIndicator();
@@ -383,6 +378,12 @@ export class Wagon {
       this.multiplierIndicator.setText(`x1.0`);
     }
     this.playDetachSound();
+    
+    // При отцеплении вагон продолжает лететь по инерции
+    if (this.sprite.body) {
+      this.sprite.body.setVelocityX(-this.scene.currentSpeed * 0.5);
+      this.sprite.body.setVelocityY(Phaser.Math.Between(-50, 50));
+    }
   }
   
   playDetachSound() {
@@ -392,7 +393,6 @@ export class Wagon {
   destroy() {
     if (this.glowEffect) this.glowEffect.destroy();
     if (this.multiplierIndicator) this.multiplierIndicator.destroy();
-    if (this.connectionLine) this.connectionLine.destroy();
     
     if (this.sprite?.active) {
       if (this.scene.particleManager) {
