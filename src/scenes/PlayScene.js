@@ -5,6 +5,7 @@ import {
   ENEMY_CONFIG,
   ACHIEVEMENTS,
 } from '../config';
+import { Coin } from '../entities/Coin';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 import { ParticleEffectManager } from '../systems/ParticleEffectManager';
@@ -362,32 +363,33 @@ export class PlayScene extends Phaser.Scene {
    * Сбор монеты (БЕЗ ИЗМЕНЕНИЙ)
    */
   collectCoin(coin) {
-    if (!coin || !coin.active || coin.collected) return;
-    coin.collected = true;
+  if (!coin || !coin.isActive || !coin.isActive()) return;
+  if (coin.collected) return;
+  coin.collected = true;
 
-    let value = 1;
-    let bonusType = null;
+  let value = 1;
+  let bonusType = null;
 
-    switch (coin.coinType) {
-      case 'red':
-        value = 2;
-        bonusType = 'speed';
-        break;
-      case 'blue':
-        value = 1;
-        bonusType = 'shield';
-        break;
-      case 'green':
-        value = 1;
-        bonusType = 'magnet';
-        break;
-      case 'purple':
-        value = 1;
-        bonusType = 'slow';
-        break;
-      default:
-        value = 1;
-    }
+  switch (coin.type) {  // <-- изменено с coin.coinType
+    case 'red':
+      value = 2;
+      bonusType = 'speed';
+      break;
+    case 'blue':
+      value = 1;
+      bonusType = 'shield';
+      break;
+    case 'green':
+      value = 1;
+      bonusType = 'magnet';
+      break;
+    case 'purple':
+      value = 1;
+      bonusType = 'slow';
+      break;
+    default:
+      value = 1;
+  }
 
     if (this.bonusActive && this.bonusType === 'speed') value *= 2;
     if (this.player?.doubleCrystals) value *= 2;
@@ -727,59 +729,45 @@ getActiveWagonCount() {
    * Обновление скорости существующих объектов
    */
   updateExistingObjectsSpeed() {
-    // Обновляем скорость ворот
-    if (this.gateGroup) {
-      this.gateGroup.getChildren().forEach(gate => {
-        if (gate && gate.body) {
-          gate.body.velocity.x = -this.baseSpeed;
-          gate.body.velocity.y = 0;
-          gate.body.setGravityY(0);
-          gate.body.setAllowGravity(false);
-        }
-      });
-    }
-    
-    // Обновляем скорость зон
-    if (this.scoreZones) {
-      this.scoreZones.forEach(zone => {
-        if (zone && zone.body) {
-          zone.body.velocity.x = -this.baseSpeed;
-          zone.body.velocity.y = 0;
-          zone.body.setGravityY(0);
-          zone.body.setAllowGravity(false);
-        }
-      });
-    }
-    
-    // Обновляем скорость монет
-    if (this.coins) {
-      for (let i = 0; i < this.coins.length; i++) {
-        const coin = this.coins[i];
-        if (coin && coin.body && coin.active) {
-          coin.body.setAllowGravity(false);
-          coin.body.setGravityY(0);
-          coin.body.setVelocityY(0);
-          coin.body.setVelocityX(-this.currentSpeed);
-          coin.body.acceleration.y = 0;
-          coin.speed = this.currentSpeed;
-        }
+  // Ворота
+  if (this.gateGroup) {
+    this.gateGroup.getChildren().forEach(gate => {
+      if (gate && gate.body) {
+        gate.body.velocity.x = -this.baseSpeed;
+        gate.body.velocity.y = 0;
+        gate.body.setGravityY(0);
+        gate.body.setAllowGravity(false);
       }
-    }
-    
-    if (this.coinGroup) {
-      const coins = this.coinGroup.getChildren();
-      for (let i = 0; i < coins.length; i++) {
-        const coin = coins[i];
-        if (coin && coin.body && coin.active) {
-          coin.body.setAllowGravity(false);
-          coin.body.setGravityY(0);
-          coin.body.setVelocityY(0);
-          coin.body.setVelocityX(-this.currentSpeed);
-          coin.body.acceleration.y = 0;
-        }
+    });
+  }
+  
+  // Зоны прохода
+  if (this.scoreZones) {
+    this.scoreZones.forEach(zone => {
+      if (zone && zone.body) {
+        zone.body.velocity.x = -this.baseSpeed;
+        zone.body.velocity.y = 0;
+        zone.body.setGravityY(0);
+        zone.body.setAllowGravity(false);
+      }
+    });
+  }
+  
+  // Монеты (только через группу)
+  if (this.coinGroup) {
+    const coins = this.coinGroup.getChildren();
+    for (let i = 0; i < coins.length; i++) {
+      const coin = coins[i];
+      if (coin && coin.body && coin.active) {
+        coin.body.setAllowGravity(false);
+        coin.body.setGravityY(0);
+        coin.body.setVelocityY(0);
+        coin.body.setVelocityX(-this.currentSpeed);
+        coin.body.acceleration.y = 0;
       }
     }
   }
+}
 
   /**
    * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
@@ -1576,19 +1564,19 @@ spawnAsteroid() {
   // Шанс спавна зависит от уровня сложности
   const spawnChance = 0.15 + (this.gameLevel * 0.01);
   if (Math.random() > spawnChance) return;
-  
+
   const w = this.scale.width;
   const h = this.scale.height;
-  
+
   // Позиция спавна - справа за экраном
   const x = w + Phaser.Math.Between(50, 150);
   const y = Phaser.Math.Between(80, h - 80);
-  
-  // Создаём астероид с учётом уровня сложности
+
+  // Создаём астероид через класс Asteroid (импортирован)
   const asteroid = new Asteroid(this, x, y, this.world, this.gameLevel);
   this.asteroids.push(asteroid);
   this.asteroidGroup.add(asteroid.sprite);
-  
+
   // Коллизия с игроком
   this.physics.add.overlap(this.player, asteroid.sprite, (player, astSprite) => {
     const ast = astSprite.asteroidRef;
@@ -1601,10 +1589,7 @@ spawnAsteroid() {
         this.updateHearts();
         this.cameras.main.shake(150, 0.005);
         try { audioManager.playSound(this, 'hit_sound', 0.3); } catch(e) {}
-        
-        if (this.headHP <= 0) {
-          this.handleDeath();
-        }
+        if (this.headHP <= 0) this.handleDeath();
       }
       ast.destroy(true);
       this.asteroids = this.asteroids.filter(a => a !== ast);
@@ -1647,29 +1632,29 @@ spawnAsteroid() {
    * Спавн усилителя
    */
   spawnPowerUp(x, y) {
-    const types = ['booster', 'shield', 'magnet', 'slowmo'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const powerUp = new PowerUp(this, x, y, type);
-    this.powerUps.push(powerUp);
-    if (powerUp.sprite) {
-      this.powerUpGroup.add(powerUp.sprite);
-    }
-
-    if (this.player) {
-      this.physics.add.overlap(
-        this.player,
-        powerUp.sprite,
-        (p, pu) => {
-          if (powerUp && typeof powerUp.collect === 'function') {
-            powerUp.collect(this.player);
-          }
-          this.powerUps = this.powerUps.filter(pw => pw.sprite !== pu);
-        },
-        null,
-        this
-      );
-    }
+  const types = ['booster', 'shield', 'magnet', 'slowmo'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const powerUp = new PowerUp(this, x, y, type);
+  this.powerUps.push(powerUp);
+  if (powerUp.sprite) {
+    this.powerUpGroup.add(powerUp.sprite);
   }
+
+  if (this.player) {
+    this.physics.add.overlap(
+      this.player,
+      powerUp.sprite,
+      (p, pu) => {
+        if (powerUp && typeof powerUp.collect === 'function') {
+          powerUp.collect(this.player);
+        }
+        this.powerUps = this.powerUps.filter(pw => pw.sprite !== pu);
+      },
+      null,
+      this
+    );
+  }
+}
 
   /**
    * Активация усилителя
@@ -3825,6 +3810,38 @@ attackEnemies() {
   }
 }
 
+fireEnemyBullet(enemy, playerPos) {
+  if (!this.enemyBullets) return;
+  
+  const bullet = this.enemyBullets.create(
+    enemy.sprite.x - 15,
+    enemy.sprite.y,
+    'laser_enemy'
+  );
+  
+  if (!bullet) return;
+  
+  bullet.setScale(1.2);
+  bullet.damage = enemy.config.bulletDamage;
+  bullet.body.setAllowGravity(false);
+  bullet.body.setGravityY(0);
+  
+  const angle = Phaser.Math.Angle.Between(
+    bullet.x, bullet.y,
+    playerPos.x, playerPos.y
+  );
+  
+  const speed = enemy.config.bulletSpeed;
+  bullet.setVelocityX(Math.cos(angle) * speed);
+  bullet.setVelocityY(Math.sin(angle) * speed);
+  
+  bullet.setDepth(20);
+  bullet.active = true;
+  bullet.enemyBullet = true;
+  
+  this.createMuzzleFlash(enemy.sprite.x - 20, enemy.sprite.y);
+}
+
 /**
  * Создание эффекта вспышки выстрела
  */
@@ -3841,14 +3858,9 @@ createMuzzleFlash(x, y) {
 }
 
 setupCollisions() {
-  this.physics.add.overlap(this.player, this.coinGroup, (p, c) => this.collectCoin(c), null, this);
-  
-  this.physics.add.overlap(this.playerBullets, this.enemyGroup, (bullet, enemySprite) => {
-    if (!bullet?.active || !enemySprite?.active) return;
-    const enemy = enemySprite.enemyRef;
-    if (enemy?.health > 0 && this.damageSystem) {
-      this.damageSystem.enemyHitByBullet(enemy, bullet);
-    }
+  // Передаём объект монеты через coinRef
+  this.physics.add.overlap(this.player, this.coinGroup, (p, c) => {
+    if (c.coinRef) this.collectCoin(c.coinRef);
   }, null, this);
   
   this.physics.add.overlap(this.enemyBullets, this.player, (bullet, player) => {
@@ -4960,72 +4972,22 @@ createHealEffect() {
 spawnCoin(x, y) {
   if (Math.random() > 0.9) return;
   
-  let coinType = 'gold', texture = 'coin_gold';
+  let coinType = 'gold';
   const r = Math.random();
   
-  // Шансы появления цветных монет
   const redChance = 0.1 + (this.gameLevel * 0.02);
   const blueChance = 0.1 + (this.gameLevel * 0.015);
   const greenChance = 0.1 + (this.gameLevel * 0.01);
   const purpleChance = 0.1 + (this.gameLevel * 0.005);
   
-  if (this.gameLevel >= 1 && r < redChance) { 
-    coinType = 'red'; 
-    texture = 'coin_red'; 
-  } else if (this.gameLevel >= 2 && r < redChance + blueChance) { 
-    coinType = 'blue'; 
-    texture = 'coin_blue'; 
-  } else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) { 
-    coinType = 'green'; 
-    texture = 'coin_green'; 
-  } else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) { 
-    coinType = 'purple'; 
-    texture = 'coin_purple'; 
-  }
+  if (this.gameLevel >= 1 && r < redChance) coinType = 'red';
+  else if (this.gameLevel >= 2 && r < redChance + blueChance) coinType = 'blue';
+  else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) coinType = 'green';
+  else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) coinType = 'purple';
   
-  // ===== СОЗДАНИЕ МОНЕТЫ С АБСОЛЮТНЫМ КОНТРОЛЕМ =====
-  const coin = this.physics.add.image(x + Phaser.Math.Between(-20, 20), y, texture)
-    .setImmovable(true)
-    .setAngularVelocity(200);
-  
-  // ШАГ 1: Полное отключение гравитации
-  coin.body.setAllowGravity(false);
-  coin.body.setGravityY(0);
-  
-  // ШАГ 2: Принудительная установка скорости
-  coin.body.setVelocityX(-this.currentSpeed);
-  coin.body.setVelocityY(0);
-  
-  // ШАГ 3: Отключение всех внешних сил
-  coin.body.acceleration.y = 0;
-  coin.body.mass = 0.0001; // Минимальная масса
-  coin.body.drag.y = 0;
-  coin.body.bounce.y = 0;
-  
-  // ШАГ 4: Сохраняем параметры
-  coin.speed = this.currentSpeed;
-  coin.startY = y; // Запоминаем начальную Y-позицию
-  
-  coin.setScale(0.01);
-  coin.coinType = coinType;
-  coin.setBlendMode(Phaser.BlendModes.ADD);
-  coin.collected = false;
-  
-  // Анимация появления
-  this.tweens.add({ 
-    targets: coin, 
-    scaleX: 1, 
-    scaleY: 1, 
-    duration: 300, 
-    ease: 'Back.out' 
-  });
-  
-  // Добавляем в оба хранилища
+  const coin = new Coin(this, x + Phaser.Math.Between(-20, 20), y, coinType, this.world);
   this.coins.push(coin);
-  this.coinGroup.add(coin);
-  
-  // Коллизия с игроком
-  this.physics.add.overlap(this.player, coin, (p, c) => this.collectCoin(c), null, this);
+  // coinGroup добавляется в конструкторе Coin
 }
 
 /**
