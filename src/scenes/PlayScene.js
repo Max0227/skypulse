@@ -769,26 +769,13 @@ getActiveWagonCount() {
   
   // ===== КРИТИЧЕСКИ ВАЖНО: МОНЕТЫ =====
   if (this.coinGroup) {
-    const coins = this.coinGroup.getChildren();
-    for (let i = 0; i < coins.length; i++) {
-      const coin = coins[i];
-      if (coin && coin.body && coin.active) {
-        // Устанавливаем скорость ТОЛЬКО влево
-        coin.body.setVelocityX(-this.currentSpeed);
-        // Обязательно обнуляем вертикальную скорость
-        coin.body.setVelocityY(0);
-        // Отключаем гравитацию
-        coin.body.setAllowGravity(false);
+  const coins = this.coinGroup.getChildren();
+  for (let i = 0; i < coins.length; i++) {
+    const coin = coins[i];
+    if (coin && coin.body && coin.active) {
+      // Только убеждаемся, что гравитация отключена
+      if (coin.body.gravity.y !== 0) 
         coin.body.setGravityY(0);
-        // Отключаем трение
-        coin.body.setDrag(0);
-        coin.body.setDragX(0);
-        coin.body.setDragY(0);
-        // Отключаем ускорение
-        coin.body.acceleration.y = 0;
-        coin.body.acceleration.x = 0;
-        if (coin.body.velocity.y !== 0) 
-        coin.body.setVelocityY(0);
       }
     }
   }
