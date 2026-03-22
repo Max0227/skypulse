@@ -1,4 +1,4 @@
-import { AIEnemy } from '../entities/Enemy';
+import { AIEnemy } from '../entities/AIEnemy';
 import { WAVE_CONFIG, WORLD_CONFIG } from '../config';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
