@@ -736,17 +736,22 @@ getActiveWagonCount() {
    * Обновление скорости существующих объектов
    */
   updateExistingObjectsSpeed() {
-  // Ворота
-  if (this.gateGroup) {
-    this.gateGroup.getChildren().forEach(gate => {
-      if (gate && gate.body) {
-        gate.body.velocity.x = -this.baseSpeed;
-        gate.body.velocity.y = 0;
-        gate.body.setGravityY(0);
-        gate.body.setAllowGravity(false);
+  // ... ворота и зоны
+
+  // ===== МОНЕТЫ =====
+  if (this.coinGroup) {
+    const coins = this.coinGroup.getChildren();
+    for (let i = 0; i < coins.length; i++) {
+      const coin = coins[i];
+      if (coin && coin.body && coin.active) {
+        // ТОЛЬКО ЭТО:
+        coin.body.setAllowGravity(false);
+        coin.body.setGravityY(0);
+        // НЕ ТРОГАЕМ velocity.x и velocity.y!
       }
-    });
+    }
   }
+
   
   // Зоны прохода
   if (this.scoreZones) {
@@ -1330,109 +1335,6 @@ if (this.coins) {
   /**
    * Сбор монеты
    */
-  
-  collectCoin(coin) {
-    if (!coin || !coin.active || coin.collected) return;
-    coin.collected = true;
-
-    let value = 1;
-    let bonusType = null;
-    
-    switch (coin.coinType) {
-      case 'red':
-        value = 2;
-        bonusType = 'speed';
-        break;
-      case 'blue':
-        value = 1;
-        bonusType = 'shield';
-        break;
-      case 'green':
-        value = 1;
-        bonusType = 'magnet';
-        break;
-      case 'purple':
-        value = 1;
-        bonusType = 'slow';
-        break;
-      default:
-        value = 1;
-    }
-
-    if (this.bonusActive && this.bonusType === 'speed') value *= 2;
-    if (this.player && this.player.doubleCrystals) value *= 2;
-
-    const multipliedValue = Math.floor(
-      value * (this.comboSystem?.getMultiplier() || 1)
-    );
-    this.crystals += multipliedValue;
-    if (this.crystalText) {
-      this.crystalText.setText(`💎 ${this.crystals}`);
-    }
-    this.collectedCoins += multipliedValue;
-
-    if (this.comboSystem) {
-      this.comboSystem.add();
-    }
-
-    if (
-      this.collectedCoins >= this.coinsForWagon &&
-      this.wagons.length < this.maxWagons
-    ) {
-      this.addWagon();
-      this.collectedCoins -= this.coinsForWagon;
-    }
-
-    // ИСПРАВЛЕНИЕ: Активация бонуса в зависимости от типа монеты
-    if (bonusType) {
-      // Всегда активируем бонус при сборе цветной монеты
-      this.activateBonus(bonusType);
-      
-      this.particleManager.createCoinCollectEffect(
-        coin.x,
-        coin.y,
-        coin.coinType
-      );
-      
-      if (bonusType === 'shield' && this.questSystem) {
-        this.questSystem.updateProgress('shield', 1);
-      }
-    } else {
-      try {
-        if (this.coinSound) this.coinSound.play();
-      } catch (e) {}
-      this.particleManager.createCoinCollectEffect(
-        coin.x,
-        coin.y,
-        'gold'
-      );
-    }
-
-    if (this.questSystem) {
-      this.questSystem.updateProgress('crystals', multipliedValue);
-    }
-
-    if (this.crystalText) {
-      this.tweens.add({
-        targets: this.crystalText,
-        scaleX: 1.2,
-        scaleY: 1.2,
-        duration: 80,
-        yoyo: true,
-        ease: 'Quad.out'
-      });
-    }
-
-    try {
-      if (gameManager.vibrate) gameManager.vibrate([30]);
-    } catch (e) {}
-
-    coin.destroy();
-    if (gameManager.data) {
-      gameManager.data.crystals = this.crystals;
-      gameManager.save();
-    }
-  }
 
   // =========================================================================
   // МЕТОДЫ ДЛЯ ВОРОТ
