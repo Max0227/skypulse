@@ -370,7 +370,7 @@ export class PlayScene extends Phaser.Scene {
   let value = 1;
   let bonusType = null;
 
-  switch (coin.type) {  // <-- изменено с coin.coinType
+  switch (coin.type) {
     case 'red':
       value = 2;
       bonusType = 'speed';
@@ -391,54 +391,61 @@ export class PlayScene extends Phaser.Scene {
       value = 1;
   }
 
-    if (this.bonusActive && this.bonusType === 'speed') value *= 2;
-    if (this.player?.doubleCrystals) value *= 2;
+  if (this.bonusActive && this.bonusType === 'speed') value *= 2;
+  if (this.player?.doubleCrystals) value *= 2;
 
-    const multipliedValue = Math.floor(value * (this.comboSystem?.getMultiplier() || 1));
-    this.crystals += multipliedValue;
+  const multipliedValue = Math.floor(value * (this.comboSystem?.getMultiplier() || 1));
+  this.crystals += multipliedValue;
 
-    if (this.crystalText) {
-      this.crystalText.setText(`💎 ${this.crystals}`);
-    }
-
-    this.collectedCoins += multipliedValue;
-
-    if (this.comboSystem) {
-      this.comboSystem.add();
-    }
-
-    const coinsNeeded = 10; // Каждые 10 монет
-if (this.collectedCoins >= coinsNeeded && this.wagons.length < this.maxWagons) {
-  this.addWagon();
-  this.collectedCoins -= coinsNeeded;
-}
-
-    if (bonusType) {
-      this.activateBonus(bonusType);
-      this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.coinType);
-    } else {
-      try { if (this.coinSound) this.coinSound.play(); } catch (e) {}
-      this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
-    }
-
-    if (this.crystalText) {
-      this.tweens.add({
-        targets: this.crystalText,
-        scaleX: 1.3,
-        scaleY: 1.3,
-        duration: 100,
-        yoyo: true,
-        ease: 'Quad.out'
-      });
-    }
-
-    coin.destroy();
-
-    if (gameManager.data) {
-      gameManager.data.crystals = this.crystals;
-      gameManager.save();
-    }
+  if (this.crystalText) {
+    this.crystalText.setText(`💎 ${this.crystals}`);
   }
+
+  this.collectedCoins += multipliedValue;
+
+  if (this.comboSystem) {
+    this.comboSystem.add();
+  }
+
+  const coinsNeeded = 10;
+  if (this.collectedCoins >= coinsNeeded && this.wagons.length < this.maxWagons) {
+    this.addWagon();
+    this.collectedCoins -= coinsNeeded;
+  }
+
+  if (bonusType) {
+    this.activateBonus(bonusType);
+    this.particleManager.createCoinCollectEffect(coin.x, coin.y, coin.type);
+  } else {
+    try { if (this.coinSound) this.coinSound.play(); } catch (e) {}
+    this.particleManager.createCoinCollectEffect(coin.x, coin.y, 'gold');
+  }
+
+  if (this.questSystem) {
+    this.questSystem.updateProgress('crystals', multipliedValue);
+  }
+
+  if (this.crystalText) {
+    this.tweens.add({
+      targets: this.crystalText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 80,
+      yoyo: true,
+      ease: 'Quad.out'
+    });
+  }
+
+  try {
+    if (gameManager.vibrate) gameManager.vibrate([30]);
+  } catch (e) {}
+
+  coin.destroy();
+  if (gameManager.data) {
+    gameManager.data.crystals = this.crystals;
+    gameManager.save();
+  }
+}
 // =========================================================================
 // МЕТОДЫ ДЛЯ ВАГОНОВ (улучшенная версия)
 // =========================================================================
@@ -747,21 +754,6 @@ getActiveWagonCount() {
       }
     });
   }
-  
-  // Зоны прохода
-  if (this.scoreZones) {
-    this.scoreZones.forEach(zone => {
-      if (zone && zone.body) {
-        zone.body.velocity.x = -this.baseSpeed;
-        zone.body.velocity.y = 0;
-        zone.body.setGravityY(0);
-        zone.body.setAllowGravity(false);
-      }
-    });
-  }
-  
-  
-
   
   // Зоны прохода
   if (this.scoreZones) {
@@ -4923,9 +4915,8 @@ spawnCoin(x, y) {
   // Создаём монету — вся физика внутри класса Coin
   const coin = new Coin(this, x + Phaser.Math.Between(-20, 20), y, coinType, this.world);
   
-  // Добавляем в массив (но не трогаем физику!)
+  // Добавляем только в массив для отслеживания
   this.coins.push(coin);
-  // coinGroup добавляется в конструкторе Coin, не добавляем повторно!
 }
 
 /**
