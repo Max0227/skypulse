@@ -738,6 +738,33 @@ getActiveWagonCount() {
   
   console.log(`Уровень ${this.gameLevel}: скорость ${this.baseSpeed}px/с, зазор ${this.gapSize}px`);
 }
+updateExistingObjectsSpeed() {
+  // Ворота
+  if (this.gateGroup) {
+    this.gateGroup.getChildren().forEach(gate => {
+      if (gate && gate.body) {
+        gate.body.velocity.x = -this.baseSpeed;
+        gate.body.velocity.y = 0;
+        gate.body.setGravityY(0);
+        gate.body.setAllowGravity(false);
+      }
+    });
+  }
+  
+  // Зоны прохода
+  if (this.scoreZones) {
+    this.scoreZones.forEach(zone => {
+      if (zone && zone.body) {
+        zone.body.velocity.x = -this.baseSpeed;
+        zone.body.velocity.y = 0;
+        zone.body.setGravityY(0);
+        zone.body.setAllowGravity(false);
+      }
+    });
+  }
+  
+  // Монеты не трогаем — они управляются вручную через класс Coin
+}
 
   /**
    * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
