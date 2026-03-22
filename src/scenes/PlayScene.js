@@ -535,23 +535,24 @@ createWagonSpawnEffect(wagon) {
 }
 
 /**
- * Обновить позиции вагонов (улучшенная физика)
+ * Обновить позиции вагонов (физика поезда)
  */
 updateWagons() {
   if (this.wagons.length === 0 || !this.player) return;
   
-  let prev = this.player;
-  let prevX = prev.x;
-  let prevY = prev.y;
-
+  // Первый вагон следует за игроком
+  let prevX = this.player.x;
+  let prevY = this.player.y;
+  
+  // Каждый вагон следует за предыдущим
   for (let i = 0; i < this.wagons.length; i++) {
     const wagon = this.wagons[i];
     if (!wagon || !wagon.isActive()) continue;
     
-    // Обновляем позицию вагона с учётом расстояния
+    // Обновляем позицию вагона, передавая позицию предыдущего
     wagon.update(prevX, prevY, this.wagonGap);
     
-    // Сохраняем позицию для следующего вагона
+    // Сохраняем позицию текущего вагона для следующего
     prevX = wagon.sprite.x;
     prevY = wagon.sprite.y;
   }
@@ -639,18 +640,24 @@ createWagonLostEffect(wagon, index) {
 }
 
 /**
- * Обновить зум камеры в зависимости от количества вагонов (улучшенный)
+ * Обновить зум камеры в зависимости от количества вагонов
  */
 updateCameraZoom() {
   if (!this.player) return;
   
-  // Рассчитываем общую длину состава
-  const totalLength = (this.wagons.length + 1) * this.wagonGap;
-  const screenWidth = this.scale.width;
+  // Базовый зум (нормальный)
+  const baseZoom = 1.0;
   
-  // Целевой зум (чем больше вагонов, тем меньше зум)
-  let targetZoom = Math.min(1.2, screenWidth / (totalLength + 80));
-  targetZoom = Math.max(0.65, targetZoom);
+  // Корректировка в зависимости от количества вагонов
+  // Чем больше вагонов, тем сильнее отдаляем камеру
+  let targetZoom = baseZoom;
+  
+  if (this.wagons.length > 0) {
+    // Плавное уменьшение зума при увеличении состава
+    const zoomReduction = Math.min(0.35, this.wagons.length * 0.025);
+    targetZoom = baseZoom - zoomReduction;
+    targetZoom = Math.max(0.7, targetZoom); // Не меньше 0.7
+  }
   
   // Плавное изменение зума
   this.tweens.add({
@@ -5946,25 +5953,29 @@ updateBackground(delta) {
 }
 
   onResize() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+  const w = this.scale.width;
+  const h = this.scale.height;
 
-    if (this.scoreText) this.scoreText.setPosition(w / 2, 30);
-    if (this.bestText) this.bestText.setPosition(10, 10);
-    if (this.crystalText) this.crystalText.setPosition(w - 10, 10);
-    if (this.meterText) this.meterText.setPosition(10, h - 80);
-    if (this.wagonCountText) this.wagonCountText.setPosition(w - 100, h - 30);
-    if (this.bonusText) this.bonusText.setPosition(w - 10, 40);
-    if (this.levelText) this.levelText.setPosition(w / 2, h / 2 - 70);
-    if (this.pauseButton) this.pauseButton.setPosition(w - 35, h - 35);
-    if (this.shopButton) this.shopButton.setPosition(w - 90, h - 35);
-    if (this.menuButton) this.menuButton.setPosition(w - 145, h - 35);
-    if (!this.started) {
-      if (this.introText) this.introText.setPosition(w / 2, h * 0.40);
-      if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.50);
-    }
-    if (this.heartContainer) this.heartContainer.setPosition(10, 30);
+  // Обновляем позиции UI элементов
+  if (this.scoreText) this.scoreText.setPosition(w / 2, 30);
+  if (this.bestText) this.bestText.setPosition(10, 10);
+  if (this.crystalText) this.crystalText.setPosition(w - 10, 10);
+  if (this.meterText) this.meterText.setPosition(10, h - 80);
+  if (this.wagonCountText) this.wagonCountText.setPosition(w - 12, h - 70);
+  if (this.bonusText) this.bonusText.setPosition(w - 10, 40);
+  if (this.pauseButton) this.pauseButton.setPosition(w - 35, h - 35);
+  if (this.menuButton) this.menuButton.setPosition(w - 95, h - 35);
+  if (this.attackButton) this.attackButton.setPosition(45, h - 35);
+  
+  if (!this.started) {
+    if (this.introText) this.introText.setPosition(w / 2, h * 0.40);
+    if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.52);
   }
+  if (this.heartContainer) this.heartContainer.setPosition(12, 38);
+  
+  // Обновляем зум камеры после ресайза
+  this.updateCameraZoom();
+}
 
   shutdown() {
     if (this.spawnTimer) this.spawnTimer.remove();
