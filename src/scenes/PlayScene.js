@@ -760,17 +760,26 @@ getActiveWagonCount() {
     });
   }
   
-  // Монеты (только через группу)
+  // ===== КРИТИЧЕСКИ ВАЖНО: МОНЕТЫ =====
   if (this.coinGroup) {
     const coins = this.coinGroup.getChildren();
     for (let i = 0; i < coins.length; i++) {
       const coin = coins[i];
       if (coin && coin.body && coin.active) {
+        // Устанавливаем скорость ТОЛЬКО влево
+        coin.body.setVelocityX(-this.currentSpeed);
+        // Обязательно обнуляем вертикальную скорость
+        coin.body.setVelocityY(0);
+        // Отключаем гравитацию
         coin.body.setAllowGravity(false);
         coin.body.setGravityY(0);
-        coin.body.setVelocityY(0);
-        coin.body.setVelocityX(-this.currentSpeed);
+        // Отключаем трение
+        coin.body.setDrag(0);
+        coin.body.setDragX(0);
+        coin.body.setDragY(0);
+        // Отключаем ускорение
         coin.body.acceleration.y = 0;
+        coin.body.acceleration.x = 0;
       }
     }
   }
@@ -1155,22 +1164,29 @@ completeWorldLevel() {
     });
   }
 
-  // ===== КОНТРОЛЬ МОНЕТ =====
-  if (this.coins) {
-    for (let i = 0; i < this.coins.length; i++) {
-      const coin = this.coins[i];
-      if (coin && coin.body && coin.active) {
-        if (coin.body.velocity.y !== 0) {
-          coin.body.setVelocityY(0);
-        }
-        if (coin.body.velocity.x !== -this.currentSpeed) {
-          coin.body.setVelocityX(-this.currentSpeed);
-        }
-        coin.body.setAllowGravity(false);
-        coin.body.setGravityY(0);
-      }
+// ===== КОНТРОЛЬ МОНЕТ =====
+if (this.coins) {
+  for (let i = 0; i < this.coins.length; i++) {
+    const coin = this.coins[i];
+    if (coin && coin.body && coin.active) {
+      // Удаляем или комментируем эти строки, если они есть:
+      // if (coin.body.velocity.y !== 0) {
+      //   coin.body.setVelocityY(0);
+      // }
+      // if (coin.body.velocity.x !== -this.currentSpeed) {
+      //   coin.body.setVelocityX(-this.currentSpeed);
+      // }
+      // coin.body.setAllowGravity(false);
+      // coin.body.setGravityY(0);
+      
+      // Вместо этого — просто убеждаемся, что всё отключено:
+      coin.body.setAllowGravity(false);
+      coin.body.setGravityY(0);
+      coin.body.setVelocityY(0);
+      // Не трогаем velocity.x — пусть класс Coin сам управляет
     }
   }
+}
 
   if (!this.started || this.dead || !this.player) return;
 
@@ -4992,9 +5008,12 @@ spawnCoin(x, y) {
   else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) coinType = 'green';
   else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) coinType = 'purple';
   
+  // Создаём монету — вся физика внутри класса Coin
   const coin = new Coin(this, x + Phaser.Math.Between(-20, 20), y, coinType, this.world);
+  
+  // Добавляем в массив (но не трогаем физику!)
   this.coins.push(coin);
-  // coinGroup добавляется в конструкторе Coin
+  // coinGroup добавляется в конструкторе Coin, не добавляем повторно!
 }
 
 /**
