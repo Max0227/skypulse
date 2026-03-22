@@ -9,22 +9,19 @@ export class Coin {
     this.worldType = worldType || (scene.levelManager?.currentWorld ?? 0);
     this.config = COIN_TYPES[type] || COIN_TYPES.gold;
     
-    // Получаем модификации для текущего мира
+    // Модификации мира
     this.worldMod = this.getWorldModifications();
     
-    // ===== СОЗДАЁМ ОБЫЧНЫЙ СПРАЙТ (БЕЗ ФИЗИКИ) =====
+    // Обычный спрайт (БЕЗ ФИЗИКИ)
     this.sprite = scene.add.image(x, y, this.getTextureForWorld())
       .setScale(0.7)
       .setDepth(8);
-    
-    // Вращение (просто для красоты)
-    this.rotationSpeed = 5;
     
     // Визуальные эффекты
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
     this.applyWorldTint();
     
-    // Ссылка на объект монеты
+    // Ссылка на объект
     this.sprite.coinRef = this;
     
     // Характеристики
@@ -38,13 +35,12 @@ export class Coin {
     this.pulseDirection = 1;
     this.baseScale = 0.7;
     this.pulseTimer = 0;
+    this.rotationSpeed = 5; // вращение в градусах за кадр
     
-    // Сохраняем начальную позицию
+    // Позиция
     this.x = x;
     this.y = y;
     this.initialY = y;
-    
-    // Скорость движения (только влево)
     this.speed = scene.currentSpeed || 200;
     
     // Эффекты
@@ -52,24 +48,20 @@ export class Coin {
     this.glowEffect = null;
     this.orbitalParticles = [];
     
-    // Создаём дополнительные эффекты для редких монет
     if (this.isRare()) {
       this.createGlowEffect();
       this.createTrailEffect();
       this.createOrbitalParticles();
     }
     
-    // Анимация появления
     this.animateSpawn();
     
-    // Добавляем в группу монет (для коллизий)
-    if (scene.coinGroup) {
-      scene.coinGroup.add(this.sprite);
-    }
+    // Добавляем в группу (для удобства)
+    if (scene.coinGroup) scene.coinGroup.add(this.sprite);
   }
 
   // =========================================================================
-  // ФИЗИКА: ДВИЖЕНИЕ ВЛЕВО (БЕЗ ГРАВИТАЦИИ)
+  // ДВИЖЕНИЕ (ручное)
   // =========================================================================
 
   update(delta) {
@@ -80,13 +72,10 @@ export class Coin {
     
     // Обновляем скорость в соответствии с текущей скоростью игры
     this.speed = this.scene.currentSpeed || 200;
-    
-    // Двигаем монету только влево
     this.x -= this.speed * (delta / 1000);
     this.sprite.x = this.x;
     
-    // Вертикальная позиция — постоянная (без падения)
-    // Если нужно плавное парение, то только визуально
+    // Вертикальная позиция (постоянная или плавное парение)
     if (this.worldMod.floatAmplitude > 0) {
       const time = Date.now() * this.worldMod.floatSpeed;
       const floatY = Math.sin(time + this.x * 0.01) * this.worldMod.floatAmplitude;
@@ -98,40 +87,29 @@ export class Coin {
     // Вращение
     this.sprite.angle += this.rotationSpeed;
     
-    // ===== ЭФФЕКТ ПУЛЬСАЦИИ =====
+    // Пульсация
     this.pulseTimer += delta;
     if (this.pulseTimer > 80) {
       this.pulseTimer = 0;
       this.baseScale += 0.04 * this.pulseDirection;
-      
-      if (this.baseScale > 0.9) {
-        this.pulseDirection = -1;
-      } else if (this.baseScale < 0.6) {
-        this.pulseDirection = 1;
-      }
-      
+      if (this.baseScale > 0.9) this.pulseDirection = -1;
+      else if (this.baseScale < 0.6) this.pulseDirection = 1;
       this.sprite.setScale(this.baseScale);
       
-      // Обновляем свечение
       if (this.glowEffect) {
-        const glowScale = this.baseScale * 1.3;
-        this.glowEffect.setScale(glowScale);
+        this.glowEffect.setScale(this.baseScale * 1.3);
         this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
-        
-        const alpha = 0.3 + Math.sin(Date.now() * 0.01) * 0.2;
-        this.glowEffect.setAlpha(alpha);
+        this.glowEffect.setAlpha(0.3 + Math.sin(Date.now() * 0.01) * 0.2);
       }
     }
     
-    // Обновляем орбитальные частицы
-    if (this.orbitalParticles.length > 0) {
-      this.updateOrbitals();
-    }
+    // Орбитальные частицы
+    if (this.orbitalParticles.length) this.updateOrbitals();
     
-    // Специальные эффекты для разных миров
+    // Спецэффекты мира
     this.updateWorldVisuals();
     
-    // Проверка выхода за экран
+    // Удаление за экраном
     if (this.sprite.x < -100) {
       this.destroy();
       return false;
@@ -141,7 +119,7 @@ export class Coin {
   }
 
   // =========================================================================
-  // КОНФИГУРАЦИЯ МИРОВ
+  // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (оставлены без изменений)
   // =========================================================================
 
   getWorldModifications() {
@@ -244,8 +222,7 @@ export class Coin {
         const angle = (i / count) * Math.PI * 2 + this.orbitalRotation;
         particle.x = this.sprite.x + Math.cos(angle) * 18;
         particle.y = this.sprite.y + Math.sin(angle) * 18;
-        const scale = 1 + Math.sin(Date.now() * 0.01 + i) * 0.3;
-        particle.setScale(scale);
+        particle.setScale(1 + Math.sin(Date.now() * 0.01 + i) * 0.3);
       }
     });
   }
@@ -272,8 +249,7 @@ export class Coin {
     } else if (this.worldType === 2) {
       this.sprite.setAlpha(0.5 + Math.sin(time * 3) * 0.2);
     } else if (this.worldType === 4) {
-      const distort = 1 + Math.sin(time * 8) * 0.05;
-      this.sprite.setScale(this.baseScale * distort);
+      this.sprite.setScale(this.baseScale * (1 + Math.sin(time * 8) * 0.05));
     }
   }
 
@@ -336,8 +312,7 @@ export class Coin {
         this.scene.showNotification('🛡️ ЩИТ!', 1500, '#00ffff');
         break;
       case 'magnet':
-        const magnetRange = this.scene.magnetRange * strength;
-        player.activateMagnet(duration, magnetRange);
+        player.activateMagnet(duration, this.scene.magnetRange * strength);
         this.scene.showNotification('🧲 МАГНИТ!', 1500, '#ff00ff');
         break;
       case 'slow':
@@ -350,6 +325,7 @@ export class Coin {
 
   createCollectEffect() {
     if (this.scene.particleManager) this.scene.particleManager.createCoinCollectEffect(this.sprite.x, this.sprite.y, this.isRare() ? 'rare' : this.type);
+    // Дополнительные эффекты миров...
     if (this.worldType === 1) {
       for (let i = 0; i < 8; i++) {
         const spark = this.scene.add.text(this.sprite.x + Phaser.Math.Between(-15, 15), this.sprite.y + Phaser.Math.Between(-15, 15), ['0','1'][Math.floor(Math.random() * 2)], { fontSize: '10px', fontFamily: 'monospace', color: '#ff44ff' });
@@ -372,7 +348,9 @@ export class Coin {
       const volume = 0.3 + (this.isRare() ? 0.2 : 0);
       const soundKey = this.isRare() ? 'rare_coin' : 'coin_sound';
       audioManager.playSound(this.scene, soundKey, volume);
-    } catch (e) { try { audioManager.playSound(this.scene, 'coin_sound', 0.3); } catch(e2) {} }
+    } catch (e) {
+      try { audioManager.playSound(this.scene, 'coin_sound', 0.3); } catch(e2) {}
+    }
   }
 
   triggerVibration() {

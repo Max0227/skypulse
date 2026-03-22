@@ -740,53 +740,6 @@ getActiveWagonCount() {
 }
 
   /**
-   * Обновление скорости существующих объектов
-   */
-  updateExistingObjectsSpeed() {
-  // Ворота
-  if (this.gateGroup) {
-    this.gateGroup.getChildren().forEach(gate => {
-      if (gate && gate.body) {
-        gate.body.velocity.x = -this.baseSpeed;
-        gate.body.velocity.y = 0;
-        gate.body.setGravityY(0);
-        gate.body.setAllowGravity(false);
-      }
-    });
-  }
-  
-  // Зоны прохода
-  if (this.scoreZones) {
-    this.scoreZones.forEach(zone => {
-      if (zone && zone.body) {
-        zone.body.velocity.x = -this.baseSpeed;
-        zone.body.velocity.y = 0;
-        zone.body.setGravityY(0);
-        zone.body.setAllowGravity(false);
-      }
-    });
-  }
-  
-  // ===== КРИТИЧЕСКИ ВАЖНО: МОНЕТЫ =====
-  if (this.coinGroup) {
-  const coins = this.coinGroup.getChildren();
-  for (let i = 0; i < coins.length; i++) {
-    const coinSprite = coins[i];
-    if (!coinSprite.active) continue;
-    const coin = coinSprite.coinRef;
-    if (!coin || coin.collected) continue;
-
-    // Проверяем пересечение с игроком (можно использовать getBounds)
-    if (Phaser.Geom.Intersects.RectangleToRectangle(
-      this.player.getBounds(),
-      coinSprite.getBounds()
-    )) {
-      this.collectCoin(coin);
-    }
-  }
-}}
-
-  /**
    * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
    */
   getDifficulty() {
@@ -1063,7 +1016,7 @@ completeWorldLevel() {
 
     // ===== ГРУППЫ ФИЗИКИ =====
     this.gateGroup = this.physics.add.group();
-    this.coinGroup = this.physics.add.group();
+    this.coinGroup = this.add.group();
     this.asteroidGroup = this.physics.add.group();
     this.powerUpGroup = this.physics.add.group();
     this.playerBullets = this.physics.add.group({
@@ -1164,30 +1117,6 @@ completeWorldLevel() {
       }
     });
   }
-
-// ===== КОНТРОЛЬ МОНЕТ =====
-if (this.coins) {
-  for (let i = 0; i < this.coins.length; i++) {
-    const coin = this.coins[i];
-    if (coin && coin.body && coin.active) {
-      // Удаляем или комментируем эти строки, если они есть:
-      // if (coin.body.velocity.y !== 0) {
-      //   coin.body.setVelocityY(0);
-      // }
-      // if (coin.body.velocity.x !== -this.currentSpeed) {
-      //   coin.body.setVelocityX(-this.currentSpeed);
-      // }
-      // coin.body.setAllowGravity(false);
-      // coin.body.setGravityY(0);
-      
-      // Вместо этого — просто убеждаемся, что всё отключено:
-      coin.body.setAllowGravity(false);
-      coin.body.setGravityY(0);
-      coin.body.setVelocityY(0);
-      // Не трогаем velocity.x — пусть класс Coin сам управляет
-    }
-  }
-}
 
   if (!this.started || this.dead || !this.player) return;
 
@@ -2941,48 +2870,56 @@ checkQuests() {
     }
   }
 
-  /**
-   * Метод для очистки объектов
-   */
-  cleanupObjects() {
-    if (this.pipes) {
-      this.pipes = this.pipes.filter(p => {
-        if (p && p.x < -150) {
-          if (p.tween) p.tween.stop();
-          p.destroy();
-          return false;
-        }
-        return true;
-      });
-    }
-
-    if (this.coins) {
-      this.coins = this.coins.filter(c => {
-        if (!c || !c.active || c.x < -100) {
-          if (c) c.destroy();
-          return false;
-        }
-        return true;
-      });
-    }
-
-    if (this.scoreZones) {
-      this.scoreZones = this.scoreZones.filter(z => {
-        if (z && z.x < -60) {
-          z.destroy();
-          return false;
-        }
-        return true;
-      });
-    }
-
-    if (this.stationPlanet && this.stationPlanet.x < -200) {
-      if (this.stationPlanet.label) this.stationPlanet.label.destroy();
-      this.stationPlanet.destroy();
-      this.stationPlanet = null;
-      this.stationActive = false;
-    }
+ /**
+ * Метод для очистки объектов
+ */
+cleanupObjects() {
+  // Очистка труб (ворот)
+  if (this.pipes) {
+    this.pipes = this.pipes.filter(p => {
+      if (p && p.x < -150) {
+        if (p.tween) p.tween.stop();
+        p.destroy();
+        return false;
+      }
+      return true;
+    });
   }
+
+  // Очистка монет
+  if (this.coins) {
+    this.coins = this.coins.filter(c => {
+      // Проверяем, активна ли монета и вышла ли за экран
+      const isOutOfBounds = c.sprite && c.sprite.x < -100;
+      const isInactive = !c.isActive || !c.isActive();
+      
+      if (isInactive || isOutOfBounds) {
+        if (c && c.destroy) c.destroy();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Очистка зон прохода
+  if (this.scoreZones) {
+    this.scoreZones = this.scoreZones.filter(z => {
+      if (z && z.x < -60) {
+        z.destroy();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // Очистка станции
+  if (this.stationPlanet && this.stationPlanet.x < -200) {
+    if (this.stationPlanet.label) this.stationPlanet.label.destroy();
+    this.stationPlanet.destroy();
+    this.stationPlanet = null;
+    this.stationActive = false;
+  }
+}
 
   // =========================================================================
 // МЕТОДЫ ДЛЯ ФОНА
@@ -4895,7 +4832,6 @@ spawnCoin(x, y) {
   
   let coinType = 'gold';
   const r = Math.random();
-  
   const redChance = 0.1 + (this.gameLevel * 0.02);
   const blueChance = 0.1 + (this.gameLevel * 0.015);
   const greenChance = 0.1 + (this.gameLevel * 0.01);
@@ -4906,11 +4842,9 @@ spawnCoin(x, y) {
   else if (this.gameLevel >= 3 && r < redChance + blueChance + greenChance) coinType = 'green';
   else if (this.gameLevel >= 4 && r < redChance + blueChance + greenChance + purpleChance) coinType = 'purple';
   
-  // Создаём монету — вся физика внутри класса Coin
   const coin = new Coin(this, x + Phaser.Math.Between(-20, 20), y, coinType, this.world);
-  
-  // Добавляем только в массив для отслеживания
   this.coins.push(coin);
+  this.coinGroup.add(coin.sprite);
 }
 
 /**
@@ -5814,6 +5748,23 @@ updateObjects(delta) {
       this.asteroids.splice(i, 1);
     }
   }
+  // Обновление монет
+for (let i = 0; i < this.coins.length; i++) {
+  const coin = this.coins[i];
+  if (coin && coin.isActive()) {
+    coin.update(delta);
+  }
+}
+
+// Проверка сбора монет
+this.coinGroup.getChildren().forEach(coinSprite => {
+  const coin = coinSprite.coinRef;
+  if (coin && !coin.collected && coin.isActive()) {
+    if (Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), coinSprite.getBounds())) {
+      this.collectCoin(coin);
+    }
+  }
+});
   
   // Обновление усилителей
   for (let i = this.powerUps.length - 1; i >= 0; i--) {
