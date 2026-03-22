@@ -29,9 +29,11 @@ export class Wagon {
     
     this.coinMultiplier = 1 + (this.index + 1) * 0.5;
     
+    // Улучшенные параметры физики
     this.followDistance = 45;
-    this.springStrength = 0.25;
-    this.damping = 0.92;
+    this.springStrength = 0.45;   // увеличено для быстрого следования
+    this.damping = 0.96;           // увеличено для плавности
+    this.smoothY = 0.15;           // для вертикальной синхронизации
     
     this.pos = { x: x, y: y };
     this.vel = { x: 0, y: 0 };
@@ -247,27 +249,40 @@ export class Wagon {
       this.sprite.setAlpha(1);
     }
     
+    // Целевая позиция – позади предыдущего на заданное расстояние
     const targetX = prevX - this.followDistance;
     const targetY = prevY;
     
+    // Разница между текущей и целевой позицией
     const dx = targetX - this.pos.x;
     const dy = targetY - this.pos.y;
     
+    // Пружинная сила (ускорение)
     this.vel.x += dx * this.springStrength;
     this.vel.y += dy * this.springStrength;
     
+    // Демпфирование
     this.vel.x *= this.damping;
     this.vel.y *= this.damping;
     
+    // Обновление позиции
     this.pos.x += this.vel.x;
     this.pos.y += this.vel.y;
     
+    // Небольшая коррекция вертикали для плавности (если вагон отстаёт по Y)
+    if (Math.abs(dy) > 2) {
+      this.pos.y += dy * 0.05;
+    }
+    
+    // Применяем позицию к спрайту
     this.sprite.x = this.pos.x;
     this.sprite.y = this.pos.y;
     
-    const wobble = Math.sin(Date.now() * 0.005 + this.index) * 1.2;
+    // Лёгкое покачивание (только визуальное, очень слабое)
+    const wobble = Math.sin(Date.now() * 0.005 + this.index) * 0.3;
     this.sprite.y += wobble;
     
+    // Поворот в зависимости от скорости
     if (Math.abs(this.vel.x) > 0.2 || Math.abs(this.vel.y) > 0.2) {
       const moveAngle = Math.atan2(this.vel.y, this.vel.x);
       this.sprite.rotation += (moveAngle * 0.3 - this.sprite.rotation) * 0.1;

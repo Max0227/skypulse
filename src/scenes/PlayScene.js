@@ -649,32 +649,40 @@ createWagonLostEffect(wagon, index) {
 /**
  * Обновить зум камеры в зависимости от количества вагонов
  */
+/**
+ * Обновить зум камеры в зависимости от количества вагонов
+ */
 updateCameraZoom() {
   if (!this.player) return;
-  
-  // Базовый зум (нормальный)
+
   const baseZoom = 1.0;
-  
-  // Корректировка в зависимости от количества вагонов
-  // Чем больше вагонов, тем сильнее отдаляем камеру
   let targetZoom = baseZoom;
-  
+
   if (this.wagons.length > 0) {
     // Плавное уменьшение зума при увеличении состава
     const zoomReduction = Math.min(0.35, this.wagons.length * 0.025);
     targetZoom = baseZoom - zoomReduction;
     targetZoom = Math.max(0.7, targetZoom); // Не меньше 0.7
   }
-  
+
+  // Если уже есть активный твин, останавливаем его, чтобы не накладывались
+  if (this.cameraZoomTween) {
+    this.cameraZoomTween.stop();
+    this.cameraZoomTween = null;
+  }
+
   // Плавное изменение зума
-  this.tweens.add({
+  this.cameraZoomTween = this.tweens.add({
     targets: this.cameras.main,
     zoom: targetZoom,
     duration: 400,
     ease: 'Sine.easeInOut',
     onUpdate: () => {
-      // Центрируем камеру на игроке
+      // Центрируем камеру на игроке (плавно)
       this.cameras.main.centerOn(this.player.x, this.player.y);
+    },
+    onComplete: () => {
+      this.cameraZoomTween = null;
     }
   });
 }
@@ -684,11 +692,11 @@ updateCameraZoom() {
  */
 reindexWagons() {
   for (let i = 0; i < this.wagons.length; i++) {
-    if (this.wagons[i] && this.wagons[i].updateMultiplierAfterDetach) {
-      this.wagons[i].updateMultiplierAfterDetach(i);
+    const wagon = this.wagons[i];
+    if (wagon && typeof wagon.updateMultiplierAfterDetach === 'function') {
+      wagon.updateMultiplierAfterDetach(i);
     }
   }
-  
   // Обновляем счётчик
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
