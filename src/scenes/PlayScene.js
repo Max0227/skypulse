@@ -787,6 +787,8 @@ getActiveWagonCount() {
         // Отключаем ускорение
         coin.body.acceleration.y = 0;
         coin.body.acceleration.x = 0;
+        if (coin.body.velocity.y !== 0) 
+        coin.body.setVelocityY(0);
       }
     }
   }
