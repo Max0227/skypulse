@@ -44,12 +44,12 @@ export class Wagon {
     this.buffs = [];
     this.glowEffect = null;
     
-    // Визуальный индикатор множителя
+    // Визуальные элементы
     this.multiplierIndicator = null;
-    this.createMultiplierIndicator();
-    
-    // Полоска здоровья (убрана, вместо неё индикатор прочности)
     this.armorIndicator = null;
+    
+    // Создаём визуальные элементы
+    this.createMultiplierIndicator();
     if (this.maxHp > 1) {
       this.createArmorIndicator();
     }
@@ -103,6 +103,13 @@ export class Wagon {
   setupVisuals() {
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
+    
+    // Создаём свечение для некоторых вагонов
+    if (this.index % 3 === 0 && this.worldType === 1) {
+      this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 20, this.worldConfig.glowColor, 0.3);
+      this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
+      this.glowEffect.setDepth(4);
+    }
   }
 
   getMaxHealth() {
@@ -132,16 +139,19 @@ export class Wagon {
   // =========================================================================
 
   createMultiplierIndicator() {
-    const x = 0, y = -28;
-    this.multiplierIndicator = this.scene.add.text(x, y, `x${this.coinMultiplier.toFixed(1)}`, {
-      fontSize: '11px',
-      fontFamily: "'Audiowide', sans-serif",
-      color: '#ffaa00',
-      stroke: '#000000',
-      strokeThickness: 2,
-      shadow: { blur: 4, color: '#ffaa00', fill: true }
-    }).setOrigin(0.5);
-    this.sprite.add(this.multiplierIndicator);
+    // Исправлено: текст добавляется в сцену, а не в спрайт
+    this.multiplierIndicator = this.scene.add.text(
+      this.sprite.x, 
+      this.sprite.y - 28, 
+      `x${this.coinMultiplier.toFixed(1)}`, {
+        fontSize: '11px',
+        fontFamily: "'Audiowide', sans-serif",
+        color: '#ffaa00',
+        stroke: '#000000',
+        strokeThickness: 2,
+        shadow: { blur: 4, color: '#ffaa00', fill: true }
+      }
+    ).setOrigin(0.5).setDepth(20);
   }
 
   createArmorIndicator() {
@@ -164,6 +174,15 @@ export class Wagon {
     this.armorIndicator.setTint(percent > 0.6 ? 0x00ff00 : (percent > 0.3 ? 0xffaa00 : 0xff0000));
   }
 
+  updateMultiplierIndicator() {
+    if (this.multiplierIndicator) {
+      this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 28);
+      this.multiplierIndicator.setText(`x${this.coinMultiplier.toFixed(1)}`);
+      const intensity = 0.7 + Math.sin(Date.now() * 0.008) * 0.3;
+      this.multiplierIndicator.setAlpha(intensity);
+    }
+  }
+
   applyWorldVisuals() {
     if (this.worldType === 1 && this.glowEffect) {
       this.scene.tweens.add({
@@ -173,6 +192,11 @@ export class Wagon {
         duration: 800,
         yoyo: true,
         repeat: -1,
+        onUpdate: () => {
+          if (this.glowEffect && this.sprite?.active) {
+            this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+          }
+        }
       });
     }
   }
@@ -180,6 +204,9 @@ export class Wagon {
   animateSpawn() {
     this.sprite.setAlpha(0);
     this.sprite.setScale(0);
+    if (this.multiplierIndicator) this.multiplierIndicator.setAlpha(0);
+    if (this.armorIndicator) this.armorIndicator.setAlpha(0);
+    
     this.scene.tweens.add({
       targets: this.sprite,
       alpha: 1,
@@ -187,6 +214,16 @@ export class Wagon {
       scaleY: 0.7,
       duration: 400,
       ease: 'Back.out',
+      onUpdate: () => {
+        if (this.multiplierIndicator) {
+          this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 28);
+          this.multiplierIndicator.setAlpha(this.sprite.alpha);
+        }
+        if (this.armorIndicator) {
+          this.armorIndicator.setPosition(this.sprite.x, this.sprite.y - 22);
+          this.armorIndicator.setAlpha(this.sprite.alpha);
+        }
+      }
     });
   }
 
@@ -269,7 +306,7 @@ export class Wagon {
       this.sprite.setAlpha(1);
     }
     
-    // Плавное следование за предыдущим объектом
+    // Плавное следование за предыдущим объектом с лёгким "болтанием"
     const targetX = prevX - gap;
     const targetY = prevY + Math.sin(Date.now() * 0.005 + this.index) * 3;
     
@@ -287,11 +324,7 @@ export class Wagon {
     if (this.sprite.body) this.sprite.body.reset(this.sprite.x, this.sprite.y);
     
     // Обновляем индикаторы
-    if (this.multiplierIndicator) {
-      this.multiplierIndicator.setPosition(0, -28);
-      const intensity = 0.7 + Math.sin(Date.now() * 0.008) * 0.3;
-      this.multiplierIndicator.setAlpha(intensity);
-    }
+    this.updateMultiplierIndicator();
     if (this.armorIndicator) this.updateArmorIndicator();
     if (this.glowEffect) this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
   }
