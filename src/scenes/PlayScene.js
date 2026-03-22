@@ -783,7 +783,7 @@ completeWorldLevel() {
     // ===== ПАРАМЕТРЫ ВАГОНОВ =====
     this.wagons = [];
     this.collectedCoins = 0;
-    this.coinsForWagon = 15;
+    this.coinsForWagon = 10;
     this.maxWagons = 12 + ((gameManager.data?.upgrades?.maxWagons) || 0) * 2;
     this.wagonGap = 28 - ((gameManager.data?.upgrades?.wagonGap) || 0) * 2;
     this.wagonSpring = 0.25;
