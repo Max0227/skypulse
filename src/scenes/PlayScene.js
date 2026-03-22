@@ -19,11 +19,24 @@ import { PowerUp } from '../entities/PowerUp';
 import { Wagon } from '../entities/Wagon';
 
 // =========================================================================
+// КОНСТАНТЫ ОПТИМИЗАЦИИ
+// =========================================================================
+
+const PERFORMANCE = {
+  MAX_STARS: 80,           // уменьшено с 200
+  MAX_PLANETS: 3,          // уменьшено с 5
+  MAX_SHIPS: 6,            // уменьшено с 12
+  PARTICLE_LIMIT: 40,      // лимит частиц
+  UPDATE_THROTTLE: 33,     // максимальный дельта (30 FPS)
+  LOW_FPS_THRESHOLD: 25,   // порог для режима низкой производительности
+};
+
+// =========================================================================
 // ВСПОМОГАТЕЛЬНЫЕ КЛАССЫ
 // =========================================================================
 
 /**
- * Класс для управления врагами с ИИ
+ * Класс для управления врагами с ИИ (оптимизированный)
  */
 class AIEnemy {
   constructor(scene, x, y, type) {
@@ -36,7 +49,6 @@ class AIEnemy {
     this.sprite.body.setGravityY(0);
     this.health = this.config.health;
     this.maxHealth = this.config.health;
-
     this.healthBar = null;
     this.createHealthBar();
 
@@ -47,47 +59,27 @@ class AIEnemy {
     this.fireCooldown = 0;
 
     this.sprite.enemyRef = this;
-
-    if (scene.enemyGroup) {
-      scene.enemyGroup.add(this.sprite);
-    }
+    if (scene.enemyGroup) scene.enemyGroup.add(this.sprite);
   }
 
   createHealthBar() {
-    const barWidth = 30;
-    const barHeight = 4;
+    const barWidth = 30, barHeight = 4;
     const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
-
     graphics.fillStyle(0xff0000, 1);
     graphics.fillRect(0, 0, barWidth, barHeight);
     graphics.generateTexture('enemy_health_bar', barWidth, barHeight);
     graphics.destroy();
-
-    this.healthBar = this.scene.add.image(
-      this.sprite.x,
-      this.sprite.y - 20,
-      'enemy_health_bar'
-    )
-      .setScale(1, 0.5)
-      .setDepth(20);
+    this.healthBar = this.scene.add.image(this.sprite.x, this.sprite.y - 20, 'enemy_health_bar')
+      .setScale(1, 0.5).setDepth(20);
   }
 
   takeDamage(amount) {
     this.health -= amount;
-
     if (this.healthBar) {
-      const healthPercent = this.health / this.maxHealth;
-      this.healthBar.setScale(healthPercent, 0.5);
-
-      if (healthPercent > 0.5) {
-        this.healthBar.setTint(0x00ff00);
-      } else if (healthPercent > 0.25) {
-        this.healthBar.setTint(0xffaa00);
-      } else {
-        this.healthBar.setTint(0xff0000);
-      }
+      const percent = this.health / this.maxHealth;
+      this.healthBar.setScale(percent, 0.5);
+      this.healthBar.setTint(percent > 0.5 ? 0x00ff00 : (percent > 0.25 ? 0xffaa00 : 0xff0000));
     }
-
     if (this.health <= 0) {
       this.die();
       return true;
@@ -97,79 +89,37 @@ class AIEnemy {
 
   die() {
     this.scene.crystals += this.config.scoreValue;
-    if (this.scene.crystalText) {
-      this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
-    }
-    this.scene.particleManager.createEnemyDeathEffect(
-      this.sprite.x,
-      this.sprite.y
-    );
-
-    if (this.scene.enemyGroup) {
-      this.scene.enemyGroup.remove(this.sprite);
-    }
-    if (this.healthBar) {
-      this.healthBar.destroy();
-    }
+    if (this.scene.crystalText) this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
+    this.scene.particleManager.createEnemyDeathEffect(this.sprite.x, this.sprite.y);
+    if (this.scene.enemyGroup) this.scene.enemyGroup.remove(this.sprite);
+    if (this.healthBar) this.healthBar.destroy();
     this.sprite.destroy();
-
     if (this.scene.waveManager) {
-      this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(
-        (e) => e !== this
-      );
+      this.scene.waveManager.enemies = this.scene.waveManager.enemies.filter(e => e !== this);
     }
   }
 
   update(playerPos, time, delta) {
-    if (!this.sprite || !this.sprite.active) return;
+    if (!this.sprite?.active) return;
     
-    const dist = Phaser.Math.Distance.Between(
-      this.sprite.x,
-      this.sprite.y,
-      playerPos.x,
-      playerPos.y
-    );
-
-    if (dist < this.config.attackRange) {
-      this.state = 'attack';
-    } else if (dist < this.config.detectionRange) {
-      this.state = 'chase';
-    } else {
-      this.state = 'patrol';
-    }
+    const dist = Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, playerPos.x, playerPos.y);
+    this.state = dist < this.config.attackRange ? 'attack' : (dist < this.config.detectionRange ? 'chase' : 'patrol');
 
     this.attackCooldown -= delta;
     this.fireCooldown -= delta;
-
-    if (this.healthBar && this.healthBar.active) {
-      this.healthBar.setPosition(this.sprite.x, this.sprite.y - 20);
-    }
+    if (this.healthBar?.active) this.healthBar.setPosition(this.sprite.x, this.sprite.y - 20);
 
     switch (this.state) {
-      case 'chase':
-        this.chase(playerPos);
-        break;
-      case 'attack':
-        this.attack(playerPos);
-        break;
-      case 'patrol':
-        this.patrol(delta);
-        break;
+      case 'chase': this.chase(playerPos); break;
+      case 'attack': this.attack(playerPos); break;
+      case 'patrol': this.patrol(delta); break;
     }
   }
 
   chase(playerPos) {
-    const angle = Phaser.Math.Angle.Between(
-      this.sprite.x,
-      this.sprite.y,
-      playerPos.x,
-      playerPos.y
-    );
+    const angle = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y, playerPos.x, playerPos.y);
     const speed = this.config.speed;
-    this.sprite.body.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed
-    );
+    this.sprite.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
   }
 
   attack(playerPos) {
@@ -186,140 +136,89 @@ class AIEnemy {
       this.patrolDirection *= -1;
       this.patrolTimer = 0;
     }
-    this.sprite.body.setVelocity(
-      this.config.speed * this.patrolDirection * 0.5,
-      0
-    );
-
-    if (this.sprite.y < 50) {
-      this.sprite.y = 50;
-      this.sprite.body.setVelocityY(0);
-    } else if (this.sprite.y > this.scene.scale.height - 50) {
-      this.sprite.y = this.scene.scale.height - 50;
-      this.sprite.body.setVelocityY(0);
-    }
+    this.sprite.body.setVelocity(this.config.speed * this.patrolDirection * 0.5, 0);
+    if (this.sprite.y < 50) this.sprite.y = 50;
+    else if (this.sprite.y > this.scene.scale.height - 50) this.sprite.y = this.scene.scale.height - 50;
   }
 }
 
 /**
- * Класс для управления системой урона
+ * Класс для управления системой урона (оптимизированный)
  */
 class DamageSystem {
-  constructor(scene) {
-    this.scene = scene;
-  }
+  constructor(scene) { this.scene = scene; }
 
   playerHitByEnemy(player, enemy) {
-    if (!player || !enemy || !enemy.sprite) return;
-    
+    if (!player || !enemy?.sprite) return;
     if (player.shieldActive) {
-      this.scene.particleManager.createBonusEffect(
-        'shield',
-        enemy.sprite.x,
-        enemy.sprite.y
-      );
-      player.body.setVelocityY(-100);
+      this.scene.particleManager.createBonusEffect('shield', enemy.sprite.x, enemy.sprite.y);
+      if (player.body) player.body.setVelocityY(-100);
       return;
     }
-
     player.headHP -= enemy.config.damage;
     this.scene.updateHearts();
     this.scene.cameras.main.shake(150, 0.005);
-
-    try {
-      if (this.scene.hitSound) this.scene.hitSound.play();
-    } catch (e) {}
-
-    if (
-      gameManager.data.vibrationEnabled &&
-      window.Telegram?.WebApp?.HapticFeedback
-    ) {
-      window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
-    }
-
-    if (player.headHP <= 0) {
-      this.scene.handleDeath();
-    }
+    try { this.scene.hitSound?.play(); } catch(e) {}
+    if (player.headHP <= 0) this.scene.handleDeath();
   }
 
   playerHitByBullet(player, bullet) {
     if (!player || !bullet) return;
-    
     if (player.shieldActive) {
       this.scene.particleManager.createBonusEffect('shield', bullet.x, bullet.y);
       bullet.destroy();
       return;
     }
-
     player.headHP -= bullet.damage || 1;
     this.scene.updateHearts();
     this.scene.cameras.main.shake(150, 0.005);
-
-    try {
-      if (this.scene.hitSound) this.scene.hitSound.play();
-    } catch (e) {}
-
+    try { this.scene.hitSound?.play(); } catch(e) {}
     bullet.destroy();
-
-    if (player.headHP <= 0) {
-      this.scene.handleDeath();
-    }
+    if (player.headHP <= 0) this.scene.handleDeath();
   }
 
   enemyHitByBullet(enemy, bullet) {
     if (!enemy || !bullet) return;
-    
     if (enemy.takeDamage(bullet.damage)) {
       this.scene.crystals += enemy.config.scoreValue;
-      if (this.scene.crystalText) {
-        this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
-      }
+      if (this.scene.crystalText) this.scene.crystalText.setText(`💎 ${this.scene.crystals}`);
     }
-    this.scene.particleManager.createAttackEffect(
-      enemy.sprite.x,
-      enemy.sprite.y
-    );
+    this.scene.particleManager.createAttackEffect(enemy.sprite.x, enemy.sprite.y);
     bullet.destroy();
   }
 
   wagonHitByEnemy(wagon, enemy) {
     if (!wagon || !enemy) return;
-    
     let hp = wagon.getData('hp') - 1;
     if (hp <= 0) {
-      this.scene.wagons = this.scene.wagons.filter((w) => w !== wagon);
+      this.scene.wagons = this.scene.wagons.filter(w => w !== wagon);
       this.scene.particleManager.createWagonDestroyEffect(wagon);
       wagon.destroy();
     } else {
       wagon.setData('hp', hp);
-      this.scene.tweens.add({
-        targets: wagon,
-        alpha: 0.5,
-        duration: 100,
-        yoyo: true,
-        repeat: 1
-      });
+      this.scene.tweens.add({ targets: wagon, alpha: 0.5, duration: 100, yoyo: true, repeat: 1 });
     }
   }
 
-  enemyHitByWagon(enemy, wagon) {
-    if (enemy) enemy.takeDamage(1);
-  }
+  enemyHitByWagon(enemy, wagon) { if (enemy) enemy.takeDamage(1); }
 }
 
 /**
- * Класс для управления специальными событиями
+ * Класс для управления специальными событиями (оптимизированный)
  */
 class SpecialEventManager {
   constructor(scene) {
     this.scene = scene;
-    this.events = [];
-    this.eventTimer = null;
     this.eventChance = 0.05;
+    this.lastEventTime = 0;
+    this.eventCooldown = 10000;
   }
 
   update(delta) {
+    const now = Date.now();
+    if (now - this.lastEventTime < this.eventCooldown) return;
     if (Math.random() < this.eventChance * (delta / 1000)) {
+      this.lastEventTime = now;
       this.triggerRandomEvent();
     }
   }
@@ -331,26 +230,20 @@ class SpecialEventManager {
       { name: 'ГРАВИТАЦИОННЫЙ СКАЧОК', action: () => this.gravityShift() },
       { name: 'ЭЛЕКТРОМАГНИТНЫЙ ИМПУЛЬС', action: () => this.emPulse() }
     ];
-
     const event = events[Math.floor(Math.random() * events.length)];
     this.showEventNotification(event.name);
     event.action();
   }
 
   meteorShower() {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       this.scene.time.delayedCall(i * 200, () => {
         const x = this.scene.scale.width + 50;
         const y = Phaser.Math.Between(100, this.scene.scale.height - 100);
-        const meteor = this.scene.physics.add
-          .image(x, y, 'bg_asteroid_1')
-          .setScale(1.5)
-          .setVelocityX(-this.scene.currentSpeed * 1.5)
-          .setVelocityY(Phaser.Math.Between(-100, 100));
-        meteor.setAngularVelocity(200);
-        meteor.setDepth(-5);
+        const meteor = this.scene.physics.add.image(x, y, 'bg_asteroid_1')
+          .setScale(1.2).setVelocityX(-this.scene.currentSpeed * 1.2)
+          .setVelocityY(Phaser.Math.Between(-50, 50)).setAngularVelocity(100);
         meteor.body.setAllowGravity(false);
-        meteor.body.setGravityY(0);
       });
     }
   }
@@ -358,39 +251,21 @@ class SpecialEventManager {
   timeWarp() {
     const originalSpeed = this.scene.currentSpeed;
     this.scene.currentSpeed *= 0.5;
-    this.scene.time.delayedCall(5000, () => {
-      this.scene.currentSpeed = originalSpeed;
-    });
+    this.scene.time.delayedCall(5000, () => { this.scene.currentSpeed = originalSpeed; });
   }
 
   gravityShift() {
     const originalGravity = this.scene.physics.world.gravity.y;
     this.scene.physics.world.gravity.y *= 1.5;
-    this.scene.time.delayedCall(4000, () => {
-      this.scene.physics.world.gravity.y = originalGravity;
-    });
+    this.scene.time.delayedCall(4000, () => { this.scene.physics.world.gravity.y = originalGravity; });
   }
 
   emPulse() {
-    const w = this.scene.scale.width;
-    const h = this.scene.scale.height;
-    const pulse = this.scene.add
-      .circle(w / 2, h / 2, 10, 0x00ffff, 0.5)
-      .setDepth(25)
-      .setScrollFactor(0);
-
-    this.scene.tweens.add({
-      targets: pulse,
-      radius: 300,
-      alpha: 0,
-      duration: 800,
-      ease: 'Power2.easeOut',
-      onComplete: () => pulse.destroy()
-    });
-
-    const coins = this.scene.coinGroup.getChildren();
-    coins.forEach((coin) => {
-      if (coin && coin.body) {
+    const w = this.scene.scale.width, h = this.scene.scale.height;
+    const pulse = this.scene.add.circle(w / 2, h / 2, 10, 0x00ffff, 0.5).setDepth(25);
+    this.scene.tweens.add({ targets: pulse, radius: 300, alpha: 0, duration: 800, onComplete: () => pulse.destroy() });
+    this.scene.coinGroup?.getChildren().forEach(coin => {
+      if (coin?.body) {
         const angle = Phaser.Math.Angle.Between(w / 2, h / 2, coin.x, coin.y);
         coin.setVelocityX(Math.cos(angle) * 300);
         coin.setVelocityY(Math.sin(angle) * 300);
@@ -400,33 +275,14 @@ class SpecialEventManager {
 
   showEventNotification(eventName) {
     const w = this.scene.scale.width;
-    const notification = this.scene.add
-      .text(w / 2, 200, `⚡ ${eventName}`, {
-        fontSize: '24px',
-        fontFamily: "'Orbitron', monospace",
-        color: '#ff00ff',
-        stroke: '#ffff00',
-        strokeThickness: 3,
-        shadow: { blur: 15, color: '#ff00ff', fill: true }
-      })
-      .setOrigin(0.5)
-      .setDepth(100)
-      .setScrollFactor(0);
-
-    this.scene.tweens.add({
-      targets: notification,
-      alpha: 0,
-      duration: 2000,
-      ease: 'Power2.easeOut',
-      onComplete: () => notification.destroy()
-    });
+    const notification = this.scene.add.text(w / 2, 200, `⚡ ${eventName}`, {
+      fontSize: '24px', fontFamily: "'Orbitron', monospace", color: '#ff00ff',
+      stroke: '#ffff00', strokeThickness: 3, shadow: { blur: 15, color: '#ff00ff', fill: true }
+    }).setOrigin(0.5).setDepth(100);
+    this.scene.tweens.add({ targets: notification, alpha: 0, duration: 2000, onComplete: () => notification.destroy() });
   }
 
-  destroy() {
-    if (this.eventTimer) {
-      this.eventTimer.remove();
-    }
-  }
+  destroy() { if (this.eventTimer) this.eventTimer.remove(); }
 }
 
 // =========================================================================
