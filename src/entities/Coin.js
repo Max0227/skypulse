@@ -8,28 +8,20 @@ export class Coin {
     this.type = type;
     this.worldType = worldType || (scene.levelManager?.currentWorld ?? 0);
     this.config = COIN_TYPES[type] || COIN_TYPES.gold;
-    
-    // Получаем модификации для текущего мира
     this.worldMod = this.getWorldModifications();
-    
-    // Создаём спрайт
-    this.sprite = scene.physics.add.image(x, y, this.getTextureForWorld())
+
+    // Создаём обычный Image (без физики)
+    this.sprite = scene.add.image(x, y, this.getTextureForWorld())
       .setScale(0.7)
       .setDepth(8);
-    
-    // ===== НАСТРОЙКА ФИЗИКИ =====
-    this.setupPhysics();
-    
+
     // Визуальные эффекты
     this.sprite.setAngularVelocity(200);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
-    
-    // Применяем цветовую гамму мира
     this.applyWorldTint();
-    
-    // Ссылка на объект монеты
+
     this.sprite.coinRef = this;
-    
+
     // Характеристики
     this.baseValue = this.config.value;
     this.value = this.getValueForWorld();
@@ -42,26 +34,22 @@ export class Coin {
     this.baseScale = 0.7;
     this.pulseTimer = 0;
     this.rotationSpeed = 200;
-    
-    // Сохраняем начальную позицию
     this.initialY = y;
-    
+
     // Эффекты
     this.trailEmitter = null;
     this.glowEffect = null;
     this.orbitalParticles = [];
-    
-    // Создаём дополнительные эффекты для редких монет
+
     if (this.isRare()) {
       this.createGlowEffect();
       this.createTrailEffect();
       this.createOrbitalParticles();
     }
-    
-    // Анимация появления
+
     this.animateSpawn();
-    
-    // Добавляем в группу монет
+
+    // Добавляем в группу монет (группа может быть обычной, не физической)
     if (scene.coinGroup) {
       scene.coinGroup.add(this.sprite);
     }
@@ -109,70 +97,56 @@ export class Coin {
       this.active = false;
       return false;
     }
-    
-    // ===== КРИТИЧЕСКИ ВАЖНО: ПРИНУДИТЕЛЬНАЯ УСТАНОВКА ВЕКТОРА ДВИЖЕНИЯ =====
-    // Обновляем горизонтальную скорость
-    this.speedX = -(this.scene.currentSpeed || 200);
-    
-    // Устанавливаем вектор движения: ТОЛЬКО ВЛЕВО, БЕЗ ВЕРТИКАЛИ
-    this.sprite.body.setVelocity(this.speedX, 0);
-    
-    // Отключаем гравитацию (каждый кадр, на случай если она включается где-то ещё)
-    this.sprite.body.setAllowGravity(false);
-    this.sprite.body.setGravityY(0);
-    
-    // Обнуляем ускорение
-    this.sprite.body.acceleration.set(0, 0);
-    
-    // ===== ПЛАВНОЕ ПАРЕНИЕ (ТОЛЬКО ВИЗУАЛЬНО, НЕ ФИЗИЧЕСКИ) =====
+
+    // Движение: влево с текущей скоростью игры
+    const currentSpeed = this.scene.currentSpeed || 200;
+    this.sprite.x -= currentSpeed * (delta / 1000); // delta в мс, приводим к секундам
+
+    // Плавное парение
     if (this.worldMod.floatAmplitude > 0) {
       const time = Date.now() * this.worldMod.floatSpeed;
       const floatY = Math.sin(time + this.sprite.x * 0.01) * this.worldMod.floatAmplitude;
-      // Меняем позицию напрямую, не через физику
       this.sprite.y = this.initialY + floatY;
+    } else {
+      // Иначе просто сохраняем начальную Y
+      this.sprite.y = this.initialY;
     }
-    
-    // ===== ЭФФЕКТ ПУЛЬСАЦИИ =====
+
+    // Эффект пульсации
     this.pulseTimer += delta;
     if (this.pulseTimer > 80) {
       this.pulseTimer = 0;
       this.baseScale += 0.04 * this.pulseDirection;
-      
-      if (this.baseScale > 0.9) {
-        this.pulseDirection = -1;
-      } else if (this.baseScale < 0.6) {
-        this.pulseDirection = 1;
-      }
-      
+      if (this.baseScale > 0.9) this.pulseDirection = -1;
+      else if (this.baseScale < 0.6) this.pulseDirection = 1;
       this.sprite.setScale(this.baseScale);
-      
-      // Обновляем свечение
       if (this.glowEffect) {
         const glowScale = this.baseScale * 1.3;
         this.glowEffect.setScale(glowScale);
         this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
-        
         const alpha = 0.3 + Math.sin(Date.now() * 0.01) * 0.2;
         this.glowEffect.setAlpha(alpha);
       }
     }
-    
+
     // Обновляем орбитальные частицы
     if (this.orbitalParticles.length > 0) {
       this.updateOrbitals();
     }
-    
-    // Специальные эффекты для разных миров
+
     this.updateWorldVisuals();
-    
-    // Проверка выхода за экран
+
+    // Удаляем, если улетела далеко влево
     if (this.sprite.x < -100) {
       this.destroy();
       return false;
     }
-    
+
     return true;
   }
+
+  // Остальные методы (collect, destroy, etc.) остаются без изменений
+
 
   // =========================================================================
   // КОНФИГУРАЦИЯ МИРОВ

@@ -771,15 +771,20 @@ getActiveWagonCount() {
   if (this.coinGroup) {
   const coins = this.coinGroup.getChildren();
   for (let i = 0; i < coins.length; i++) {
-    const coin = coins[i];
-    if (coin && coin.body && coin.active) {
-      // Только убеждаемся, что гравитация отключена
-      if (coin.body.gravity.y !== 0) 
-        coin.body.setGravityY(0);
-      }
+    const coinSprite = coins[i];
+    if (!coinSprite.active) continue;
+    const coin = coinSprite.coinRef;
+    if (!coin || coin.collected) continue;
+
+    // Проверяем пересечение с игроком (можно использовать getBounds)
+    if (Phaser.Geom.Intersects.RectangleToRectangle(
+      this.player.getBounds(),
+      coinSprite.getBounds()
+    )) {
+      this.collectCoin(coin);
     }
   }
-}
+}}
 
   /**
    * Получение параметров сложности - УЧИТЫВАЕТ МИР И ВНУТРЕННИЙ УРОВЕНЬ
