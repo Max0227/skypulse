@@ -39,8 +39,8 @@ export class Wagon {
     
     // ===== Параметры следования (пружинная система) =====
     this.followDistance = 50;          // желаемое расстояние до предыдущего
-    this.springStrength = 0.45;        // сила притяжения
-    this.damping = 0.92;               // затухание
+    this.springStrength = 0.65;
+this.damping = 0.94;              // затухание
     this.smoothY = 0.12;               // плавность по вертикали
     
     // Позиция и скорость (для независимого движения)
@@ -387,7 +387,7 @@ export class Wagon {
     this.sprite.y = this.pos.y;
 
     // Небольшое визуальное покачивание (очень слабое, только для эстетики)
-    const wobble = Math.sin(Date.now() * 0.005 + this.index) * 0.6;
+    const wobble = Math.sin(Date.now() * 0.005 + this.index) * 0.3;
     this.sprite.y += wobble;
 
     // Поворот в зависимости от скорости

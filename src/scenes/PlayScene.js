@@ -344,7 +344,7 @@ export class PlayScene extends Phaser.Scene {
         shadow: { blur: 10, color: '#ffff00', fill: true }
       }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
-      this.cameras.main.shake(100, 0.001);
+     this.cameras.main.shake(40, 0.001);
 
       this.tweens.add({
         targets: text,
@@ -654,36 +654,27 @@ createWagonLostEffect(wagon, index) {
  */
 updateCameraZoom() {
   if (!this.player) return;
-
   const baseZoom = 1.0;
   let targetZoom = baseZoom;
-
   if (this.wagons.length > 0) {
-    // Плавное уменьшение зума при увеличении состава
     const zoomReduction = Math.min(0.35, this.wagons.length * 0.025);
     targetZoom = baseZoom - zoomReduction;
-    targetZoom = Math.max(0.7, targetZoom); // Не меньше 0.7
+    targetZoom = Math.max(0.7, targetZoom);
   }
+  if (this._lastTargetZoom === targetZoom) return;
+  this._lastTargetZoom = targetZoom;
 
-  // Если уже есть активный твин, останавливаем его, чтобы не накладывались
   if (this.cameraZoomTween) {
     this.cameraZoomTween.stop();
     this.cameraZoomTween = null;
   }
-
-  // Плавное изменение зума
   this.cameraZoomTween = this.tweens.add({
     targets: this.cameras.main,
     zoom: targetZoom,
-    duration: 400,
+    duration: 600,
     ease: 'Sine.easeInOut',
-    onUpdate: () => {
-      // Центрируем камеру на игроке (плавно)
-      this.cameras.main.centerOn(this.player.x, this.player.y);
-    },
-    onComplete: () => {
-      this.cameraZoomTween = null;
-    }
+    onUpdate: () => this.cameras.main.centerOn(this.player.x, this.player.y),
+    onComplete: () => { this.cameraZoomTween = null; }
   });
 }
 
