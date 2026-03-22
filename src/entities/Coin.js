@@ -17,12 +17,10 @@ export class Coin {
       .setScale(0.7)
       .setDepth(8);
     
-    // Настройка физики
-    this.sprite.body.setAllowGravity(false);
-    this.sprite.body.setImmovable(true);
-    this.sprite.body.setVelocityX(-scene.currentSpeed || -200);
+    // ===== КРИТИЧЕСКИ ВАЖНО: ПОЛНОЕ ОТКЛЮЧЕНИЕ ГРАВИТАЦИИ =====
+    this.setupPhysics();
     
-    // Визуальные эффекты в зависимости от мира
+    // Визуальные эффекты
     this.sprite.setAngularVelocity(200);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
     
@@ -44,6 +42,8 @@ export class Coin {
     this.baseScale = 0.7;
     this.pulseTimer = 0;
     this.rotationSpeed = 200;
+    this.lastX = x;
+    this.lastY = y;
     
     // Эффекты
     this.trailEmitter = null;
@@ -54,6 +54,7 @@ export class Coin {
     if (this.isRare()) {
       this.createGlowEffect();
       this.createTrailEffect();
+      this.createOrbitalParticles();
     }
     
     // Анимация появления
@@ -63,6 +64,35 @@ export class Coin {
     if (scene.coinGroup) {
       scene.coinGroup.add(this.sprite);
     }
+  }
+
+  // =========================================================================
+  // ФИЗИКА (ИСПРАВЛЕНА)
+  // =========================================================================
+
+  setupPhysics() {
+    // Полное отключение гравитации
+    this.sprite.body.setAllowGravity(false);
+    this.sprite.body.setGravityY(0);
+    this.sprite.body.setGravityX(0);
+    
+    // Отключаем все внешние силы
+    this.sprite.body.setDrag(0);
+    this.sprite.body.setDragX(0);
+    this.sprite.body.setDragY(0);
+    this.sprite.body.acceleration.y = 0;
+    this.sprite.body.acceleration.x = 0;
+    
+    // Устанавливаем движение ТОЛЬКО влево
+    const currentSpeed = this.scene.currentSpeed || 200;
+    this.sprite.body.setVelocityX(-currentSpeed);
+    this.sprite.body.setVelocityY(0);
+    
+    // Делаем монету неподвижной по вертикали
+    this.sprite.body.setImmovable(true);
+    
+    // Сохраняем начальную позицию
+    this.initialY = this.sprite.y;
   }
 
   // =========================================================================
@@ -77,7 +107,9 @@ export class Coin {
         strengthMultiplier: 1.0,
         visualEffect: 'normal',
         particleColor: 0xffaa00,
-        tint: null
+        tint: null,
+        floatAmplitude: 0,
+        floatSpeed: 0
       },
       1: { // Киберпанк
         valueMultiplier: 1.3,
@@ -85,7 +117,9 @@ export class Coin {
         strengthMultiplier: 1.3,
         visualEffect: 'neon',
         particleColor: 0xff44ff,
-        tint: 0xff88ff
+        tint: 0xff88ff,
+        floatAmplitude: 3,
+        floatSpeed: 0.008
       },
       2: { // Подземелье
         valueMultiplier: 1.2,
@@ -93,7 +127,9 @@ export class Coin {
         strengthMultiplier: 1.2,
         visualEffect: 'dark',
         particleColor: 0xff6600,
-        tint: 0xcc8866
+        tint: 0xcc8866,
+        floatAmplitude: 2,
+        floatSpeed: 0.005
       },
       3: { // Астероиды
         valueMultiplier: 1.4,
@@ -101,7 +137,9 @@ export class Coin {
         strengthMultiplier: 1.4,
         visualEffect: 'rocky',
         particleColor: 0xffaa44,
-        tint: 0xffaa66
+        tint: 0xffaa66,
+        floatAmplitude: 4,
+        floatSpeed: 0.01
       },
       4: { // Чёрная дыра
         valueMultiplier: 1.5,
@@ -109,14 +147,15 @@ export class Coin {
         strengthMultiplier: 1.5,
         visualEffect: 'void',
         particleColor: 0xaa88ff,
-        tint: 0xcc88ff
+        tint: 0xcc88ff,
+        floatAmplitude: 5,
+        floatSpeed: 0.012
       }
     };
     return mods[this.worldType] || mods[0];
   }
 
   getTextureForWorld() {
-    // Разные текстуры для разных миров
     const textureMap = {
       gold: 'coin_gold',
       red: 'coin_red',
@@ -174,7 +213,7 @@ export class Coin {
   }
 
   getBonusDuration() {
-    let duration = 5; // базовая длительность
+    let duration = 5;
     
     if (this.bonus === 'speed') duration = 5;
     if (this.bonus === 'shield') duration = 5;
@@ -303,7 +342,7 @@ export class Coin {
   }
 
   // =========================================================================
-  // ОСНОВНЫЕ МЕТОДЫ
+  // ОСНОВНЫЕ МЕТОДЫ (ИСПРАВЛЕНА ФИЗИКА)
   // =========================================================================
 
   update(delta) {
@@ -312,12 +351,33 @@ export class Coin {
       return false;
     }
     
-    // Обновляем скорость
-    if (this.scene.currentSpeed) {
-      this.sprite.body.setVelocityX(-this.scene.currentSpeed);
+    // ===== КОНТРОЛЬ СКОРОСТИ (БЕЗ ГРАВИТАЦИИ) =====
+    if (this.scene.currentSpeed && this.sprite.body) {
+      // Проверяем и восстанавливаем горизонтальную скорость
+      const targetVx = -this.scene.currentSpeed;
+      if (Math.abs(this.sprite.body.velocity.x - targetVx) > 5) {
+        this.sprite.body.setVelocityX(targetVx);
+      }
+      
+      // Убеждаемся, что вертикальная скорость равна 0
+      if (this.sprite.body.velocity.y !== 0) {
+        this.sprite.body.setVelocityY(0);
+      }
+      
+      // Отключаем гравитацию (на всякий случай)
+      if (this.sprite.body.gravity.y !== 0) {
+        this.sprite.body.setGravityY(0);
+      }
     }
     
-    // Эффект пульсации
+    // ===== ПЛАВНОЕ ПАРЕНИЕ (КИБЕРПАНК ЭФФЕКТ) =====
+    if (this.worldMod.floatAmplitude > 0) {
+      const time = Date.now() * this.worldMod.floatSpeed;
+      const floatY = Math.sin(time + this.sprite.x * 0.01) * this.worldMod.floatAmplitude;
+      this.sprite.y = this.initialY + floatY;
+    }
+    
+    // ===== ЭФФЕКТ ПУЛЬСАЦИИ =====
     this.pulseTimer += delta;
     if (this.pulseTimer > 80) {
       this.pulseTimer = 0;
@@ -362,11 +422,16 @@ export class Coin {
   updateWorldVisuals() {
     const time = Date.now() * 0.005;
     
-    // Киберпанк - мерцание
+    // Киберпанк - мерцание и цифровой эффект
     if (this.worldType === 1) {
       const intensity = 0.6 + Math.sin(time * 10) * 0.3;
       this.sprite.setAlpha(intensity);
       if (this.glowEffect) this.glowEffect.setAlpha(intensity * 0.5);
+      
+      // Добавляем цифровой шум для редких монет
+      if (this.isRare() && Math.random() < 0.05) {
+        this.createDigitalGlitch();
+      }
     }
     
     // Подземелье - тёмная аура
@@ -380,6 +445,24 @@ export class Coin {
       const distort = 1 + Math.sin(time * 8) * 0.05;
       this.sprite.setScale(this.baseScale * distort);
     }
+  }
+
+  createDigitalGlitch() {
+    const glitch = this.scene.add.text(
+      this.sprite.x + Phaser.Math.Between(-10, 10),
+      this.sprite.y + Phaser.Math.Between(-10, 10),
+      ['0', '1'][Math.floor(Math.random() * 2)],
+      { fontSize: '12px', fontFamily: 'monospace', color: '#ff44ff' }
+    );
+    glitch.setBlendMode(Phaser.BlendModes.ADD);
+    
+    this.scene.tweens.add({
+      targets: glitch,
+      alpha: 0,
+      y: glitch.y - 20,
+      duration: 200,
+      onComplete: () => glitch.destroy()
+    });
   }
 
   collect(player) {
@@ -498,7 +581,6 @@ export class Coin {
 
   createCollectEffect() {
     if (this.scene.particleManager) {
-      // Усиленный эффект для редких монет
       const effectType = this.isRare() ? 'rare' : this.type;
       this.scene.particleManager.createCoinCollectEffect(
         this.sprite.x, 
@@ -510,7 +592,7 @@ export class Coin {
     // Дополнительный эффект для разных миров
     if (this.worldType === 1) {
       // Киберпанк - цифровые искры
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 8; i++) {
         const spark = this.scene.add.text(
           this.sprite.x + Phaser.Math.Between(-15, 15),
           this.sprite.y + Phaser.Math.Between(-15, 15),
@@ -525,14 +607,33 @@ export class Coin {
           onComplete: () => spark.destroy()
         });
       }
+    } else if (this.worldType === 2) {
+      // Подземелье - тёмные искры
+      for (let i = 0; i < 6; i++) {
+        const spark = this.scene.add.circle(
+          this.sprite.x + Phaser.Math.Between(-15, 15),
+          this.sprite.y + Phaser.Math.Between(-15, 15),
+          2,
+          0xff6600,
+          0.8
+        );
+        spark.setBlendMode(Phaser.BlendModes.ADD);
+        this.scene.tweens.add({
+          targets: spark,
+          alpha: 0,
+          scale: 0,
+          duration: 300,
+          onComplete: () => spark.destroy()
+        });
+      }
     } else if (this.worldType === 4) {
       // Чёрная дыра - гравитационная волна
       const wave = this.scene.add.circle(this.sprite.x, this.sprite.y, 8, 0xaa88ff, 0.6);
       this.scene.tweens.add({
         targets: wave,
-        radius: 40,
+        radius: 50,
         alpha: 0,
-        duration: 300,
+        duration: 400,
         onComplete: () => wave.destroy()
       });
     }
@@ -573,7 +674,6 @@ export class Coin {
   }
 
   showValuePopup(value) {
-    const w = this.scene.scale.width;
     const popup = this.scene.add.text(
       this.sprite.x,
       this.sprite.y - 20,
@@ -629,11 +729,13 @@ export class Coin {
     // Удаляем эффекты
     if (this.glowEffect) {
       this.glowEffect.destroy();
+      this.glowEffect = null;
     }
     
     if (this.trailEmitter) {
       this.trailEmitter.stop();
       this.trailEmitter.destroy();
+      this.trailEmitter = null;
     }
     
     this.orbitalParticles.forEach(p => {
