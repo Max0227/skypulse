@@ -445,32 +445,30 @@ export class PlayScene extends Phaser.Scene {
   }
 }
 // =========================================================================
-// МЕТОДЫ ДЛЯ ВАГОНОВ (улучшенная версия)
+// МЕТОДЫ ДЛЯ ВАГОНОВ (КИБЕРПАНК-ВЕРСИЯ)
 // =========================================================================
 
 /**
- * Добавить новый вагон (увеличенное расстояние, плавное появление)
+ * Добавить новый вагон – плавное появление, точное позиционирование
  */
 addWagon() {
   if (this.wagons.length >= this.maxWagons || !this.player) return;
-  
-  // Определяем последний объект (игрок или последний вагон)
+
+  // Последний объект в составе (игрок или предыдущий вагон)
   const last = this.wagons.length > 0 ? this.wagons[this.wagons.length - 1] : this.player;
-  
-  // Увеличенное расстояние между вагонами (чтобы не было наложения)
+
+  // Точное позиционирование – без случайного смещения по Y, чтобы вагоны шли ровно
   const spawnX = last.x - this.wagonGap;
-  const spawnY = last.y + Phaser.Math.Between(-5, 5); // небольшое смещение для реалистичности
-  
-  // Создаём вагон с правильным индексом
+  const spawnY = last.y;   // строго по линии предыдущего
+
   const wagon = new Wagon(this, spawnX, spawnY, this.wagons.length, this.world);
   wagon.setHP(this.wagonBaseHP, this.wagonBaseHP);
-  
+
   this.wagons.push(wagon);
-  
-  // Обновляем счётчик вагонов
+
+  // Обновляем UI и анимацию счётчика
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
-    // Анимация текста
     this.tweens.add({
       targets: this.wagonCountText,
       scaleX: 1.2,
@@ -480,107 +478,107 @@ addWagon() {
       ease: 'Quad.out'
     });
   }
-  
-  // Эффект появления вагона
+
+  // Эффект появления (частицы, кольцо) – они сами уничтожатся
   this.createWagonSpawnEffect(wagon);
-  
-  
-  // Звук появления вагона
-  try { 
-    if (this.wagonSound) this.wagonSound.play(); 
+
+  // Звук
+  try {
+    if (this.wagonSound) this.wagonSound.play();
   } catch(e) {}
-  
-  // Показываем уведомление о новом множителе
+
+  // Мгновенно обновляем зум камеры (плавный твин)
+  this.updateCameraZoom();
+
+  // Уведомление с множителем
   this.showNotification(`✨ НОВЫЙ ВАГОН! МНОЖИТЕЛЬ x${wagon.getMultiplier().toFixed(1)} ✨`, 1500, '#ffaa00');
 }
 
 /**
- * Эффект появления вагона
+ * Эффект появления вагона – киберпанк-частицы и кольцо
  */
 createWagonSpawnEffect(wagon) {
   if (!wagon || !wagon.sprite) return;
-  
-  // Частицы появления
-  for (let i = 0; i < 12; i++) {
+
+  const worldColor = this.getWorldColor();
+  const colorHex = `#${worldColor.toString(16).padStart(6, '0')}`;
+
+  // Неоновые частицы
+  for (let i = 0; i < 16; i++) {
     const particle = this.add.circle(
-      wagon.sprite.x + Phaser.Math.Between(-25, 25),
-      wagon.sprite.y + Phaser.Math.Between(-25, 25),
-      Phaser.Math.Between(2, 5),
-      this.getWorldColor(),
-      0.8
+      wagon.sprite.x + Phaser.Math.Between(-28, 28),
+      wagon.sprite.y + Phaser.Math.Between(-28, 28),
+      Phaser.Math.Between(2, 6),
+      worldColor,
+      0.9
     );
     particle.setBlendMode(Phaser.BlendModes.ADD);
-    
+
     this.tweens.add({
       targets: particle,
       alpha: 0,
       scale: 0,
-      x: particle.x + Phaser.Math.Between(-50, 50),
-      y: particle.y + Phaser.Math.Between(-50, 50),
+      x: particle.x + Phaser.Math.Between(-70, 70),
+      y: particle.y + Phaser.Math.Between(-70, 70),
       duration: 500,
       onComplete: () => particle.destroy()
     });
   }
-  
-  // Кольцо появления
-  const ring = this.add.circle(wagon.sprite.x, wagon.sprite.y, 15, this.getWorldColor(), 0.6);
+
+  // Пульсирующее кольцо
+  const ring = this.add.circle(wagon.sprite.x, wagon.sprite.y, 12, worldColor, 0.8);
   ring.setBlendMode(Phaser.BlendModes.ADD);
   this.tweens.add({
     targets: ring,
-    scale: 2.5,
+    scaleX: 2.8,
+    scaleY: 2.8,
     alpha: 0,
-    duration: 400,
+    duration: 450,
+    ease: 'Sine.easeOut',
     onComplete: () => ring.destroy()
   });
 }
 
 /**
- * Обновить позиции вагонов (физика поезда)
+ * Обновление позиций всех вагонов (физика поезда)
  */
 updateWagons() {
   if (this.wagons.length === 0 || !this.player) return;
-  
-  // Первый вагон следует за игроком
+
   let prevX = this.player.x;
   let prevY = this.player.y;
-  
-  // Каждый вагон следует за предыдущим
+
   for (let i = 0; i < this.wagons.length; i++) {
     const wagon = this.wagons[i];
     if (!wagon || !wagon.isActive()) continue;
-    
-    // Обновляем позицию вагона, передавая позицию предыдущего
+
     wagon.update(prevX, prevY, this.wagonGap);
-    
-    // Сохраняем позицию текущего вагона для следующего
+
     prevX = wagon.sprite.x;
     prevY = wagon.sprite.y;
   }
 }
 
 /**
- * Столкновение вагона с воротами
+ * Столкновение вагона с препятствием (ворота, враги и т.п.)
  */
-wagonHit(wagon, pipe) {
+wagonHit(wagon, obstacle) {
   if (!wagon || !wagon.isActive()) return;
-  
+
   const destroyed = wagon.takeDamage(1);
   if (destroyed) {
     const destroyedIndex = this.wagons.findIndex(w => w === wagon);
     this.wagons = this.wagons.filter(w => w !== wagon);
-    
-    // Переиндексация оставшихся вагонов (обновляем множители)
+
+    // Переиндексация оставшихся вагонов
     for (let i = 0; i < this.wagons.length; i++) {
       this.wagons[i].updateMultiplierAfterDetach(i);
     }
-    
-    // Эффект потери вагона
+
     this.createWagonLostEffect(wagon, destroyedIndex);
-    
-    // Показываем уведомление
     this.showNotification(`💔 ВАГОН ПОТЕРЯН! МНОЖИТЕЛЬ СНИЖЕН`, 1500, '#ff4444');
   }
-  
+
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
     this.tweens.add({
@@ -591,78 +589,83 @@ wagonHit(wagon, pipe) {
       yoyo: true
     });
   }
-  
-  // Обновляем зум камеры после потери вагона
-  this.updateCameraZoom();
+
+  this.updateCameraZoom(); // пересчёт зума после потери
 }
 
 /**
- * Эффект потери вагона
+ * Эффект потери вагона – яркий взрыв в кибер-стиле
  */
 createWagonLostEffect(wagon, index) {
   if (!wagon || !wagon.sprite) return;
-  
-  // Взрывные частицы
-  for (let i = 0; i < 15; i++) {
+
+  // Ярко‑красные искры
+  for (let i = 0; i < 20; i++) {
     const particle = this.add.circle(
-      wagon.sprite.x + Phaser.Math.Between(-20, 20),
-      wagon.sprite.y + Phaser.Math.Between(-20, 20),
-      Phaser.Math.Between(3, 6),
+      wagon.sprite.x + Phaser.Math.Between(-25, 25),
+      wagon.sprite.y + Phaser.Math.Between(-25, 25),
+      Phaser.Math.Between(3, 7),
       0xff4444,
       0.9
     );
     particle.setBlendMode(Phaser.BlendModes.ADD);
-    
+
     this.tweens.add({
       targets: particle,
       alpha: 0,
       scale: 0,
-      x: particle.x + Phaser.Math.Between(-80, 80),
-      y: particle.y + Phaser.Math.Between(-80, 80),
-      duration: 500,
+      x: particle.x + Phaser.Math.Between(-90, 90),
+      y: particle.y + Phaser.Math.Between(-90, 90),
+      duration: 550,
       onComplete: () => particle.destroy()
     });
   }
-  
+
   // Ударная волна
-  const shockwave = this.add.circle(wagon.sprite.x, wagon.sprite.y, 15, 0xff6666, 0.7);
+  const shockwave = this.add.circle(wagon.sprite.x, wagon.sprite.y, 18, 0xff6666, 0.8);
   shockwave.setBlendMode(Phaser.BlendModes.ADD);
   this.tweens.add({
     targets: shockwave,
-    scale: 3,
+    scale: 3.2,
     alpha: 0,
-    duration: 400,
+    duration: 450,
     onComplete: () => shockwave.destroy()
   });
-  
+
+  // Короткая вибрация камеры (опционально, если хотите оставить, но можно убрать)
+  // this.cameras.main.shake(120, 0.005); – по желанию
 }
 
 /**
- * Обновить зум камеры в зависимости от количества вагонов
- */
-/**
- * Обновить зум камеры в зависимости от количества вагонов
+ * Плавное обновление зума камеры в зависимости от количества вагонов
  */
 updateCameraZoom() {
   if (!this.player) return;
+
   const baseZoom = 1.0;
   let targetZoom = baseZoom;
+
   if (this.wagons.length > 0) {
-    const zoomReduction = Math.min(0.35, this.wagons.length * 0.025);
+    // Уменьшение зума при увеличении состава (чем больше вагонов, тем шире обзор)
+    const zoomReduction = Math.min(0.32, this.wagons.length * 0.022);
     targetZoom = baseZoom - zoomReduction;
-    targetZoom = Math.max(0.7, targetZoom);
+    targetZoom = Math.max(0.72, targetZoom);
   }
+
+  // Не запускаем повторный твин, если целевой зум не изменился
   if (this._lastTargetZoom === targetZoom) return;
   this._lastTargetZoom = targetZoom;
 
+  // Останавливаем предыдущий твин, если он ещё активен
   if (this.cameraZoomTween) {
     this.cameraZoomTween.stop();
     this.cameraZoomTween = null;
   }
+
   this.cameraZoomTween = this.tweens.add({
     targets: this.cameras.main,
     zoom: targetZoom,
-    duration: 600,
+    duration: 550,
     ease: 'Sine.easeInOut',
     onUpdate: () => this.cameras.main.centerOn(this.player.x, this.player.y),
     onComplete: () => { this.cameraZoomTween = null; }
@@ -679,7 +682,6 @@ reindexWagons() {
       wagon.updateMultiplierAfterDetach(i);
     }
   }
-  // Обновляем счётчик
   if (this.wagonCountText) {
     this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
   }
