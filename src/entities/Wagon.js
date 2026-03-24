@@ -2,10 +2,6 @@ import Phaser from 'phaser';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 
-/**
- * Класс вагона – полная версия с множеством функций, визуальными эффектами,
- * разнообразными текстурами, плавной физикой и без воздействия на камеру.
- */
 export class Wagon {
   constructor(scene, x, y, index, worldType = null) {
     this.scene = scene;
@@ -18,19 +14,16 @@ export class Wagon {
     // Выбор текстуры
     this.textureKey = this.getTextureForWorld();
 
-    // Создание спрайта – яркий, непрозрачный, ВИДИМЫЙ
+    // Создание спрайта
     this.sprite = scene.physics.add.image(x, y, this.textureKey)
       .setScale(1.05)
       .setDepth(5 + index)
       .setAlpha(1)
-      .setVisible(true)           // гарантируем видимость
+      .setVisible(true)
       .setBlendMode(Phaser.BlendModes.ADD);
 
-    // Настройка физики
+    // Настройка физики (без гравитации)
     this.setupPhysics();
-
-    // Визуальные эффекты
-    this.setupVisuals();
 
     // Ссылка на объект
     this.sprite.wagonRef = this;
@@ -69,13 +62,11 @@ export class Wagon {
     this.playSpawnSound();
     this.addDecorativeElements();
 
-    // Если вагон имеет высокий множитель – добавить дополнительные эффекты
     if (this.coinMultiplier >= 4) {
       this.addHighMultiplierEffects();
     }
 
-    // Логируем создание вагона для отладки
-    console.log(`🚃 Вагон создан: индекс ${this.index}, позиция (${x}, ${y}), текстура ${this.textureKey}`);
+    console.log(`🚃 Вагон создан: индекс ${this.index}, позиция (${x}, ${y})`);
   }
 
   // =========================================================================
@@ -89,11 +80,9 @@ export class Wagon {
         glowColor: 0x6aacff,
         textureSet: 'space',
         particleColor: 0x4a8cff,
-        drag: 0.95,
-        lightIntensity: 0.4,
         trailColor: [0x4a8cff, 0x8abaff],
-        engineGlow: 0x88aaff,
-        speedEffect: 0.8
+        followDistance: 52,
+        scale: 1.05
       },
       1: {
         name: 'neon',
@@ -101,11 +90,9 @@ export class Wagon {
         glowColor: 0xff88ff,
         textureSet: 'neon',
         particleColor: 0xff44ff,
-        drag: 0.92,
-        lightIntensity: 0.7,
         trailColor: [0xff44ff, 0xff88ff, 0xffaaff],
-        engineGlow: 0xff88ff,
-        speedEffect: 1.0
+        followDistance: 52,
+        scale: 1.05
       },
       2: {
         name: 'dark',
@@ -113,11 +100,9 @@ export class Wagon {
         glowColor: 0xffaa88,
         textureSet: 'dark',
         particleColor: 0xff6600,
-        drag: 0.98,
-        lightIntensity: 0.3,
         trailColor: [0xcc8866, 0xffaa88],
-        engineGlow: 0xff8844,
-        speedEffect: 0.7
+        followDistance: 52,
+        scale: 1.05
       },
       3: {
         name: 'rocky',
@@ -125,11 +110,9 @@ export class Wagon {
         glowColor: 0xffcc88,
         textureSet: 'rocky',
         particleColor: 0xffaa44,
-        drag: 0.96,
-        lightIntensity: 0.5,
         trailColor: [0xffaa66, 0xffcc88],
-        engineGlow: 0xffaa66,
-        speedEffect: 0.85
+        followDistance: 52,
+        scale: 1.05
       },
       4: {
         name: 'void',
@@ -137,11 +120,9 @@ export class Wagon {
         glowColor: 0xcc88ff,
         textureSet: 'void',
         particleColor: 0xaa88ff,
-        drag: 0.9,
-        lightIntensity: 0.6,
         trailColor: [0xaa88ff, 0xcc88ff, 0xeeaaff],
-        engineGlow: 0xaa88ff,
-        speedEffect: 0.9
+        followDistance: 52,
+        scale: 1.05
       }
     };
     return configs[this.worldType] || configs[0];
@@ -290,23 +271,6 @@ export class Wagon {
         }
       });
     }
-
-    if (this.index % 5 === 2 && this.scene.textures.exists('antenna')) {
-      const antenna = this.scene.add.image(this.sprite.x, this.sprite.y - 18, 'antenna')
-        .setScale(0.55).setDepth(this.sprite.depth + 1);
-      antenna.setBlendMode(Phaser.BlendModes.ADD);
-      this.decorations.push(antenna);
-      this.scene.tweens.add({
-        targets: antenna,
-        alpha: { from: 0.5, to: 1 },
-        duration: 600,
-        yoyo: true,
-        repeat: -1,
-        onUpdate: () => {
-          if (antenna.active) antenna.setPosition(this.sprite.x, this.sprite.y - 18);
-        }
-      });
-    }
   }
 
   addHighMultiplierEffects() {
@@ -446,7 +410,7 @@ export class Wagon {
 
     this.followDistance = gap;
 
-    // Защитные кадры – без тряски, только изменение цвета
+    // Защитные кадры – только изменение цвета, без прозрачности
     if (this.protectionFrames > 0) {
       this.protectionFrames -= delta;
       if (this.protectionFrames % 100 < 50) {
@@ -498,7 +462,6 @@ export class Wagon {
 
     this.updateMultiplierIndicator();
 
-    // Обновляем свечение
     if (this.glowEffect && this.glowEffect.active) {
       this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
     }
@@ -512,8 +475,6 @@ export class Wagon {
         if (typeName === 'Image') {
           deco.setPosition(this.sprite.x, this.sprite.y - 18);
         } else if (typeName === 'Circle') {
-          deco.setPosition(this.sprite.x, this.sprite.y - 12);
-        } else if (typeName !== 'ParticleEmitter') {
           deco.setPosition(this.sprite.x, this.sprite.y - 12);
         }
       }

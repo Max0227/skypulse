@@ -631,9 +631,6 @@ createWagonLostEffect(wagon, index) {
     duration: 450,
     onComplete: () => shockwave.destroy()
   });
-
-  // Короткая вибрация камеры (опционально, если хотите оставить, но можно убрать)
-  // this.cameras.main.shake(120, 0.005); – по желанию
 }
 
 /**
