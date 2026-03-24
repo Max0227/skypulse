@@ -73,6 +73,9 @@ export class Wagon {
     // Если вагон имеет высокий множитель – добавить дополнительные эффекты
     if (this.coinMultiplier >= 4) {
       this.addHighMultiplierEffects();
+      if (deco && deco.active && deco.setPosition && deco.constructor) {
+  // обновление
+}
     }
   }
 
@@ -443,82 +446,93 @@ export class Wagon {
   // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА)
   // =========================================================================
   update(prevX, prevY, gap, delta) {
-    if (!this.sprite?.active) {
-      this.active = false;
-      return;
-    }
+  if (!this.sprite?.active) {
+    this.active = false;
+    return;
+  }
 
-    this.followDistance = gap;
+  this.followDistance = gap;
 
-    // Защитные кадры (мигание) – без изменения прозрачности, только tint
-    if (this.protectionFrames > 0) {
-      this.protectionFrames -= delta;
-      if (this.protectionFrames % 100 < 50) {
-        this.sprite.setTint(0xff8888);
-      } else {
-        this.sprite.setTint(this.worldConfig.color);
-      }
+  // Защитные кадры (мигание) – без изменения прозрачности, только tint
+  if (this.protectionFrames > 0) {
+    this.protectionFrames -= delta;
+    if (this.protectionFrames % 100 < 50) {
+      this.sprite.setTint(0xff8888);
     } else {
       this.sprite.setTint(this.worldConfig.color);
     }
+  } else {
+    this.sprite.setTint(this.worldConfig.color);
+  }
 
-    // Целевая позиция
-    const targetX = prevX - this.followDistance;
-    const targetY = prevY;
+  // Целевая позиция
+  const targetX = prevX - this.followDistance;
+  const targetY = prevY;
 
-    const dx = targetX - this.pos.x;
-    const dy = targetY - this.pos.y;
+  const dx = targetX - this.pos.x;
+  const dy = targetY - this.pos.y;
 
-    // Пружинная сила с учётом дельты
-    const forceX = dx * this.springStrength * (delta / 16);
-    const forceY = dy * this.springStrength * (delta / 16);
-    this.vel.x += forceX;
-    this.vel.y += forceY;
+  // Пружинная сила с учётом дельты
+  const forceX = dx * this.springStrength * (delta / 16);
+  const forceY = dy * this.springStrength * (delta / 16);
+  this.vel.x += forceX;
+  this.vel.y += forceY;
 
-    // Демпфирование
-    this.vel.x *= this.damping;
-    this.vel.y *= this.damping;
+  // Демпфирование
+  this.vel.x *= this.damping;
+  this.vel.y *= this.damping;
 
-    // Обновление позиции
-    this.pos.x += this.vel.x * (delta / 16);
-    this.pos.y += this.vel.y * (delta / 16);
+  // Обновление позиции
+  this.pos.x += this.vel.x * (delta / 16);
+  this.pos.y += this.vel.y * (delta / 16);
 
-    // Применяем позицию к спрайту
-    this.sprite.x = this.pos.x;
-    this.sprite.y = this.pos.y;
+  // Применяем позицию к спрайту
+  this.sprite.x = this.pos.x;
+  this.sprite.y = this.pos.y;
 
-    // Визуальное покачивание (очень слабое)
-    const wobble = Math.sin(Date.now() * 0.0045 + this.index) * 0.35;
-    this.sprite.y += wobble;
+  // Визуальное покачивание (очень слабое)
+  const wobble = Math.sin(Date.now() * 0.0045 + this.index) * 0.35;
+  this.sprite.y += wobble;
 
-    // Поворот в зависимости от скорости
-    const speed = Math.hypot(this.vel.x, this.vel.y);
-    if (speed > 0.6) {
-      const moveAngle = Math.atan2(this.vel.y, this.vel.x);
-      this.sprite.rotation += (moveAngle * 0.28 - this.sprite.rotation) * 0.1;
-    } else {
-      this.sprite.rotation *= 0.98;
-    }
+  // Поворот в зависимости от скорости
+  const speed = Math.hypot(this.vel.x, this.vel.y);
+  if (speed > 0.6) {
+    const moveAngle = Math.atan2(this.vel.y, this.vel.x);
+    this.sprite.rotation += (moveAngle * 0.28 - this.sprite.rotation) * 0.1;
+  } else {
+    this.sprite.rotation *= 0.98;
+  }
 
-    this.updateMultiplierIndicator();
+  this.updateMultiplierIndicator();
 
-    // Обновляем свечение
-    if (this.glowEffect) {
-      this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
-    }
+  // Обновляем свечение
+  if (this.glowEffect) {
+    this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+  }
 
-    // Обновляем декоративные элементы
-    for (let i = 0; i < this.decorations.length; i++) {
-      const deco = this.decorations[i];
-      if (deco && deco.active) {
-        if (deco instanceof Phaser.GameObjects.Image) {
-          deco.setPosition(this.sprite.x, this.sprite.y - 16);
-        } else if (deco instanceof Phaser.GameObjects.Circle) {
-          deco.setPosition(this.sprite.x, this.sprite.y - 10);
-        }
+  // ===== БЕЗОПАСНОЕ ОБНОВЛЕНИЕ ДЕКОРАТИВНЫХ ЭЛЕМЕНТОВ =====
+  for (let i = 0; i < this.decorations.length; i++) {
+    const deco = this.decorations[i];
+    // Проверяем, что объект существует и активен
+    if (!deco || !deco.active) continue;
+    
+    // Проверяем наличие метода setPosition
+    if (typeof deco.setPosition === 'function') {
+      // Определяем тип по имени конструктора (безопасно)
+      const typeName = deco.constructor?.name || '';
+      if (typeName === 'Image') {
+        deco.setPosition(this.sprite.x, this.sprite.y - 16);
+      } else if (typeName === 'Circle') {
+        deco.setPosition(this.sprite.x, this.sprite.y - 10);
+      } else if (typeName === 'ParticleEmitter') {
+        // Частицы не требуют обновления позиции, они следуют за спрайтом
+        continue;
+      } else {
+        deco.setPosition(this.sprite.x, this.sprite.y - 10);
       }
     }
   }
+}
 
   // =========================================================================
   // ОБНОВЛЕНИЕ ПОСЛЕ ОТЦЕПЛЕНИЯ
