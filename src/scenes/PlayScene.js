@@ -344,8 +344,6 @@ export class PlayScene extends Phaser.Scene {
         shadow: { blur: 10, color: '#ffff00', fill: true }
       }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
-     this.cameras.main.shake(40, 0.001);
-
       this.tweens.add({
         targets: text,
         y: text.y - 50,
@@ -486,16 +484,11 @@ addWagon() {
   // Эффект появления вагона
   this.createWagonSpawnEffect(wagon);
   
-  // Лёгкая тряска камеры при добавлении вагона
-  this.cameras.main.shake(80, 0.003);
   
   // Звук появления вагона
   try { 
     if (this.wagonSound) this.wagonSound.play(); 
   } catch(e) {}
-  
-  // Обновляем зум камеры
-  this.updateCameraZoom();
   
   // Показываем уведомление о новом множителе
   this.showNotification(`✨ НОВЫЙ ВАГОН! МНОЖИТЕЛЬ x${wagon.getMultiplier().toFixed(1)} ✨`, 1500, '#ffaa00');
@@ -642,8 +635,6 @@ createWagonLostEffect(wagon, index) {
     onComplete: () => shockwave.destroy()
   });
   
-  // Тряска камеры
-  this.cameras.main.shake(200, 0.008);
 }
 
 /**
@@ -1329,8 +1320,6 @@ completeWorldLevel() {
         ease: 'Quad.out'
       });
     }
-
-    this.cameras.main.shake(20, 0.001);
   }
 
   spawnGate() {
@@ -1409,7 +1398,6 @@ completeWorldLevel() {
 
     this.headHP--;
     this.updateHearts();
-    this.cameras.main.shake(100, 0.003);
 
     try {
       if (this.hitSound) this.hitSound.play();
@@ -1463,7 +1451,6 @@ spawnAsteroid() {
       } else {
         this.headHP -= ast.damage;
         this.updateHearts();
-        this.cameras.main.shake(150, 0.005);
         try { audioManager.playSound(this, 'hit_sound', 0.3); } catch(e) {}
         if (this.headHP <= 0) this.handleDeath();
       }
@@ -2238,9 +2225,6 @@ deactivateBonus() {
   
   // Очищаем все эффекты
   this.cleanupAllEffects();
-  
-  // Финальная вспышка
-  this.cameras.main.flash(150, 100, 100, 100, false);
 }
 
 /**
@@ -2606,9 +2590,6 @@ updatePlayerVisuals() {
     });
 
     emitter.explode(50);
-
-    this.cameras.main.shake(300, 0.01);
-    this.cameras.main.flash(300, 0, 255, 255, false);
   }
 
   /**
@@ -2764,9 +2745,6 @@ checkQuests() {
           1500,
           color
         );
-        
-        // Легкая тряска
-        this.cameras.main.shake(100, 0.001);
       }
     }
   }
@@ -3773,7 +3751,6 @@ setupCollisions() {
       } else {
         this.headHP -= ast.damage;
         this.updateHearts();
-        this.cameras.main.shake(150, 0.005);
         try { audioManager.playSound(this, 'hit_sound', 0.3); } catch(e) {}
         
         if (this.headHP <= 0) {
@@ -4644,9 +4621,6 @@ updateLevel() {
       }
     });
     
-    // Эффект свечения
-    this.cameras.main.flash(100, 0, 255, 255, false);
-    
     this.checkStationSpawn();
     if (this.questSystem) {
       this.questSystem.updateProgress('level', 1);
@@ -5087,9 +5061,6 @@ handleDeath() {
     this.upgradeSystem.upgrades.revival--;
     this.headHP = this.maxHeadHP;
     this.updateHearts();
-    
-    // Эффект воскрешения
-    this.cameras.main.flash(500, 100, 255, 100, false);
     this.createReviveEffect();
     
     try { if (this.reviveSound) this.reviveSound.play(); } catch (e) {}
@@ -5184,11 +5155,7 @@ createReviveEffect() {
  */
 createDeathExplosion() {
   if (!this.player) return;
-  
-  // Тряска камеры
-  this.cameras.main.shake(400, 0.008);
-  this.cameras.main.flash(400, 255, 100, 100, false);
-  
+
   // Поворачиваем игрока
   this.player.setTint(0xff0000).setAngle(90);
   
