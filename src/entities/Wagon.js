@@ -244,34 +244,34 @@ export class Wagon {
   }
 
   animateSpawn() {
-    this.sprite.setAlpha(0);
-    this.sprite.setScale(0);
-    if (this.multiplierIndicator) this.multiplierIndicator.setAlpha(0);
-    if (this.glowEffect) this.glowEffect.setAlpha(0);
+  this.sprite.setAlpha(0);
+  this.sprite.setScale(0);
+  if (this.multiplierIndicator) this.multiplierIndicator.setAlpha(0);
+  if (this.glowEffect) this.glowEffect.setAlpha(0);
 
-    this.scene.tweens.add({
-      targets: this.sprite,
-      alpha: 1,
-      scaleX: 1.05,
-      scaleY: 1.05,
-      duration: 480,
-      ease: 'Back.out',
-      onUpdate: () => {
-        if (this.multiplierIndicator) {
-          this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 54);
-          this.multiplierIndicator.setAlpha(this.sprite.alpha);
-        }
-        if (this.glowEffect) {
-          this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
-          this.glowEffect.setAlpha(this.sprite.alpha * 0.7);
-        }
-      },
-      onComplete: () => {
-        if (this.trailEmitter) this.trailEmitter.start();
-        this.createSpawnFlash();
+  this.scene.tweens.add({
+    targets: this.sprite,
+    alpha: 1,                    // ← В КОНЦЕ ДОЛЖНО СТАТЬ 1
+    scaleX: 1.05,
+    scaleY: 1.05,
+    duration: 480,
+    ease: 'Back.out',
+    onUpdate: () => {
+      if (this.multiplierIndicator) {
+        this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 54);
+        this.multiplierIndicator.setAlpha(this.sprite.alpha);
       }
-    });
-  }
+      if (this.glowEffect) {
+        this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
+        this.glowEffect.setAlpha(this.sprite.alpha * 0.7);
+      }
+    },
+    onComplete: () => {
+      if (this.trailEmitter) this.trailEmitter.start();
+      this.createSpawnFlash();
+    }
+  });
+}
 
   createSpawnFlash() {
     const flash = this.scene.add.circle(this.sprite.x, this.sprite.y, 30, this.worldConfig.color, 0.9);

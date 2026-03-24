@@ -402,17 +402,23 @@ export class PlayScene extends Phaser.Scene {
   }
 
   updateWagons() {
-    if (this.wagons.length === 0 || !this.player) return;
-    let prevX = this.player.x;
-    let prevY = this.player.y;
-    for (let i = 0; i < this.wagons.length; i++) {
-      const wagon = this.wagons[i];
-      if (!wagon || !wagon.isActive()) continue;
-      wagon.update(prevX, prevY, this.wagonGap);
-      prevX = wagon.sprite.x;
-      prevY = wagon.sprite.y;
-    }
+  if (this.wagons.length === 0 || !this.player) return;
+  
+  let prevX = this.player.x;
+  let prevY = this.player.y;
+  
+  for (let i = 0; i < this.wagons.length; i++) {
+    const wagon = this.wagons[i];
+    if (!wagon || !wagon.isActive()) continue;
+    
+    wagon.update(prevX, prevY, this.wagonGap);
+    
+    console.log(`🚃 Вагон ${i}: позиция (${wagon.sprite.x}, ${wagon.sprite.y})`); // ← ДОБАВИТЬ
+    
+    prevX = wagon.sprite.x;
+    prevY = wagon.sprite.y;
   }
+}
 
   wagonHit(wagon, obstacle) {
     if (!wagon || !wagon.isActive()) return;
@@ -448,31 +454,6 @@ export class PlayScene extends Phaser.Scene {
     const shockwave = this.add.circle(wagon.sprite.x, wagon.sprite.y, 18, 0xff6666, 0.8);
     shockwave.setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: shockwave, scale: 3.2, alpha: 0, duration: 450, onComplete: () => shockwave.destroy() });
-  }
-
-  updateCameraZoom() {
-    if (!this.player) return;
-    const baseZoom = 1.0;
-    let targetZoom = baseZoom;
-    if (this.wagons.length > 0) {
-      const zoomReduction = Math.min(0.32, this.wagons.length * 0.022);
-      targetZoom = baseZoom - zoomReduction;
-      targetZoom = Math.max(0.72, targetZoom);
-    }
-    if (this._lastTargetZoom === targetZoom) return;
-    this._lastTargetZoom = targetZoom;
-    if (this.cameraZoomTween) {
-      this.cameraZoomTween.stop();
-      this.cameraZoomTween = null;
-    }
-    this.cameraZoomTween = this.tweens.add({
-      targets: this.cameras.main,
-      zoom: targetZoom,
-      duration: 550,
-      ease: 'Sine.easeInOut',
-      onUpdate: () => this.cameras.main.centerOn(this.player.x, this.player.y),
-      onComplete: () => { this.cameraZoomTween = null; }
-    });
   }
 
   reindexWagons() {
