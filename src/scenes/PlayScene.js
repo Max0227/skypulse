@@ -379,7 +379,7 @@ export class PlayScene extends Phaser.Scene {
     }
     this.createWagonSpawnEffect(wagon);
     try { if (this.wagonSound) this.wagonSound.play(); } catch(e) {}
-    this.updateCameraZoom();
+
     this.showNotification(`✨ НОВЫЙ ВАГОН! МНОЖИТЕЛЬ x${wagon.getMultiplier().toFixed(1)} ✨`, 1500, '#ffaa00');
   }
 
@@ -436,7 +436,6 @@ export class PlayScene extends Phaser.Scene {
       this.wagonCountText.setText(`🚃 ${this.wagons.length}/${this.maxWagons}`);
       this.tweens.add({ targets: this.wagonCountText, scaleX: 1.2, scaleY: 1.2, duration: 150, yoyo: true });
     }
-    this.updateCameraZoom();
   }
 
   createWagonLostEffect(wagon, index) {
@@ -2706,7 +2705,6 @@ export class PlayScene extends Phaser.Scene {
     this.wagons = [];
     this.targetPlayerX = 110;
     if (this.wagonCountText) this.wagonCountText.setText(`🚃 0/${this.maxWagons}`);
-    this.updateCameraZoom();
     const msg = this.add.text(this.player.x, this.player.y - 50, `+${bonus} 💎`, {
       fontSize: '28px', fontFamily: "'Audiowide', monospace", color: '#ffaa00',
       stroke: '#ff00ff', strokeThickness: 4, shadow: { blur: 12, color: '#ffaa00', fill: true }
@@ -3302,7 +3300,6 @@ export class PlayScene extends Phaser.Scene {
       if (this.coinTipsText) this.coinTipsText.setPosition(w / 2, h * 0.52);
     }
     if (this.heartContainer) this.heartContainer.setPosition(12, 38);
-    this.updateCameraZoom();
   }
 
   createComboIndicator() {
