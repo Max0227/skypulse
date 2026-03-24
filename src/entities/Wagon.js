@@ -8,7 +8,7 @@ export class Wagon {
     this.index = index;
     this.worldType = worldType ?? (scene.levelManager?.currentWorld ?? 0);
     
-    // ===== Конфигурация =====
+    // ===== Конфигурация мира =====
     this.worldConfig = this.getWorldConfig();
     this.texture = this.getTextureForWorld();
     
@@ -17,7 +17,7 @@ export class Wagon {
       .setScale(0.95)
       .setDepth(5 + index);
     
-    // ===== Настройка физики (без гравитации) =====
+    // ===== Настройка физики =====
     this.setupPhysics();
     
     // ===== Визуальные эффекты =====
@@ -32,16 +32,15 @@ export class Wagon {
     this.active = true;
     this.isConnected = true;
     this.protectionFrames = 0;
-    this.protectionDuration = 500;
+    this.protectionDuration = 500;   // ms
     
-    // Множитель очков (увеличивается с индексом)
+    // ===== Множитель очков =====
     this.coinMultiplier = 1 + (this.index + 1) * 0.5;
     
     // ===== Параметры следования (пружинная система) =====
-    this.followDistance = 50;          // желаемое расстояние до предыдущего
-    this.springStrength = 0.65;
-this.damping = 0.94;              // затухание
-    this.smoothY = 0.12;               // плавность по вертикали
+    this.followDistance = 50;
+    this.springStrength = 0.38;      // уменьшено для плавного старта
+    this.damping = 0.96;              // быстрое затухание без рывков
     
     // Позиция и скорость (для независимого движения)
     this.pos = { x: x, y: y };
@@ -60,8 +59,6 @@ this.damping = 0.94;              // затухание
     this.applyWorldVisuals();
     this.animateSpawn();
     this.playSpawnSound();
-    
-    // ===== Добавляем уникальные украшения для каждого вагона =====
     this.addDecorativeElements();
   }
 
@@ -70,7 +67,7 @@ this.damping = 0.94;              // затухание
   // =========================================================================
   getWorldConfig() {
     const configs = {
-      0: { // Космос
+      0: {
         color: 0x4a8cff,
         glowColor: 0x6aacff,
         textureSet: 'space',
@@ -79,7 +76,7 @@ this.damping = 0.94;              // затухание
         lightIntensity: 0.4,
         trailColor: [0x4a8cff, 0x8abaff]
       },
-      1: { // Киберпанк
+      1: {
         color: 0xff44ff,
         glowColor: 0xff88ff,
         textureSet: 'neon',
@@ -88,7 +85,7 @@ this.damping = 0.94;              // затухание
         lightIntensity: 0.7,
         trailColor: [0xff44ff, 0xff88ff, 0xffaaff]
       },
-      2: { // Подземелье
+      2: {
         color: 0xcc8866,
         glowColor: 0xffaa88,
         textureSet: 'dark',
@@ -97,7 +94,7 @@ this.damping = 0.94;              // затухание
         lightIntensity: 0.3,
         trailColor: [0xcc8866, 0xffaa88]
       },
-      3: { // Астероиды
+      3: {
         color: 0xffaa66,
         glowColor: 0xffcc88,
         textureSet: 'rocky',
@@ -106,7 +103,7 @@ this.damping = 0.94;              // затухание
         lightIntensity: 0.5,
         trailColor: [0xffaa66, 0xffcc88]
       },
-      4: { // Чёрная дыра
+      4: {
         color: 0xaa88ff,
         glowColor: 0xcc88ff,
         textureSet: 'void',
@@ -120,7 +117,7 @@ this.damping = 0.94;              // затухание
   }
 
   // =========================================================================
-  // ВЫБОР ТЕКСТУРЫ (разнообразие)
+  // ВЫБОР ТЕКСТУРЫ
   // =========================================================================
   getTextureForWorld() {
     const textureMaps = {
@@ -142,8 +139,8 @@ this.damping = 0.94;              // затухание
   setupPhysics() {
     this.sprite.body.setAllowGravity(false);
     this.sprite.body.setImmovable(true);
-    this.sprite.body.enable = false;   // отключаем стандартную физику
-    this.sprite.setCircle(18);         // увеличен радиус коллизии
+    this.sprite.body.enable = false;
+    this.sprite.setCircle(18);
   }
 
   // =========================================================================
@@ -153,7 +150,6 @@ this.damping = 0.94;              // затухание
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
     
-    // Для каждого 2-го вагона добавляем усиленное свечение
     if (this.index % 2 === 0) {
       this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 32, this.worldConfig.glowColor, 0.3);
       this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
@@ -200,7 +196,6 @@ this.damping = 0.94;              // затухание
   }
 
   applyWorldVisuals() {
-    // Киберпанк — пульсация свечения
     if (this.worldType === 1 && this.glowEffect) {
       this.scene.tweens.add({
         targets: this.glowEffect,
@@ -219,7 +214,6 @@ this.damping = 0.94;              // затухание
   }
 
   addDecorativeElements() {
-    // Добавляем маленькие огоньки/антенны для разнообразия
     if (this.index % 3 === 0) {
       const antenna = this.scene.add.image(this.sprite.x, this.sprite.y - 12, 'antenna')
         .setScale(0.4).setDepth(this.sprite.depth + 1);
@@ -291,7 +285,6 @@ this.damping = 0.94;              // затухание
     let baseHealth = 1;
     const upgradeLevel = gameManager.getUpgradeLevel?.('wagonHP') || 0;
     baseHealth += upgradeLevel;
-    // Дополнительное здоровье для дальних вагонов
     baseHealth += Math.floor(this.index / 5);
     return Math.max(1, baseHealth);
   }
@@ -343,7 +336,7 @@ this.damping = 0.94;              // затухание
   // =========================================================================
   // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА)
   // =========================================================================
-  update(prevX, prevY, gap) {
+  update(prevX, prevY, gap, delta) {
     if (!this.sprite?.active) {
       this.active = false;
       return;
@@ -351,42 +344,41 @@ this.damping = 0.94;              // затухание
 
     this.followDistance = gap;
 
-    // Защитные кадры (мигание)
+    // Защитные кадры (используем delta для плавности)
     if (this.protectionFrames > 0) {
-      this.protectionFrames -= 16;
-      this.sprite.setAlpha(this.protectionFrames % 100 < 50 ? 0.6 : 1);
+      this.protectionFrames -= delta;
+      const blink = (this.protectionFrames % 100 < 50) ? 0.6 : 1;
+      this.sprite.setAlpha(blink);
     } else {
       this.sprite.setAlpha(1);
     }
 
-    // Целевая позиция: позади предыдущего на заданное расстояние
+    // Целевая позиция
     const targetX = prevX - this.followDistance;
     const targetY = prevY;
 
-    // Разница между текущей и целевой позицией
     const dx = targetX - this.pos.x;
     const dy = targetY - this.pos.y;
 
-    // Пружинная сила (ускорение)
-    this.vel.x += dx * this.springStrength;
-    this.vel.y += dy * this.springStrength;
+    // Пружинная сила (ускорение) с учётом delta
+    const forceX = dx * this.springStrength * (delta / 16);
+    const forceY = dy * this.springStrength * (delta / 16);
+    this.vel.x += forceX;
+    this.vel.y += forceY;
 
-    // Демпфирование
+    // Демпфирование (не зависит от delta, применяется после)
     this.vel.x *= this.damping;
     this.vel.y *= this.damping;
 
     // Обновление позиции
-    this.pos.x += this.vel.x;
-    this.pos.y += this.vel.y;
-
-    // Лёгкая вертикальная коррекция, чтобы вагоны не отставали по Y
-    this.pos.y += dy * 0.05;
+    this.pos.x += this.vel.x * (delta / 16);
+    this.pos.y += this.vel.y * (delta / 16);
 
     // Применяем позицию к спрайту
     this.sprite.x = this.pos.x;
     this.sprite.y = this.pos.y;
 
-    // Небольшое визуальное покачивание (очень слабое, только для эстетики)
+    // Небольшое визуальное покачивание (чисто визуально)
     const wobble = Math.sin(Date.now() * 0.005 + this.index) * 0.3;
     this.sprite.y += wobble;
 
@@ -398,10 +390,7 @@ this.damping = 0.94;              // затухание
       this.sprite.rotation *= 0.98;
     }
 
-    // Обновляем индикатор множителя
     this.updateMultiplierIndicator();
-
-    // Обновляем свечение
     if (this.glowEffect) {
       this.glowEffect.setPosition(this.sprite.x, this.sprite.y);
     }
@@ -434,7 +423,6 @@ this.damping = 0.94;              // затухание
     }
     this.playDetachSound();
 
-    // Отбрасываем вагон
     this.vel.x = -250;
     this.vel.y = Phaser.Math.Between(-120, 120);
   }
