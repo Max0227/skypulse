@@ -3137,6 +3137,8 @@ initSounds() {
 createUI() {
   const w = this.scale.width;
   const h = this.scale.height;
+  this.createNeonFrame();
+  
   
   // Создаём неоновую рамку по краям
   this.createNeonFrame();
@@ -3190,12 +3192,12 @@ createUI() {
 /**
  * Создание неоновой рамки
  */
-ccreateNeonFrame() {
+createNeonFrame() {
   const w = this.scale.width;
   const h = this.scale.height;
   
   this.frameGraphics = this.add.graphics();
-  this.frameGraphics.setScrollFactor(0);  // ← КЛЮЧЕВОЕ: рамка не двигается с камерой
+  this.frameGraphics.setScrollFactor(0);  // ← рамка не двигается с камерой
   this.frameGraphics.lineStyle(2, 0x00ffff, 0.3);
   this.frameGraphics.strokeRect(8, 8, w - 16, h - 16);
   
@@ -3219,6 +3221,7 @@ ccreateNeonFrame() {
   
   corners.forEach(corner => {
     const cornerGraphics = this.add.graphics();
+    cornerGraphics.setScrollFactor(0);
     cornerGraphics.lineStyle(2, 0x00ffff, 0.6);
     cornerGraphics.moveTo(corner.x, corner.y);
     cornerGraphics.lineTo(corner.x + cornerSize, corner.y);
