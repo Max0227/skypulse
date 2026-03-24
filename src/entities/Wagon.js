@@ -14,7 +14,7 @@ export class Wagon {
     // Выбор текстуры
     this.textureKey = this.getTextureForWorld();
 
-    // Создание спрайта
+    // Создание спрайта – ВИДИМЫЙ И ЯРКИЙ
     this.sprite = scene.physics.add.image(x, y, this.textureKey)
       .setScale(1.05)
       .setDepth(5 + index)
@@ -39,10 +39,10 @@ export class Wagon {
     // Множитель очков
     this.coinMultiplier = 1 + (this.index + 1) * 0.55;
 
-    // Параметры следования
+    // Параметры следования – ОПТИМИЗИРОВАНЫ
     this.followDistance = 52;
-    this.springStrength = 0.44;
-    this.damping = 0.95;
+    this.springStrength = 0.48;
+    this.damping = 0.96;
 
     // Позиция и скорость
     this.pos = { x: x, y: y };
@@ -66,7 +66,7 @@ export class Wagon {
       this.addHighMultiplierEffects();
     }
 
-    console.log(`🚃 Вагон создан: индекс ${this.index}, позиция (${x}, ${y})`);
+    console.log(`🚃 Вагон создан: индекс ${this.index}, позиция (${x}, ${y}), текстура: ${this.textureKey}`);
   }
 
   // =========================================================================
@@ -74,62 +74,17 @@ export class Wagon {
   // =========================================================================
   getWorldConfig() {
     const configs = {
-      0: {
-        name: 'space',
-        color: 0x4a8cff,
-        glowColor: 0x6aacff,
-        textureSet: 'space',
-        particleColor: 0x4a8cff,
-        trailColor: [0x4a8cff, 0x8abaff],
-        followDistance: 52,
-        scale: 1.05
-      },
-      1: {
-        name: 'neon',
-        color: 0xff44ff,
-        glowColor: 0xff88ff,
-        textureSet: 'neon',
-        particleColor: 0xff44ff,
-        trailColor: [0xff44ff, 0xff88ff, 0xffaaff],
-        followDistance: 52,
-        scale: 1.05
-      },
-      2: {
-        name: 'dark',
-        color: 0xcc8866,
-        glowColor: 0xffaa88,
-        textureSet: 'dark',
-        particleColor: 0xff6600,
-        trailColor: [0xcc8866, 0xffaa88],
-        followDistance: 52,
-        scale: 1.05
-      },
-      3: {
-        name: 'rocky',
-        color: 0xffaa66,
-        glowColor: 0xffcc88,
-        textureSet: 'rocky',
-        particleColor: 0xffaa44,
-        trailColor: [0xffaa66, 0xffcc88],
-        followDistance: 52,
-        scale: 1.05
-      },
-      4: {
-        name: 'void',
-        color: 0xaa88ff,
-        glowColor: 0xcc88ff,
-        textureSet: 'void',
-        particleColor: 0xaa88ff,
-        trailColor: [0xaa88ff, 0xcc88ff, 0xeeaaff],
-        followDistance: 52,
-        scale: 1.05
-      }
+      0: { name: 'space', color: 0x4a8cff, glowColor: 0x6aacff, textureSet: 'space', particleColor: 0x4a8cff, trailColor: [0x4a8cff, 0x8abaff] },
+      1: { name: 'neon', color: 0xff44ff, glowColor: 0xff88ff, textureSet: 'neon', particleColor: 0xff44ff, trailColor: [0xff44ff, 0xff88ff, 0xffaaff] },
+      2: { name: 'dark', color: 0xcc8866, glowColor: 0xffaa88, textureSet: 'dark', particleColor: 0xff6600, trailColor: [0xcc8866, 0xffaa88] },
+      3: { name: 'rocky', color: 0xffaa66, glowColor: 0xffcc88, textureSet: 'rocky', particleColor: 0xffaa44, trailColor: [0xffaa66, 0xffcc88] },
+      4: { name: 'void', color: 0xaa88ff, glowColor: 0xcc88ff, textureSet: 'void', particleColor: 0xaa88ff, trailColor: [0xaa88ff, 0xcc88ff, 0xeeaaff] }
     };
     return configs[this.worldType] || configs[0];
   }
 
   // =========================================================================
-  // ВЫБОР ТЕКСТУРЫ
+  // ВЫБОР ТЕКСТУРЫ С ЗАПАСНЫМ ВАРИАНТОМ
   // =========================================================================
   getTextureForWorld() {
     const textureMaps = {
@@ -191,7 +146,6 @@ export class Wagon {
   setupVisuals() {
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
-
     const glowAlpha = 0.25 + (this.index % 3) * 0.08;
     this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 36, this.worldConfig.glowColor, glowAlpha);
     this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
@@ -400,7 +354,7 @@ export class Wagon {
   }
 
   // =========================================================================
-  // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА)
+  // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА) – ОПТИМИЗИРОВАНО
   // =========================================================================
   update(prevX, prevY, gap, delta) {
     if (!this.sprite?.active) {
@@ -410,16 +364,17 @@ export class Wagon {
 
     this.followDistance = gap;
 
-    // Защитные кадры – только изменение цвета, без прозрачности
+    // Защитные кадры – только tint, без изменения прозрачности
     if (this.protectionFrames > 0) {
       this.protectionFrames -= delta;
-      if (this.protectionFrames % 100 < 50) {
+      if (Math.floor(this.protectionFrames / 50) % 2 === 0) {
         this.sprite.setTint(0xff8888);
       } else {
         this.sprite.setTint(this.worldConfig.color);
       }
     } else {
       this.sprite.setTint(this.worldConfig.color);
+      this.sprite.setAlpha(1);
     }
 
     // Целевая позиция
@@ -429,9 +384,9 @@ export class Wagon {
     const dx = targetX - this.pos.x;
     const dy = targetY - this.pos.y;
 
-    // Пружинная сила
-    const forceX = dx * this.springStrength * (delta / 16);
-    const forceY = dy * this.springStrength * (delta / 16);
+    // Пружинная сила (ускорение) – нормализовано по дельте
+    const forceX = dx * this.springStrength * Math.min(1, delta / 16);
+    const forceY = dy * this.springStrength * Math.min(1, delta / 16);
     this.vel.x += forceX;
     this.vel.y += forceY;
 
@@ -440,22 +395,22 @@ export class Wagon {
     this.vel.y *= this.damping;
 
     // Обновление позиции
-    this.pos.x += this.vel.x * (delta / 16);
-    this.pos.y += this.vel.y * (delta / 16);
+    this.pos.x += this.vel.x * Math.min(1, delta / 16);
+    this.pos.y += this.vel.y * Math.min(1, delta / 16);
 
     // Применяем позицию к спрайту
     this.sprite.x = this.pos.x;
     this.sprite.y = this.pos.y;
 
-    // Визуальное покачивание
-    const wobble = Math.sin(Date.now() * 0.0045 + this.index) * 0.4;
+    // Визуальное покачивание – очень слабое, только для эстетики
+    const wobble = Math.sin(Date.now() * 0.0045 + this.index) * 0.3;
     this.sprite.y += wobble;
 
     // Поворот в зависимости от скорости
     const speed = Math.hypot(this.vel.x, this.vel.y);
-    if (speed > 0.6) {
+    if (speed > 0.5) {
       const moveAngle = Math.atan2(this.vel.y, this.vel.x);
-      this.sprite.rotation += (moveAngle * 0.28 - this.sprite.rotation) * 0.1;
+      this.sprite.rotation += (moveAngle * 0.3 - this.sprite.rotation) * 0.12;
     } else {
       this.sprite.rotation *= 0.98;
     }
@@ -471,11 +426,10 @@ export class Wagon {
       const deco = this.decorations[i];
       if (!deco || !deco.active) continue;
       if (typeof deco.setPosition === 'function') {
-        const typeName = deco.constructor?.name || '';
-        if (typeName === 'Image') {
-          deco.setPosition(this.sprite.x, this.sprite.y - 18);
-        } else if (typeName === 'Circle') {
+        if (deco.constructor?.name === 'Circle') {
           deco.setPosition(this.sprite.x, this.sprite.y - 12);
+        } else if (deco.constructor?.name !== 'ParticleEmitter') {
+          deco.setPosition(this.sprite.x, this.sprite.y - 18);
         }
       }
     }
@@ -509,7 +463,6 @@ export class Wagon {
       this.multiplierIndicator.setText(`x1.0`);
     }
     this.playDetachSound();
-
     this.vel.x = -300;
     this.vel.y = Phaser.Math.Between(-150, 150);
   }
