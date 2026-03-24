@@ -2,58 +2,61 @@ import Phaser from 'phaser';
 import { gameManager } from '../managers/GameManager';
 import { audioManager } from '../managers/AudioManager';
 
+/**
+ * Класс вагона – киберпанк-стиль, плавное следование, без прозрачности,
+ * без тряски камеры, с красивыми частицами и полной очисткой эффектов.
+ */
 export class Wagon {
   constructor(scene, x, y, index, worldType = null) {
     this.scene = scene;
     this.index = index;
     this.worldType = worldType ?? (scene.levelManager?.currentWorld ?? 0);
-    
-    // ===== Конфигурация мира =====
+
+    // Конфигурация мира
     this.worldConfig = this.getWorldConfig();
     this.texture = this.getTextureForWorld();
-    
-    // ===== Создание спрайта =====
+
+    // Создание спрайта – крупный, яркий, без прозрачности
     this.sprite = scene.physics.add.image(x, y, this.texture)
       .setScale(0.95)
-      .setDepth(5 + index);
-    
-    // ===== Настройка физики =====
+      .setDepth(5 + index)
+      .setAlpha(1); // полная непрозрачность
+
+    // Отключаем гравитацию и стандартную физику
     this.setupPhysics();
-    
-    // ===== Визуальные эффекты =====
+
+    // Визуальные эффекты
     this.setupVisuals();
-    
-    // ===== Ссылка на объект =====
+
+    // Ссылка на объект
     this.sprite.wagonRef = this;
-    
-    // ===== Характеристики =====
+
+    // Характеристики
     this.hp = this.getMaxHealth();
     this.maxHp = this.hp;
     this.active = true;
     this.isConnected = true;
     this.protectionFrames = 0;
-    this.protectionDuration = 500;   // ms
-    
-    // ===== Множитель очков =====
+    this.protectionDuration = 500; // ms
+
+    // Множитель очков
     this.coinMultiplier = 1 + (this.index + 1) * 0.5;
-    
-    // ===== Параметры следования (пружинная система) =====
-    this.followDistance = 50;
-    this.springStrength = 0.38;      // уменьшено для плавного старта
-    this.damping = 0.96;              // быстрое затухание без рывков
-    
+
+    // Параметры следования (пружинная система)
+    this.followDistance = 50;          // желаемое расстояние до предыдущего
+    this.springStrength = 0.48;        // жёсткость пружины
+    this.damping = 0.94;               // затухание
+
     // Позиция и скорость (для независимого движения)
     this.pos = { x: x, y: y };
     this.vel = { x: 0, y: 0 };
-    
-    // ===== Визуальные элементы =====
+
+    // Визуальные элементы
     this.glowEffect = null;
     this.trailEmitter = null;
     this.multiplierIndicator = null;
-    this.shieldEffect = null;
-    this.pulseAnimation = null;
-    
-    // ===== Создание элементов интерфейса =====
+
+    // Создание элементов интерфейса
     this.createMultiplierIndicator();
     this.createTrail();
     this.applyWorldVisuals();
@@ -63,11 +66,11 @@ export class Wagon {
   }
 
   // =========================================================================
-  // КОНФИГУРАЦИЯ МИРОВ (расширенная)
+  // КОНФИГУРАЦИЯ МИРОВ
   // =========================================================================
   getWorldConfig() {
     const configs = {
-      0: {
+      0: { // Космос
         color: 0x4a8cff,
         glowColor: 0x6aacff,
         textureSet: 'space',
@@ -76,7 +79,7 @@ export class Wagon {
         lightIntensity: 0.4,
         trailColor: [0x4a8cff, 0x8abaff]
       },
-      1: {
+      1: { // Киберпанк
         color: 0xff44ff,
         glowColor: 0xff88ff,
         textureSet: 'neon',
@@ -85,7 +88,7 @@ export class Wagon {
         lightIntensity: 0.7,
         trailColor: [0xff44ff, 0xff88ff, 0xffaaff]
       },
-      2: {
+      2: { // Подземелье
         color: 0xcc8866,
         glowColor: 0xffaa88,
         textureSet: 'dark',
@@ -94,7 +97,7 @@ export class Wagon {
         lightIntensity: 0.3,
         trailColor: [0xcc8866, 0xffaa88]
       },
-      3: {
+      3: { // Астероиды
         color: 0xffaa66,
         glowColor: 0xffcc88,
         textureSet: 'rocky',
@@ -103,7 +106,7 @@ export class Wagon {
         lightIntensity: 0.5,
         trailColor: [0xffaa66, 0xffcc88]
       },
-      4: {
+      4: { // Чёрная дыра
         color: 0xaa88ff,
         glowColor: 0xcc88ff,
         textureSet: 'void',
@@ -117,7 +120,7 @@ export class Wagon {
   }
 
   // =========================================================================
-  // ВЫБОР ТЕКСТУРЫ
+  // ВЫБОР ТЕКСТУРЫ (разнообразие)
   // =========================================================================
   getTextureForWorld() {
     const textureMaps = {
@@ -134,24 +137,25 @@ export class Wagon {
   }
 
   // =========================================================================
-  // ФИЗИКА (без гравитации, ручное управление)
+  // ФИЗИКА (ручное управление)
   // =========================================================================
   setupPhysics() {
     this.sprite.body.setAllowGravity(false);
     this.sprite.body.setImmovable(true);
-    this.sprite.body.enable = false;
-    this.sprite.setCircle(18);
+    this.sprite.body.enable = false;   // отключаем стандартную физику
+    this.sprite.setCircle(18);         // радиус коллизии
   }
 
   // =========================================================================
-  // ВИЗУАЛЫ
+  // ВИЗУАЛЬНЫЕ ЭФФЕКТЫ
   // =========================================================================
   setupVisuals() {
     this.sprite.setTint(this.worldConfig.color);
     this.sprite.setBlendMode(Phaser.BlendModes.ADD);
-    
+
+    // Добавляем свечение для каждого чётного вагона
     if (this.index % 2 === 0) {
-      this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 32, this.worldConfig.glowColor, 0.3);
+      this.glowEffect = this.scene.add.circle(this.sprite.x, this.sprite.y, 32, this.worldConfig.glowColor, 0.35);
       this.glowEffect.setBlendMode(Phaser.BlendModes.ADD);
       this.glowEffect.setDepth(4);
     }
@@ -160,38 +164,38 @@ export class Wagon {
   createTrail() {
     this.trailEmitter = this.scene.add.particles(0, 0, 'flare', {
       speed: { min: 12, max: 28 },
-      scale: { start: 0.25, end: 0 },
-      alpha: { start: 0.6, end: 0 },
-      lifespan: 280,
+      scale: { start: 0.28, end: 0 },
+      alpha: { start: 0.7, end: 0 },
+      lifespan: 260,
       quantity: 1,
-      frequency: 38,
+      frequency: 36,
       blendMode: Phaser.BlendModes.ADD,
       tint: this.worldConfig.trailColor,
       follow: this.sprite,
-      followOffset: { x: -20, y: 0 }
+      followOffset: { x: -22, y: 0 }
     });
   }
 
   createMultiplierIndicator() {
     this.multiplierIndicator = this.scene.add.text(
       this.sprite.x,
-      this.sprite.y - 45,
+      this.sprite.y - 48,
       `x${this.coinMultiplier.toFixed(1)}`,
       {
-        fontSize: '14px',
-        fontFamily: "'Audiowide', sans-serif",
-        color: '#ffaa00',
+        fontSize: '15px',
+        fontFamily: "'Audiowide', 'Orbitron', sans-serif",
+        color: '#ffaa44',
         stroke: '#000000',
-        strokeThickness: 3,
-        shadow: { blur: 8, color: '#ffaa00', fill: true }
+        strokeThickness: 4,
+        shadow: { blur: 8, color: '#ffaa44', fill: true }
       }
     ).setOrigin(0.5).setDepth(21);
   }
 
   updateMultiplierIndicator() {
     if (!this.multiplierIndicator) return;
-    this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 45);
-    const intensity = 0.6 + Math.sin(Date.now() * 0.008) * 0.4;
+    this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 48);
+    const intensity = 0.7 + Math.sin(Date.now() * 0.008) * 0.3;
     this.multiplierIndicator.setAlpha(intensity);
   }
 
@@ -214,9 +218,10 @@ export class Wagon {
   }
 
   addDecorativeElements() {
-    if (this.index % 3 === 0) {
-      const antenna = this.scene.add.image(this.sprite.x, this.sprite.y - 12, 'antenna')
-        .setScale(0.4).setDepth(this.sprite.depth + 1);
+    // Добавляем маленькую антенну для каждого третьего вагона
+    if (this.index % 3 === 0 && this.scene.textures.exists('antenna')) {
+      const antenna = this.scene.add.image(this.sprite.x, this.sprite.y - 14, 'antenna')
+        .setScale(0.45).setDepth(this.sprite.depth + 1);
       antenna.setBlendMode(Phaser.BlendModes.ADD);
       this.scene.tweens.add({
         targets: antenna,
@@ -224,7 +229,9 @@ export class Wagon {
         duration: 600,
         yoyo: true,
         repeat: -1,
-        onUpdate: () => { if (antenna.active) antenna.setPosition(this.sprite.x, this.sprite.y - 12); }
+        onUpdate: () => {
+          if (antenna.active) antenna.setPosition(this.sprite.x, this.sprite.y - 14);
+        }
       });
     }
   }
@@ -233,7 +240,7 @@ export class Wagon {
     this.sprite.setAlpha(0);
     this.sprite.setScale(0);
     if (this.multiplierIndicator) this.multiplierIndicator.setAlpha(0);
-    
+
     this.scene.tweens.add({
       targets: this.sprite,
       alpha: 1,
@@ -243,7 +250,7 @@ export class Wagon {
       ease: 'Back.out',
       onUpdate: () => {
         if (this.multiplierIndicator) {
-          this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 45);
+          this.multiplierIndicator.setPosition(this.sprite.x, this.sprite.y - 48);
           this.multiplierIndicator.setAlpha(this.sprite.alpha);
         }
       },
@@ -267,15 +274,15 @@ export class Wagon {
   }
 
   playSpawnSound() {
-    try { audioManager.playSound(this.scene, 'wagon_spawn', 0.4); } catch(e) {}
+    try { audioManager.playSound(this.scene, 'wagon_spawn', 0.45); } catch(e) {}
   }
 
   playDamageSound() {
-    try { audioManager.playSound(this.scene, 'hit_sound', 0.28); } catch(e) {}
+    try { audioManager.playSound(this.scene, 'hit_sound', 0.3); } catch(e) {}
   }
 
   playDetachSound() {
-    try { audioManager.playSound(this.scene, 'wagon_destroy', 0.5); } catch(e) {}
+    try { audioManager.playSound(this.scene, 'wagon_destroy', 0.55); } catch(e) {}
   }
 
   // =========================================================================
@@ -285,6 +292,7 @@ export class Wagon {
     let baseHealth = 1;
     const upgradeLevel = gameManager.getUpgradeLevel?.('wagonHP') || 0;
     baseHealth += upgradeLevel;
+    // Дальние вагоны получают дополнительное здоровье
     baseHealth += Math.floor(this.index / 5);
     return Math.max(1, baseHealth);
   }
@@ -312,7 +320,8 @@ export class Wagon {
     this.scene.time.delayedCall(150, () => {
       if (this.sprite?.active) this.sprite.setTint(this.worldConfig.color);
     });
-    for (let i = 0; i < 8; i++) {
+
+    for (let i = 0; i < 10; i++) {
       const spark = this.scene.add.circle(
         this.sprite.x + Phaser.Math.Between(-25, 25),
         this.sprite.y + Phaser.Math.Between(-25, 25),
@@ -334,7 +343,7 @@ export class Wagon {
   }
 
   // =========================================================================
-  // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА)
+  // ОБНОВЛЕНИЕ ПОЗИЦИИ (ФИЗИКА ПОЕЗДА) – ПЛАВНОЕ СЛЕДОВАНИЕ
   // =========================================================================
   update(prevX, prevY, gap, delta) {
     if (!this.sprite?.active) {
@@ -344,29 +353,33 @@ export class Wagon {
 
     this.followDistance = gap;
 
-    // Защитные кадры (используем delta для плавности)
+    // Защитные кадры (мигание) – без прозрачности, только мигание цвета
     if (this.protectionFrames > 0) {
       this.protectionFrames -= delta;
-      const blink = (this.protectionFrames % 100 < 50) ? 0.6 : 1;
-      this.sprite.setAlpha(blink);
+      if (this.protectionFrames % 100 < 50) {
+        this.sprite.setTint(0xff8888);
+      } else {
+        this.sprite.setTint(this.worldConfig.color);
+      }
     } else {
+      this.sprite.setTint(this.worldConfig.color);
       this.sprite.setAlpha(1);
     }
 
-    // Целевая позиция
+    // Целевая позиция: позади предыдущего на заданное расстояние
     const targetX = prevX - this.followDistance;
     const targetY = prevY;
 
     const dx = targetX - this.pos.x;
     const dy = targetY - this.pos.y;
 
-    // Пружинная сила (ускорение) с учётом delta
+    // Пружинная сила с учётом дельты времени
     const forceX = dx * this.springStrength * (delta / 16);
     const forceY = dy * this.springStrength * (delta / 16);
     this.vel.x += forceX;
     this.vel.y += forceY;
 
-    // Демпфирование (не зависит от delta, применяется после)
+    // Демпфирование
     this.vel.x *= this.damping;
     this.vel.y *= this.damping;
 
@@ -378,14 +391,15 @@ export class Wagon {
     this.sprite.x = this.pos.x;
     this.sprite.y = this.pos.y;
 
-    // Небольшое визуальное покачивание (чисто визуально)
-    const wobble = Math.sin(Date.now() * 0.005 + this.index) * 0.3;
+    // Небольшое визуальное покачивание (чисто эстетика, не влияет на коллизию)
+    const wobble = Math.sin(Date.now() * 0.004 + this.index) * 0.4;
     this.sprite.y += wobble;
 
-    // Поворот в зависимости от скорости
-    if (Math.abs(this.vel.x) > 0.2 || Math.abs(this.vel.y) > 0.2) {
+    // Поворот в зависимости от скорости (плавно)
+    const speed = Math.hypot(this.vel.x, this.vel.y);
+    if (speed > 0.5) {
       const moveAngle = Math.atan2(this.vel.y, this.vel.x);
-      this.sprite.rotation += (moveAngle * 0.35 - this.sprite.rotation) * 0.12;
+      this.sprite.rotation += (moveAngle * 0.3 - this.sprite.rotation) * 0.12;
     } else {
       this.sprite.rotation *= 0.98;
     }
@@ -423,8 +437,9 @@ export class Wagon {
     }
     this.playDetachSound();
 
-    this.vel.x = -250;
-    this.vel.y = Phaser.Math.Between(-120, 120);
+    // Отбрасываем вагон в сторону
+    this.vel.x = -280;
+    this.vel.y = Phaser.Math.Between(-140, 140);
   }
 
   // =========================================================================
@@ -439,12 +454,12 @@ export class Wagon {
     }
     if (this.glowEffect) this.glowEffect.destroy();
     if (this.multiplierIndicator) this.multiplierIndicator.destroy();
-    
+
     if (this.sprite?.active) {
       if (this.scene.particleManager) {
         this.scene.particleManager.createWagonDestroyEffect(this.sprite);
       }
-      try { audioManager.playSound(this.scene, 'wagon_destroy', 0.6); } catch(e) {}
+      try { audioManager.playSound(this.scene, 'wagon_destroy', 0.65); } catch(e) {}
       this.sprite.destroy();
     }
     this.active = false;
