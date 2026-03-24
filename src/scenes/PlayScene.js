@@ -1970,11 +1970,6 @@ export class PlayScene extends Phaser.Scene {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // Создаём неоновую рамку (уже с setScrollFactor 0, чтобы не двигалась)
-    this.createNeonFrame();
-
-    this.createTopPanel();
-    this.createBottomPanel();
 
     // Контейнер сердечек
     this.heartContainer = this.add.container(12, 38).setDepth(10).setScrollFactor(0);
