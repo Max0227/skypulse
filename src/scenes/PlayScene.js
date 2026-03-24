@@ -638,26 +638,28 @@ createWagonLostEffect(wagon, index) {
  */
 updateCameraZoom() {
   if (!this.player) return;
-
   const baseZoom = 1.0;
   let targetZoom = baseZoom;
-
   if (this.wagons.length > 0) {
-    // Уменьшение зума при увеличении состава (чем больше вагонов, тем шире обзор)
     const zoomReduction = Math.min(0.32, this.wagons.length * 0.022);
     targetZoom = baseZoom - zoomReduction;
     targetZoom = Math.max(0.72, targetZoom);
   }
-
-  // Не запускаем повторный твин, если целевой зум не изменился
   if (this._lastTargetZoom === targetZoom) return;
   this._lastTargetZoom = targetZoom;
 
-  // Останавливаем предыдущий твин, если он ещё активен
   if (this.cameraZoomTween) {
     this.cameraZoomTween.stop();
     this.cameraZoomTween = null;
   }
+  this.cameraZoomTween = this.tweens.add({
+    targets: this.cameras.main,
+    zoom: targetZoom,
+    duration: 550,
+    ease: 'Sine.easeInOut',
+    onUpdate: () => this.cameras.main.centerOn(this.player.x, this.player.y),
+    onComplete: () => { this.cameraZoomTween = null; }
+  });
 
   this.cameraZoomTween = this.tweens.add({
     targets: this.cameras.main,
@@ -3188,11 +3190,12 @@ createUI() {
 /**
  * Создание неоновой рамки
  */
-createNeonFrame() {
+ccreateNeonFrame() {
   const w = this.scale.width;
   const h = this.scale.height;
   
   this.frameGraphics = this.add.graphics();
+  this.frameGraphics.setScrollFactor(0);  // ← КЛЮЧЕВОЕ: рамка не двигается с камерой
   this.frameGraphics.lineStyle(2, 0x00ffff, 0.3);
   this.frameGraphics.strokeRect(8, 8, w - 16, h - 16);
   
